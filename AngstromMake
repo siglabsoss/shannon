@@ -1,0 +1,7 @@
+all: bin/angstrom
+
+bin/angstrom: fakeCMake
+	g++ src/app/angstrom.cpp -o bin/angstrom
+
+fakeCMake:
+	mkdir bin
