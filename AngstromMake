@@ -1,7 +1,5 @@
-all: bin/angstrom
-
-bin/angstrom: fakeCMake
+bin/angstrom: bin/ src/app/angstrom.cpp
 	g++ src/app/angstrom.cpp -o bin/angstrom
 
-fakeCMake:
-	mkdir bin
+bin/:
+	mkdir -p bin
