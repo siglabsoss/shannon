@@ -1,0 +1,11 @@
+# all compiled source
+bin/*
+lib/*
+
+# all build system files
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
