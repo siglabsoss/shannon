@@ -48,16 +48,23 @@ namespace pop
 				boost::asio::placeholders::bytes_transferred));
 	}
 
-	void PopNetwork::send(void* data, std::size_t size)
+	void PopNetwork::send(float* data, size_t len)
 	{
-		socket_.send_to(boost::asio::buffer(data, size), outgoing_endpoint_);
+		size_t n;
+		size_t N = len * sizeof(float);
+		uint8_t *cdata = (uint8_t*)data;
+
+
+		for( n = 0; n < N; n += 32767 )
+		socket_.send_to(boost::asio::buffer(cdata + n, 32767),
+			outgoing_endpoint_);
 	}
 
 	void PopNetwork::handle_receive(const boost::system::error_code& error,
       std::size_t /*bytes_transferred*/)
 	{
 		cout << "received UDP packet" << endl;
-		void *processed_data;
+		complex<float> *processed_data;
 		if (!error || error == boost::asio::error::message_size)
 		{
     		/* the first time we receive a message let that be the
@@ -69,11 +76,7 @@ namespace pop
 			}
 
 			// If a callback function exists then process data and send it.
-			if( callback_ )
-			{
-				processed_data = callback_( &recv_buffer_[0], recv_buffer_.size());
-				send( processed_data, recv_buffer_.size());
-			}
+			//send( processed_data, recv_buffer_.size() / sizeof( complex<float> ));
 
 			// receive next packet
 			start_receive();

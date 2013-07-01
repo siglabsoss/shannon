@@ -9,6 +9,7 @@
 
 // std c libaries
 #include <iostream>
+#include <sstream>
 #include <complex>
 
 // boost components
@@ -92,7 +93,8 @@ namespace pop
         std::cout << boost::format("Using Device: %s") %
             usrp->get_pp_string() << std::endl;
 
-        usrp->set_rx_rate(8e6);
+        usrp->set_rx_freq(902840000);
+        usrp->set_rx_rate(1e6);
 
         usrp->set_time_source("external");
 
@@ -111,8 +113,6 @@ namespace pop
 
         //setup streaming
         uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
-        stream_cmd.num_samps = 10000;
-        stream_cmd.stream_now = false;
         stream_cmd.time_spec = uhd::time_spec_t(1.5);
         usrp->issue_stream_cmd(stream_cmd); //tells all channels to stream
 
@@ -158,7 +158,7 @@ namespace pop
             // if rx buffer full then dump data
             if( 0 == rx_buf_idx )
             {
-            	sig(buff_ptrs[0][0], num_rx_samps * sizeof(std::complex<float>) *
+            	sig(buff_ptrs[0][0], num_rx_samps *
             	    NUM_RX_BUFS );
             }
 		}

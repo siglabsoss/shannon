@@ -31,7 +31,7 @@ namespace pop
 		POP_ERROR start();
 		POP_ERROR stop();
 		POP_ERROR connect(SDR_DATA_FUNC func);
-		boost::signals2::signal<void (void*, std::size_t)> sig;
+		boost::signals2::signal<void (std::complex<float>*, std::size_t)> sig;
 
 	private:
 		POP_ERROR run();

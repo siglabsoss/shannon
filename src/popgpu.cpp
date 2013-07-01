@@ -10,8 +10,11 @@
 #include "popgpu.hpp"
 
 #include <memory>
+#include <fstream>
 #include <iostream>
-#include <complex>
+#include <stdexcept>
+
+#include <boost/timer.hpp>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -19,20 +22,40 @@
 #include "cuda/helper_cuda.h"
 
 using namespace std;
+using namespace boost::posix_time;
 
+#define GPU_CRUNCH_SIZE 65536 // in samples
+#define GPU_BUFFER_SIZE (GPU_CRUNCH_SIZE * 10)   // in samples
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" void start_deconvolve(std::complex<float> *pn,
-							     std::complex<float> *data,
-							     std::complex<float> *product,
-                                 int len);
+extern "C" void start_deconvolve(complex<float> *data,
+							     float *product);
+
+extern "C" void init_deconvolve(complex<float> *pn, size_t len);
+
 namespace pop
 {
-	PopGpu::PopGpu()
+	PopGpu::PopGpu() : mp_buffer(0), m_buf_size(0), m_buf_read_idx(0),
+		m_buf_write_idx(0), mp_product(0)
 	{
 	    int ret;
 	    int deviceCount = 0;
+
+	    mp_buffer = (complex<float>*)
+	    	malloc(GPU_BUFFER_SIZE * sizeof(complex<float>));
+
+		mp_product = (float*)
+	    	malloc(GPU_BUFFER_SIZE * sizeof(float));
+
+	    mp_demod_func = (complex<float>*)
+	    	malloc(GPU_CRUNCH_SIZE * sizeof(complex<float>));
+
+	    if( mp_buffer && mp_product ) m_buf_size = GPU_BUFFER_SIZE;
+
+	    ifstream is("dat/pn_code_short.raw", ifstream::binary);
+	    is.read( (char*)mp_demod_func, GPU_CRUNCH_SIZE * sizeof(complex<float>));
+	    is.close();
 
 	    mp_barrier = new boost::barrier(2);
 
@@ -137,6 +160,9 @@ namespace pop
 	        printf("     < %s >\n", sComputeMode[deviceProp.computeMode]);
 	    }
 
+	    // allocate CUDA memory
+	    init_deconvolve(mp_demod_func, GPU_CRUNCH_SIZE);
+
 	    init();
 	}
 
@@ -150,33 +176,93 @@ namespace pop
 		mp_thread = new boost::thread(boost::bind(&PopGpu::run, this));
 	}
 
+	/**
+	 * Returns samples remaining in buffer.
+	 */
+	size_t PopGpu::numSamples()
+	{
+		if( m_buf_write_idx >= m_buf_read_idx )
+			return m_buf_write_idx - m_buf_read_idx;
+		else
+			return m_buf_size - (m_buf_read_idx - m_buf_write_idx);
+	}
+
 
 	/**
-	 * Push receive buffer and recompute. Data should be recast to std::complex
+	 * Push receive buffer and recompute. Circular buffer:
+	 * buffer:  |-------------R------------------------W--|
+	 * newdata:                                        |--------| len=8
+	 *
+	 * slice1 =                                        |--|       len=2
+	 * slice2 = |-----|                                           len=6
+	 *
+	 * @param data array of complex<float>
+	 * @param len length of array in samples
+	 *
 	 */
-	void PopGpu::import(void* data, std::size_t len)
+	void PopGpu::import(complex<float>* data, size_t len)
 	{
-		std::complex<float> *cdata = (std::complex<float>*)data;
+		// true if copy extends *beyond* the end of the circular buffer
+		size_t is_wraparound = (len + m_buf_write_idx) / m_buf_size;
 
-		// TODO: copy new data into buffer
+		// length of vector *beyond* the end of the circular buffer
+		size_t slice2 = is_wraparound * (len + m_buf_write_idx) % m_buf_size;
+
+		// length of vector *within* the circular buffer
+		size_t slice1 = len - slice2;
+
+		// check for valid array length
+		if( len > m_buf_size )
+			throw runtime_error("[POPGPU] - Buffer too small\r\n");
+
+		// copy data into circular buffer
+		memcpy( mp_buffer + m_buf_write_idx, data,
+			sizeof(complex<float>) * slice1 );
+		memcpy( mp_buffer, data, sizeof(complex<float>) * slice2 );
+
+		// check for overflow
+		if( (m_buf_read_idx > m_buf_write_idx) &
+			(m_buf_read_idx < ((m_buf_write_idx + len) % m_buf_size)))
+            throw runtime_error("[POPGPU] - Overflow\r\n");
+
+		// increment write pointer for next data import
+		m_buf_write_idx += len;
+		m_buf_write_idx %= m_buf_size;
 
 		// wait for process I/O to complete or start new process I/O
-		mp_barrier->wait();
+		/*if( numSamples() >= GPU_CRUNCH_SIZE )
+			mp_barrier->wait();*/
 	}
 
 	void PopGpu::crunch()
 	{
+		ptime t1, t2;
+		time_duration td;
+
 		// wait for new data to arrive
-		mp_barrier->wait();
+		//mp_barrier->wait();
 
-		// TODO: call the GPU to process work
-		// temporary, sleep for 10 milliseconds
-		//boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+		// run while there's data in the buffer
+		while( numSamples() >= GPU_CRUNCH_SIZE )
+		{
+			t1 = microsec_clock::local_time();
 
-		static std::complex<float> a[10];
-		static std::complex<float> b[10];
-		static std::complex<float> c[10];
-		start_deconvolve(a, b, c, 0);
+			// call the GPU to process work
+			start_deconvolve(mp_buffer + m_buf_read_idx, mp_product + m_buf_read_idx);
+
+			t2 = microsec_clock::local_time();
+			td = t2 - t1;
+
+			//cout << "[POPGPU] - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
+
+			// send out data
+			sig(mp_product + m_buf_read_idx, GPU_CRUNCH_SIZE);
+
+			// increment read pointer
+			m_buf_read_idx += GPU_CRUNCH_SIZE;
+			m_buf_read_idx %= m_buf_size;
+
+		}
 	}
 
 
@@ -197,6 +283,8 @@ namespace pop
 	  */
 	PopGpu::~PopGpu()
 	{
+		delete mp_buffer;
+		delete mp_product;
 		delete mp_barrier;
 	}
 }

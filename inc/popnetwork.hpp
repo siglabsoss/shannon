@@ -7,6 +7,7 @@
 *
 ******************************************************************************/
 
+#include <complex>
 #include <boost/asio.hpp>
 
 namespace pop
@@ -18,7 +19,7 @@ namespace pop
 	public:
 		PopNetwork(int incoming_port = 5004, int outgoing_port = 5005);
 		static void init();
-		void send(void* data, std::size_t size);
+		void send(float* data, std::size_t size);
 
 	private:
 		void handle_receive(const boost::system::error_code& error,
