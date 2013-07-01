@@ -17,6 +17,8 @@ project(shannon CXX C)
 set(shannon_VERSION_MAJOR 0)
 set(shannon_VERSION_MINOR 1)
 
+set(CMAKE_BUILD_TYPE debug)
+
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
@@ -34,17 +36,15 @@ endif()
 set(CUDA_64_BIT_DEVICE_CODE ON)
 set(BUILD_SHARED_LIBS OFF)
 set(CUDA_VERBOSE_BUILD ON)
-#set(CUDA_SEPARABLE_COMPILATION ON)
-#list(APPEND CUDA_NVCC_FLAGS -arch=sm_20)
+set(CUDA_SEPARABLE_COMPILATION ON)
+list(APPEND CUDA_NVCC_FLAGS -arch=sm_20)
 
-#set(LIB_NAME "gpuacceleration")
+set(LIB_NAME "gpuacceleration")
 
-#cuda_add_library(${LIB_NAME}
-#  ${gpuacc_SRCS} 
 #  OPTIONS -DSTUFF="blah blah"
 #  RELEASE -DNDEBUG
 #  DEBUG -g -DDEBUG
-#)
+
 
 ########################################################################
 # Setup the include and linker paths

@@ -14,6 +14,12 @@ set(shannon_SOURCES
 	popcontrol.cpp
 	popnetwork.cpp)
 
+set(gpuacc_SRCS
+	cudadeconvolve.cu)
+
+cuda_add_library(${LIB_NAME}
+  ${gpuacc_SRCS} )
+
 add_executable(shannon ${shannon_SOURCES})
 
-target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd)
+target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})

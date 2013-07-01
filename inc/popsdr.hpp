@@ -11,6 +11,7 @@
 #define __POP_SDR_H
 
 #include <cstring>
+#include <complex>
 
 #include <boost/thread.hpp>
 #include <boost/signals2.hpp>
@@ -38,7 +39,7 @@ namespace pop
 		uhd::rx_streamer::sptr rx_stream;
 		uhd::tx_streamer::sptr tx_stream;
 		uhd::rx_metadata_t md;
-		boost::thread *m_thread;
+		boost::thread *mp_thread;
 	};
 }
 

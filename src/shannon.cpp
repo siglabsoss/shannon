@@ -64,10 +64,10 @@ int main(int argc, char *argv[])
 	PopNetwork popnetwork(inport, outport);
 
 	// Attach SDR signal to Network
-	popsdr.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
+	//popsdr.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
 
 	// Attach SDR signal to GPU
-	popsdr.sig.connect(bind(&PopGpu::crunch, &popgpu, _1, _2));
+	popsdr.sig.connect(bind(&PopGpu::import, &popgpu, _1, _2));
 
 	// Attach GPU to Network
 	//popgpu.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));

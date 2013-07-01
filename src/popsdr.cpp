@@ -30,10 +30,33 @@ using namespace std;
 
 namespace pop
 {
+
+	#define NUM_RX_BUFS 1000
+
+	const char *cuda_error[] = {
+		"[ERROR_CODE_NONE] - No error assoiciated with this metadata.",
+		"[ERROR_CODE_TIMEOUT] - No packet received, implementation timed-out.",
+		"[ERROR_CODE_LATE_COMMAND] - A stream command was issued in the past.",
+		0,
+		"[ERROR_CODE_BROKEN_CHAIN] - Expected another stream command.",
+		0,
+		0,
+		0,
+		"[ERROR_CODE_OVERFLOW] - An internal receive buffer has filled.",
+		0,
+		0,
+		0,
+		"[ERROR_CODE_ALIGNMENT] - Multi-channel alignment failed.",
+		0,
+		0,
+		"[ERROR_CODE_BAD_PACKET] - The packet could not be parsed.",
+		0
+	};
+
 	/**
 	 * Constructor for Software Defined radio class.
 	 */
-	PopSdr::PopSdr() : m_thread(0)
+	PopSdr::PopSdr() : mp_thread(0)
 	{
 		start();
 	}
@@ -57,6 +80,7 @@ namespace pop
 	POP_ERROR PopSdr::run()
 	{
         size_t num_rx_samps;
+        unsigned rx_buf_idx = 0;
 
 
         /* This will fail unless you have sudo permissions but its ok.
@@ -68,7 +92,7 @@ namespace pop
         std::cout << boost::format("Using Device: %s") %
             usrp->get_pp_string() << std::endl;
 
-        usrp->set_rx_rate(1e6);
+        usrp->set_rx_rate(8e6);
 
         usrp->set_time_source("external");
 
@@ -94,13 +118,18 @@ namespace pop
 
         //allocate buffers to receive with samples (one buffer per channel)
         const size_t samps_per_buff = rx_stream->get_max_num_samps();
-        std::vector<std::vector<std::complex<float> > > buffs(
-            usrp->get_rx_num_channels(), std::vector<std::complex<float> >(samps_per_buff)
-        );
+        std::vector<std::vector<std::complex<float> > > buffs( usrp->get_rx_num_channels(), std::vector<std::complex<float> >(samps_per_buff * NUM_RX_BUFS) );
 
         //create a vector of pointers to point to each of the channel buffers
-        std::vector<std::complex<float> *> buff_ptrs;
-        for (size_t i = 0; i < buffs.size(); i++) buff_ptrs.push_back(&buffs[i].front());
+        std::vector<std::vector<std::complex<float> *> > buff_ptrs(NUM_RX_BUFS, std::vector<std::complex<float> *>(buffs.size(),0));
+        for( size_t j = 0; j < NUM_RX_BUFS; j++ )
+        {
+        	for (size_t i = 0; i < buffs.size(); i++)
+    		{
+    			buff_ptrs[j][i] = &buffs[i].front();
+    		}
+        }
+        
 
         //the first call to recv() will block this many seconds before receiving
         double timeout = 1.5 + 0.1; //timeout (delay before receive + padding)
@@ -108,7 +137,7 @@ namespace pop
 		for(;;)
 		{
             //receive a single packet
-            num_rx_samps = rx_stream->recv(buff_ptrs, samps_per_buff, md,
+            num_rx_samps = rx_stream->recv(buff_ptrs[rx_buf_idx], samps_per_buff, md,
                                            timeout);
 
             //use a small timeout for subsequent packets
@@ -119,12 +148,19 @@ namespace pop
             if (md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE)
             {
                 throw std::runtime_error(str(boost::format(
-                    "Unexpected error code 0x%x"
-                ) % md.error_code));
+                    "Unexpected error code 0x%x - %s"
+                ) % md.error_code % cuda_error[md.error_code]));
             }
 
-            // TODO: do stuff with metadata
-            sig( buff_ptrs[0], num_rx_samps * sizeof(std::complex<float>) );
+            // wrap around rx buffer index
+            rx_buf_idx = (rx_buf_idx + 1) % NUM_RX_BUFS;
+
+            // if rx buffer full then dump data
+            if( 0 == rx_buf_idx )
+            {
+            	sig(buff_ptrs[0][0], num_rx_samps * sizeof(std::complex<float>) *
+            	    NUM_RX_BUFS );
+            }
 		}
 
 		return POP_ERROR_UNKNOWN; // it should never actually get here
@@ -149,15 +185,15 @@ namespace pop
 	POP_ERROR PopSdr::start()
 	{
 		// check to see if thread is already running for this object
-		if( m_thread ) return POP_ERROR_ALREADY_RUNNING;
+		if( mp_thread ) return POP_ERROR_ALREADY_RUNNING;
 
         if( usrp ) return POP_ERROR_ALREADY_RUNNING;
 
 		// create a new threat that runs object's process I/O loop
-		m_thread = new boost::thread(boost::bind(&PopSdr::run, this));
+		mp_thread = new boost::thread(boost::bind(&PopSdr::run, this));
 
 		// if thread was not created return an error
-		if( 0 == m_thread ) return POP_ERROR_UNKNOWN;
+		if( 0 == mp_thread ) return POP_ERROR_UNKNOWN;
 
 		return POP_ERROR_NONE;
 	}

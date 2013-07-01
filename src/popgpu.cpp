@@ -11,22 +11,33 @@
 
 #include <memory>
 #include <iostream>
+#include <complex>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
 
 #include "cuda/helper_cuda.h"
 
+using namespace std;
+
+/**************************************************************************
+ * CUDA Function Prototypes
+ *************************************************************************/
+extern "C" void start_deconvolve(std::complex<float> *pn,
+							     std::complex<float> *data,
+							     std::complex<float> *product,
+                                 int len);
 namespace pop
 {
-
 	PopGpu::PopGpu()
 	{
 	    int ret;
-
-	    printf(" CUDA Device Query (Runtime API) version (CUDART static linking)\n\n");
-
 	    int deviceCount = 0;
+
+	    mp_barrier = new boost::barrier(2);
+
+	    cout << "initializing graphics card(s)...." << endl;
+
 	    cudaError_t error_id = cudaGetDeviceCount(&deviceCount);
 
 	    if (error_id != cudaSuccess)
@@ -110,9 +121,6 @@ namespace pop
 	        printf("  Support host page-locked memory mapping:       %s\n", deviceProp.canMapHostMemory ? "Yes" : "No");
 	        printf("  Alignment requirement for Surfaces:            %s\n", deviceProp.surfaceAlignment ? "Yes" : "No");
 	        printf("  Device has ECC support:                        %s\n", deviceProp.ECCEnabled ? "Enabled" : "Disabled");
-	#ifdef WIN32
-	        printf("  CUDA Device Driver Mode (TCC or WDDM):         %s\n", deviceProp.tccDriver ? "TCC (Tesla Compute Cluster Driver)" : "WDDM (Windows Display Driver Model)");
-	#endif
 	        printf("  Device supports Unified Addressing (UVA):      %s\n", deviceProp.unifiedAddressing ? "Yes" : "No");
 	        printf("  Device PCI Bus ID / PCI location ID:           %d / %d\n", deviceProp.pciBusID, deviceProp.pciDeviceID);
 
@@ -129,49 +137,66 @@ namespace pop
 	        printf("     < %s >\n", sComputeMode[deviceProp.computeMode]);
 	    }
 
-	    // csv masterlog info
-	    // *****************************
-	    // exe and CUDA driver name
-	    printf("\n");
-	    std::string sProfileString = "deviceQuery, CUDA Driver = CUDART";
-	    char cTemp[16];
-
-	    // driver version
-	    sProfileString += ", CUDA Driver Version = ";
-	    sprintf(cTemp, "%d.%d", driverVersion/1000, (driverVersion%100)/10);
-	    sProfileString +=  cTemp;
-
-	    // Runtime version
-	    sProfileString += ", CUDA Runtime Version = ";
-	    sprintf(cTemp, "%d.%d", runtimeVersion/1000, (runtimeVersion%100)/10);
-	    sProfileString +=  cTemp;
-
-	    // Device count
-	    sProfileString += ", NumDevs = ";
-	    sprintf(cTemp, "%d", deviceCount);
-	    sProfileString += cTemp;
-
-	    // Print Out all device Names
-	    for (dev = 0; dev < deviceCount; ++dev)
-	    {
-	        sprintf(cTemp, ", Device%d = ", dev);
-	        cudaDeviceProp deviceProp;
-	        cudaGetDeviceProperties(&deviceProp, dev);
-	        sProfileString += cTemp;
-	        sProfileString += deviceProp.name;
-	    }
-
-	    sProfileString += "\n";
-	    printf("%s", sProfileString.c_str());
+	    init();
 	}
 
+
+	/**
+	 * Initialize GPU hardware.
+	 */
+	void PopGpu::init()
+	{
+		// start new GPU process I/O thread
+		mp_thread = new boost::thread(boost::bind(&PopGpu::run, this));
+	}
+
+
+	/**
+	 * Push receive buffer and recompute. Data should be recast to std::complex
+	 */
+	void PopGpu::import(void* data, std::size_t len)
+	{
+		std::complex<float> *cdata = (std::complex<float>*)data;
+
+		// TODO: copy new data into buffer
+
+		// wait for process I/O to complete or start new process I/O
+		mp_barrier->wait();
+	}
+
+	void PopGpu::crunch()
+	{
+		// wait for new data to arrive
+		mp_barrier->wait();
+
+		// TODO: call the GPU to process work
+		// temporary, sleep for 10 milliseconds
+		//boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+
+		static std::complex<float> a[10];
+		static std::complex<float> b[10];
+		static std::complex<float> c[10];
+		start_deconvolve(a, b, c, 0);
+	}
+
+
+	/**
+	 * Thread loop for synchronous GPU communcation
+	 */
+	 void PopGpu::run()
+	 {
+	 	while(1)
+	 	{
+	 		crunch();
+	 	}
+	 }
+
+
+	 /**
+	  * Standard class deconstructor.
+	  */
 	PopGpu::~PopGpu()
 	{
+		delete mp_barrier;
 	}
-
-	void PopGpu::crunch(void* data, std::size_t len)
-	{
-
-	}
-
 }
