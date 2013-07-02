@@ -12,7 +12,9 @@ set(shannon_SOURCES
 	popgpu.cpp
 	popsdr.cpp
 	popcontrol.cpp
-	popnetwork.cpp)
+	popnetwork.cpp
+	popbin.cpp
+	popdecimate.cpp)
 
 set(gpuacc_SRCS
 	cudadeconvolve.cu)
