@@ -9,6 +9,7 @@
 
 //#include <cuComplex.h>
 #include <complex>
+#include <iostream>
 
 using namespace std;
 
@@ -61,6 +62,7 @@ __global__ void deconvolve(cuComplex *pn, cuComplex *data,
 
 extern "C"
 {	
+	cudaError_t cu_err;
 	cuComplex *_pcode;
 	cuComplex *_data1;
 	cuComplex *_data2;
@@ -87,6 +89,15 @@ extern "C"
 
 		cudaMemcpy(_buf_idx?_data1:_data2, data, _len, cudaMemcpyHostToDevice);
 		deconvolve<<<1, _len>>>(_pcode, _buf_idx?_data1:_data2, _buf_idx?_data2:_data1, _prod1);
+
+		// check for errors... ie, allocating too many threads/block =P
+		cu_err = cudaGetLastError();
+	    if (cu_err != cudaSuccess)
+	    {
+	        std::cout << "CUDA_ERROR: deconvolve returned " << cu_err << " -> " << cudaGetErrorString(cu_err) << std::endl;
+	        exit(EXIT_FAILURE);
+	    }
+
 		cudaMemcpy(product, _prod1, _len, cudaMemcpyDeviceToHost);
 	}
 
