@@ -10,8 +10,12 @@
 //#include <cuComplex.h>
 #include <complex>
 #include <iostream>
+#include "utils.hpp"
 
 using namespace std;
+
+#define MAX_THREADS 1024
+
 
 struct cuComplex
 {
@@ -44,8 +48,28 @@ struct cuComplex
 
 
 __global__ void deconvolve(cuComplex *pn, cuComplex *data, 
-	cuComplex *old_data, float *product)
+	cuComplex *old_data, float *product, int pn_len)
 {
+	int threadsPerBlock = blockDim.x * blockDim.y;
+	int blockId = blockIdx.x + (blockIdx.y * gridDim.x);
+	//int threadId = threadIdx.x + (threadIdx.y * blockDim.x);
+	int globalIdx = (blockId * threadsPerBlock) + threadIdx.x + (threadIdx.y * blockDim.x);
+	int n;
+	int pn_idx;
+
+	if(globalIdx >= pn_len) return;
+
+	cuComplex s = cuComplex(0.0, 0.0);
+
+	for( n = 0; n < pn_len; n++)
+		pn_idx = (globalIdx + n) % pn_len;
+		s += data[n] * pn[pn_idx];
+
+	//product[globalIdx] = s.magnitude2();
+	product[globalIdx] = 1; // ##### DEBUG OUTPUT - FIXME! ####### 
+
+
+	/* old deconvolve ref.... 
 	int i = threadIdx.x;
 	int N = blockDim.x;
 	int I = N - i;
@@ -58,47 +82,66 @@ __global__ void deconvolve(cuComplex *pn, cuComplex *data,
 		s += old_data[n] * pn[n + I];
 
 	product[i] = s.magnitude2();
+	*/
 }
 
 extern "C"
 {	
-	cudaError_t cu_err;
-	cuComplex *_pcode;
-	cuComplex *_data1;
-	cuComplex *_data2;
-	float *_prod1;
-	size_t _len;
-	int _buf_idx;
+	cuComplex *d_pcode;
+	cuComplex *d_data1;
+	cuComplex *d_data2;
+	float *d_prod1;
+	int h_buf_idx;
+	size_t h_len;
 
-	void init_deconvolve(complex<float> *pn, size_t len)
+	void init_deconvolve(complex<float> *h_pn, size_t len)
 	{
-		_len = len;
-		cudaMalloc(&_pcode, len * sizeof(cuComplex));
-		cudaMalloc(&_data1, len * sizeof(cuComplex));
-		cudaMalloc(&_data2, len * sizeof(cuComplex));
-		cudaMalloc(&_prod1, len * sizeof(float));
+		h_len = len;
+		checkCudaErrors(cudaMalloc(&d_pcode, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_data1, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_data2, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_prod1, h_len * sizeof(float)));
+		checkCudaErrors(cudaMemset(d_data2, 0, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMemcpy(d_pcode, h_pn, h_len, cudaMemcpyHostToDevice));
 
-		cudaMemset(&_data2, 0, len * sizeof(cuComplex));
-		cudaMemcpy(_pcode, pn, len, cudaMemcpyHostToDevice);
+		// check for errors at end of init... 
+		//  -- this is redundant with inline calls. 
+		//checkCudaErrors(cudaGetLastError());
 	}
 
-	void start_deconvolve(complex<float> *data, float *product)
+
+	void start_deconvolve(complex<float> *h_data, float *h_product)
 	{
-		if( 1 == _buf_idx ) _buf_idx = 0;
-		else _buf_idx = 1;
+		// Buffer lock
+		if( 1 == h_buf_idx ) h_buf_idx = 0;
+		else h_buf_idx = 1;
 
-		cudaMemcpy(_buf_idx?_data1:_data2, data, _len, cudaMemcpyHostToDevice);
-		deconvolve<<<1, _len>>>(_pcode, _buf_idx?_data1:_data2, _buf_idx?_data2:_data1, _prod1);
+		// 
+		cudaMemcpy(h_buf_idx?d_data1:d_data2, h_data, h_len, cudaMemcpyHostToDevice);
 
-		// check for errors... ie, allocating too many threads/block =P
-		cu_err = cudaGetLastError();
-	    if (cu_err != cudaSuccess)
-	    {
-	        std::cout << "CUDA_ERROR: deconvolve returned " << cu_err << " -> " << cudaGetErrorString(cu_err) << std::endl;
-	        exit(EXIT_FAILURE);
-	    }
-
-		cudaMemcpy(product, _prod1, _len, cudaMemcpyDeviceToHost);
+		// Define grids, blocks
+		// issuing [MAX,1,1] grids
+		// issuing [n,1,1] blocks
+		// 
+   		const dim3 gridSize(MAX_THREADS, 1, 1); //TODO
+   		const int nBlocks = (h_len + MAX_THREADS - 1)/MAX_THREADS; // ceil of int division
+		const dim3 blockSize(nBlocks, 1, 1); //TODO // Note: max 1024 threads/block! (r*c*d <=1024)
+		
+		// Task the SM's
+		deconvolve<<<gridSize, blockSize>>>(d_pcode, h_buf_idx?d_data1:d_data2, h_buf_idx?d_data2:d_data1, d_prod1, h_len);
+  		cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
+		
+	    // Copy results to host
+		cudaMemcpy(h_product, d_prod1, h_len, cudaMemcpyDeviceToHost);
 	}
 
+}
+
+//Free all the memory that we allocated
+//TODO: check that this is comprehensive
+void cleanup() {
+  checkCudaErrors(cudaFree(d_pcode));
+  checkCudaErrors(cudaFree(d_data1));
+  checkCudaErrors(cudaFree(d_data2));
+  checkCudaErrors(cudaFree(d_prod1));
 }

@@ -26,13 +26,13 @@ using namespace boost::posix_time;
 
 #define GPU_CRUNCH_SIZE 65536 // in samples
 #define GPU_BUFFER_SIZE (GPU_CRUNCH_SIZE * 10)   // in samples
+
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" void start_deconvolve(complex<float> *data,
-							     float *product);
-
+extern "C" void start_deconvolve(complex<float> *data,float *product);
 extern "C" void init_deconvolve(complex<float> *pn, size_t len);
+extern "C" void cleanup();
 
 namespace pop
 {
@@ -245,14 +245,13 @@ namespace pop
 		// run while there's data in the buffer
 		while( numSamples() >= GPU_CRUNCH_SIZE )
 		{
-			t1 = microsec_clock::local_time();
+			//t1 = microsec_clock::local_time();
 
 			// call the GPU to process work
 			start_deconvolve(mp_buffer + m_buf_read_idx, mp_product + m_buf_read_idx);
 
-			t2 = microsec_clock::local_time();
-			td = t2 - t1;
-
+			//t2 = microsec_clock::local_time();
+			//td = t2 - t1;
 			//cout << "[POPGPU] - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
 
 			// send out data
@@ -275,6 +274,7 @@ namespace pop
 	 	{
 	 		crunch();
 	 	}
+	 	cleanup();
 	 }
 
 

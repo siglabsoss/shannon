@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 	PopBin popbin;
 
 	// Initialize Decimating Class
-	PopDecimate popdecimate(64);
+	PopDecimate popdecimate(1);
 
 	// Initialize Network With 5004 Incoming Port and 5005 Outgoing Port
 	PopNetwork popnetwork(inport, outport);
@@ -78,13 +78,16 @@ int main(int argc, char *argv[])
 	//popgpu.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
 
 	// Attach GPU to binner
-	popgpu.sig.connect(bind(&PopBin::import, &popbin, _1, _2));
+	//popgpu.sig.connect(bind(&PopBin::import, &popbin, _1, _2));
 
 	// Attach GPU to Decimator
-	popgpu.sig.connect(bind(&PopDecimate::import, &popdecimate, _1, _2));
+	//popgpu.sig.connect(bind(&PopDecimate::import, &popdecimate, _1, _2));
+
+	// Attacj GPU to Network
+	popgpu.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
 
 	// Attach decimator output to Network
-	popdecimate.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
+	//popdecimate.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
 
 	// Run Control Loop
 	ret = popcontrol.run();
