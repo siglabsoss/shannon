@@ -17,18 +17,31 @@
 
 namespace pop
 {
-	class PopDecimate
+	template <class T = std::complex<float> > class PopDecimate
 	{
 	public:
-		PopDecimate(unsigned decimate_rate = 8);
-		~PopDecimate();
-		void import(float* data, std::size_t len);
-		void set_rate(unsigned decimate_rate);
+		PopDecimate(unsigned rate = 8, size_t nBuf = 65536) :
+			m_rate(rate), m_nBuf(nBuf)
+		{
 
-		boost::signals2::signal<void (float*, std::size_t)> sig;
+		}
+		~PopDecimate() { }
+
+		void set_rate(unsigned rate)
+		{
+			m_rate = rate;
+		}
+
+		size_t size()
+		{
+			return nBuf;
+		}
+
+		void sink(T *data);
 
 	private:
-		unsigned m_decimate_rate;
+		size_t m_nBuf;
+		unsigned m_rate;
 	};
 }
 

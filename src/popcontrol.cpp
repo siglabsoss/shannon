@@ -28,7 +28,7 @@ namespace pop
 
 	}
 
-	int PopControl::run()
+	POP_ERROR PopControl::run()
 	{
 
 		while(1)
@@ -40,5 +40,6 @@ namespace pop
 			cout << "[PopControl] - keepalive" << endl;
 		}
 		
+		return POP_ERROR_NONE;
 	}
 }

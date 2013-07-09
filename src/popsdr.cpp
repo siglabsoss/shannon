@@ -32,9 +32,9 @@ using namespace std;
 namespace pop
 {
 
-	#define NUM_RX_BUFS 1000
+	#define NUM_RX_BUFS 100
 
-	const char *cuda_error[] = {
+	const char *uhd_error[] = {
 		"[ERROR_CODE_NONE] - No error assoiciated with this metadata.",
 		"[ERROR_CODE_TIMEOUT] - No packet received, implementation timed-out.",
 		"[ERROR_CODE_LATE_COMMAND] - A stream command was issued in the past.",
@@ -80,10 +80,6 @@ namespace pop
 	 */
 	POP_ERROR PopSdr::run()
 	{
-        size_t num_rx_samps;
-        unsigned rx_buf_idx = 0;
-
-
         /* This will fail unless you have sudo permissions but its ok.
            Giving UHD thread priority control can reduce overflows.*/
         uhd::set_thread_priority_safe();
@@ -129,6 +125,9 @@ namespace pop
     			buff_ptrs[j][i] = &buffs[i].front();
     		}
         }
+
+
+        resize_buffer( samps_per_buff );
         
 
         //the first call to recv() will block this many seconds before receiving
@@ -136,9 +135,12 @@ namespace pop
 
 		for(;;)
 		{
-            //receive a single packet
-            num_rx_samps = rx_stream->recv(buff_ptrs[rx_buf_idx], samps_per_buff, md,
-                                           timeout);
+			std::vector<std::complex<float> *> buf;
+
+			buf.push_back(get_buffer());
+
+            //receive a single packet, TODO confirm num samps received
+            rx_stream->recv(buf, samps_per_buff, md, timeout);
 
             //use a small timeout for subsequent packets
             timeout = 0.1;
@@ -149,34 +151,16 @@ namespace pop
             {
                 throw std::runtime_error(str(boost::format(
                     "Unexpected error code 0x%x - %s"
-                ) % md.error_code % cuda_error[md.error_code]));
+                ) % md.error_code % uhd_error[md.error_code]));
             }
 
             // wrap around rx buffer index
-            rx_buf_idx = (rx_buf_idx + 1) % NUM_RX_BUFS;
-
-            // if rx buffer full then dump data
-            if( 0 == rx_buf_idx )
-            {
-            	sig(buff_ptrs[0][0], num_rx_samps *
-            	    NUM_RX_BUFS );
-            }
+            process();
 		}
 
 		return POP_ERROR_UNKNOWN; // it should never actually get here
 	}
 
-
-	/**
-	 * Connects subscriber to SDR data source
-	 * @param func Callback function for passing data.
-	 */
-	POP_ERROR PopSdr::connect(SDR_DATA_FUNC func)
-	{
-		sig.connect(func);
-
-		return POP_ERROR_NONE;
-	}
 
 
 	/**

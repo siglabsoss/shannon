@@ -9,6 +9,7 @@
 
 
 #include <iostream>
+#include <complex>
 
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
@@ -18,7 +19,10 @@
 #include "popsdr.hpp"
 #include "popgpu.hpp"
 #include "popbin.hpp"
-#include "popdecimate.hpp"
+//#include "popdecimate.hpp"
+//#include "popdata.hpp"
+#include "popobject.hpp"
+#include <popexamples.hpp>
 
 using namespace boost;
 using namespace pop;
@@ -26,9 +30,14 @@ using namespace std;
 
 namespace po = boost::program_options;
 
+int test()
+{
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
-	int ret;
+	int ret = 0;
 	unsigned inport, outport;
 
 	cout << "Shannon - Base station Digital Signal Processing (DSP) Core" << endl;
@@ -38,7 +47,7 @@ int main(int argc, char *argv[])
 	desc.add_options()
 	    ("help", "help message")
 	    ("inport", po::value<unsigned>(&inport)->default_value(5004), "Incoming UDP port")
-	    ("outport", po::value<unsigned>(&outport)->default_value(5005), "Outgoing UDP port")
+	    ("outport", po::value<unsigned>(&outport)->default_value(35005), "Outgoing UDP port")
 	;
 
 	po::variables_map vm;
@@ -53,8 +62,6 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
-	// Initialize Controller
-	PopControl popcontrol;
 
 	// Initialize Graphics Card
 	PopGpu popgpu;
@@ -62,35 +69,23 @@ int main(int argc, char *argv[])
 	// Initialize Software Defined Radio (SDR) and start
 	PopSdr popsdr;
 
-	// Initialize Binning Class
-	PopBin popbin;
+	// Initialize Network Connection
+	PopNetwork popnetwork;
 
-	// Initialize Decimating Class
-	PopDecimate popdecimate(1);
+	// Initialize Dummy Load
+	PopDummySink dummysink;
 
-	// Initialize Network With 5004 Incoming Port and 5005 Outgoing Port
-	PopNetwork popnetwork(inport, outport);
 
-	// Attach SDR signal to GPU
-	popsdr.sig.connect(bind(&PopGpu::import, &popgpu, _1, _2));
 
-	// Attach GPU to Network
-	//popgpu.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
 
-	// Attach GPU to binner
-	//popgpu.sig.connect(bind(&PopBin::import, &popbin, _1, _2));
+	popsdr.connect(dummysink);
+	popsdr.connect(popgpu);
+	popgpu.connect(popnetwork);
 
-	// Attach GPU to Decimator
-	//popgpu.sig.connect(bind(&PopDecimate::import, &popdecimate, _1, _2));
 
-	// Attacj GPU to Network
-	popgpu.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
-
-	// Attach decimator output to Network
-	//popdecimate.sig.connect(bind(&PopNetwork::send, &popnetwork, _1, _2));
 
 	// Run Control Loop
-	ret = popcontrol.run();
+	while(1) {}
 
     return ret;
 }

@@ -10,6 +10,8 @@
 #ifndef __POP_CONTROL_H
 #define __POP_CONTROL_H
 
+#include "popassert.h"
+
 namespace pop
 {
 	class PopControl
@@ -18,7 +20,7 @@ namespace pop
 		PopControl();
 		~PopControl();
 
-		int run();
+		POP_ERROR run();
 	};
 }
 

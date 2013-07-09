@@ -7,14 +7,9 @@
 *
 ******************************************************************************/
 
-namespace pop
-{
-	typedef enum POP_ERROR_T
-	{
-		POP_ERROR_NONE = 0,
-		POP_ERROR_UNKNOWN = -1,
-		POP_ERROR_HW = -2,
-		POP_ERROR_ALREADY_RUNNING = -3
-	} POP_ERROR;
+#include "popassert.h"
 
-}
+char *g_rgszPopError[] = {"POP_ERROR_NONE",
+						  "POP_ERROR_UNKNOWN",
+						  "POP_ERROR_HW",
+						  "POP_ERROR_ALREADY_RUNNING"};

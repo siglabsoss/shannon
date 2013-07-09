@@ -17,21 +17,21 @@
 #include <boost/signals2.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
 
-#include "poperror.h"
+#include "popassert.h"
+
+#include <popsource.hpp>
 
 namespace pop
 {
 	typedef void (*SDR_DATA_FUNC)(void* data, std::size_t len);
 
-	class PopSdr
+	class PopSdr : public PopSource<>
 	{
 	public:
 		PopSdr();
 		~PopSdr();
 		POP_ERROR start();
 		POP_ERROR stop();
-		POP_ERROR connect(SDR_DATA_FUNC func);
-		boost::signals2::signal<void (std::complex<float>*, std::size_t)> sig;
 
 	private:
 		POP_ERROR run();

@@ -1,6 +1,7 @@
 # all compiled source
 bin/*
 lib/*
+doc/*
 
 # all build system files
 CMakeCache.txt
@@ -8,4 +9,4 @@ CMakeFiles
 Makefile
 cmake_install.cmake
 install_manifest.txt
-
+Doxyfile
