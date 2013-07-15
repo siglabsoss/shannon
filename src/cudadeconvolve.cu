@@ -48,49 +48,18 @@ struct cuComplex
 
 
 
-__global__ void deconvolve(cuComplex *pn, cuComplex *datanew, 
-	cuComplex *dataold, float *product, int pn_len)
+__global__ void deconvolve(cuComplex *pn, cuComplex *data,
+	float *product, int pn_len)
 {
-	/*int threadsPerBlock = blockDim.x * blockDim.y;
-	int blockId = blockIdx.x + (blockIdx.y * gridDim.x);
-	int threadId = threadIdx.x + (threadIdx.y * blockDim.x);
-	int globalIdx = (blockId * threadsPerBlock) + threadIdx.x + (threadIdx.y * blockDim.x);
 	int n;
-	int pn_idx;*/
-
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-	//if(globalIdx >= pn_len) return;
-
-	//cuComplex s = cuComplex(0.0, 0.0);
-
-	product[i] = (float)i;
-
-	//product[0] = 3.14f;
-
-	// TODO: this isn't the real deconvolve algo. PN loops back on itself here...
-	/*for( n = 0; n < pn_len; n++){
-		pn_idx = (globalIdx + n) % pn_len;
-		s += data[n] * pn[pn_idx];
-	}*/
-
-	//product[globalIdx] = s.magnitude2();
-	//product[globalIdx] = 1; // ##### DEBUG OUTPUT - FIXME! ####### 
-
-	/* old deconvolve ref.... 
-	int i = threadIdx.x;
-	int N = blockDim.x;
-	int I = N - i;
-	int n;
 	cuComplex s = cuComplex(0.0, 0.0);
 
-	for( n = 0; n < I; n++)
-		s += data[n] * pn[n + i];
-	for( n = i; n < N; n++)
-		s += old_data[n] * pn[n + I];
+	for( n = 0; n < pn_len; n++)
+		s += data[n + i] * pn[n];
 
 	product[i] = s.magnitude2();
-	*/
 }
 
 extern "C"
@@ -104,9 +73,6 @@ extern "C"
 
 	void start_deconvolve(complex<float> *h_data, float *h_product)
 	{
-		/*for(unsigned n = 0; n < 65535; n++)
-			h_product[n] = (float)n;*/
-
 		// copy new memory to old
 		cudaMemcpy(d_dataold, d_datanew, h_len * sizeof(cuComplex), cudaMemcpyDeviceToDevice);
 
@@ -114,7 +80,7 @@ extern "C"
 		cudaMemcpy(d_datanew, h_data, h_len * sizeof(cuComplex), cudaMemcpyHostToDevice);
 
 		// Task the SM's
-		deconvolve<<<64, 1024>>>(d_prncode, d_datanew, d_dataold, d_product, h_len);
+		deconvolve<<<64, 1024>>>(d_prncode, d_dataold, d_product, h_len);
   		checkCudaErrors(cudaGetLastError());
 		
 	    // Copy results to host
@@ -132,8 +98,8 @@ extern "C"
 
 		// allocate CUDA memory
 		checkCudaErrors(cudaMalloc(&d_prncode, h_len * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_dataold, h_len * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_datanew, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_dataold, h_len * sizeof(cuComplex) * 2));
+		d_datanew = d_dataold + h_len; ///< make this sequential to old data
 		checkCudaErrors(cudaMalloc(&d_product, h_len * sizeof(float)));
 
 		// initialize CUDA memory
