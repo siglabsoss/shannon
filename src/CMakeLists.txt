@@ -11,9 +11,7 @@ set(shannon_SOURCES
 	shannon.cpp
 	popgpu.cpp
 	popsdr.cpp
-	popcontrol.cpp
 	popnetwork.cpp
-	popbin.cpp
 	popassert.c)
 
 set(gpuacc_SRCS

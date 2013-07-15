@@ -39,6 +39,11 @@ namespace pop
 
 	PopGpu::PopGpu(): PopBlock<std::complex<float>, float>( 65536, 65536 )
 	{
+
+	}
+
+	void PopGpu::init()
+	{
 	    int deviceCount = 0;
 
 	    mp_demod_func = (complex<float>*)
@@ -148,9 +153,9 @@ namespace pop
 	        printf("  Compute Mode:\n");
 	        printf("     < %s >\n", sComputeMode[deviceProp.computeMode]);
 	    }
-
+	    
 	    // allocate CUDA memory
-	    init_deconvolve(mp_demod_func, GPU_CRUNCH_SIZE);
+	    init_deconvolve(mp_demod_func, GPU_CRUNCH_SIZE);		
 	}
 
 

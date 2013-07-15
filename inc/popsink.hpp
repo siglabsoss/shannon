@@ -93,15 +93,10 @@ public:
      * @param nInBuf Size of input buffer in number of samples. A value of
      * zero indicates that the class can accept any number of input samples.
      */
-    PopSink(size_t nInBuf = 0, int is_threaded = 1) : m_reqBufSize(nInBuf),
+    PopSink(size_t nInBuf = 0) : m_reqBufSize(nInBuf),
         m_sourceBufIdx(0), m_pThread(0)
     {
         set_name("PopSink");
-
-        if( is_threaded )
-        {
-            m_pThread = new boost::thread(boost::bind(&PopSink::run, this));
-        }
     }
 
     /**
@@ -113,9 +108,24 @@ public:
     }
 
     /**
+     * Start Thread
+     */
+     void start_thread()
+     {
+        if( 0 == m_pThread )
+            m_pThread = new boost::thread(boost::bind(&PopSink::run, this));
+     }
+
+    /**
      * Needs to be implemented by child class to handle incoming data.
      */
     virtual void process(IN_TYPE* in, size_t size) = 0;
+
+    /**
+     * Needs to be implemented by child class to initialize anything
+     * that needs to be called from the same thread.
+     */
+     virtual void init() = 0;
 
     /**
      * Thread loop.
@@ -123,6 +133,8 @@ public:
      void run()
      {
         buffer_read_pointer<IN_TYPE> buf;
+
+        init();
 
         while(1)
         {
@@ -146,9 +158,7 @@ public:
             throw PopException( msg_passing_invalid_amount_of_samples );
 
         if( m_pThread )
-        {
             m_readQueue.push(buffer_read_pointer<IN_TYPE>(in,size));
-        }
         else
             process( in, size );
     }

@@ -48,8 +48,8 @@ struct cuComplex
 
 
 
-__global__ void deconvolve(cuComplex *pn, cuComplex *data, 
-	cuComplex *old_data, float *product, int pn_len)
+__global__ void deconvolve(cuComplex *pn, cuComplex *datanew, 
+	cuComplex *dataold, float *product, int pn_len)
 {
 	/*int threadsPerBlock = blockDim.x * blockDim.y;
 	int blockId = blockIdx.x + (blockIdx.y * gridDim.x);
@@ -58,13 +58,15 @@ __global__ void deconvolve(cuComplex *pn, cuComplex *data,
 	int n;
 	int pn_idx;*/
 
-	//int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
 	//if(globalIdx >= pn_len) return;
 
 	//cuComplex s = cuComplex(0.0, 0.0);
 
-	//product[i] = (float)i;
+	product[i] = (float)i;
+
+	//product[0] = 3.14f;
 
 	// TODO: this isn't the real deconvolve algo. PN loops back on itself here...
 	/*for( n = 0; n < pn_len; n++){
@@ -93,45 +95,30 @@ __global__ void deconvolve(cuComplex *pn, cuComplex *data,
 
 extern "C"
 {	
-	cuComplex *d_pcode;
-	cuComplex *d_data1;
-	cuComplex *d_data2;
-	float *d_prod1;
-	int h_buf_idx;
-	size_t h_len;
+	cuComplex *d_prncode;
+	cuComplex *d_dataold;
+	cuComplex *d_datanew;
+	float *d_product;
+	size_t h_len; ///< length of data in samples
 
 
 	void start_deconvolve(complex<float> *h_data, float *h_product)
 	{
-		cuComplex *d_data_a;
-		cuComplex *d_data_b;
+		/*for(unsigned n = 0; n < 65535; n++)
+			h_product[n] = (float)n;*/
 
-		// Double buffer switch
-		if( 1 == h_buf_idx )
-		{
-			d_data_a = d_data1;
-			d_data_b = d_data2;
-			h_buf_idx = 0;
-		}
-		else
-		{
-			d_data_a = d_data2;
-			d_data_b = d_data1;
-			h_buf_idx = 1;
-		}
-
-		for(unsigned n = 0; n < 65535; n++)
-			h_product[n] = (float)n;
+		// copy new memory to old
+		cudaMemcpy(d_dataold, d_datanew, h_len * sizeof(cuComplex), cudaMemcpyDeviceToDevice);
 
 		// copy new host data into device memory
-		cudaMemcpy(d_data_a, h_data, h_len, cudaMemcpyHostToDevice);
+		cudaMemcpy(d_datanew, h_data, h_len * sizeof(cuComplex), cudaMemcpyHostToDevice);
 
 		// Task the SM's
-		deconvolve<<<64, 1024>>>(d_pcode, d_data_a, d_data_b, d_prod1, h_len);
+		deconvolve<<<64, 1024>>>(d_prncode, d_datanew, d_dataold, d_product, h_len);
   		checkCudaErrors(cudaGetLastError());
 		
 	    // Copy results to host
-		//cudaMemcpy(h_product, d_prod1, h_len * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_product, d_product, h_len * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
 
@@ -144,25 +131,25 @@ extern "C"
 			throw runtime_error("[POPGPU] - sample length needs to be multiple of block size.\r\n");
 
 		// allocate CUDA memory
-		checkCudaErrors(cudaMalloc(&d_pcode, h_len * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_data1, h_len * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_data2, h_len * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_prod1, h_len * sizeof(float)));
+		checkCudaErrors(cudaMalloc(&d_prncode, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_dataold, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_datanew, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_product, h_len * sizeof(float)));
 
 		// initialize CUDA memory
-		checkCudaErrors(cudaMemcpy(d_pcode, h_pn, h_len, cudaMemcpyHostToDevice));
-		checkCudaErrors(cudaMemset(d_data1, 0, h_len * sizeof(cuComplex)));
-		checkCudaErrors(cudaMemset(d_data2, 0, h_len * sizeof(cuComplex)));		
-		checkCudaErrors(cudaMemset(d_prod1, 0, h_len * sizeof(float)));
+		checkCudaErrors(cudaMemcpy(d_prncode, h_pn, h_len, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemset(d_dataold, 0, h_len * sizeof(cuComplex)));
+		checkCudaErrors(cudaMemset(d_datanew, 0, h_len * sizeof(cuComplex)));		
+		checkCudaErrors(cudaMemset(d_product, 0, h_len * sizeof(float)));
 	}
 
 	//Free all the memory that we allocated
 	//TODO: check that this is comprehensive
 	void cleanup() {
-	  checkCudaErrors(cudaFree(d_pcode));
-	  checkCudaErrors(cudaFree(d_data1));
-	  checkCudaErrors(cudaFree(d_data2));
-	  checkCudaErrors(cudaFree(d_prod1));
+	  checkCudaErrors(cudaFree(d_prncode));
+	  checkCudaErrors(cudaFree(d_dataold));
+	  checkCudaErrors(cudaFree(d_datanew));
+	  checkCudaErrors(cudaFree(d_product));
 	}
 
 }

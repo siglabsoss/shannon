@@ -14,14 +14,9 @@
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
 
-#include "popcontrol.hpp"
-#include "popnetwork.hpp"
-#include "popsdr.hpp"
-#include "popgpu.hpp"
-#include "popbin.hpp"
-//#include "popdecimate.hpp"
-//#include "popdata.hpp"
-#include "popobject.hpp"
+#include <popnetwork.hpp>
+#include <popsdr.hpp>
+#include <popgpu.hpp>
 #include <popexamples.hpp>
 
 using namespace boost;
@@ -62,9 +57,9 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
-
 	// Initialize Graphics Card
 	PopGpu popgpu;
+	popgpu.start_thread();
 
 	// Initialize Software Defined Radio (SDR) and start
 	PopSdr popsdr;
@@ -72,20 +67,26 @@ int main(int argc, char *argv[])
 	// Initialize Network Connection
 	PopNetwork popnetwork;
 
-	// Initialize Dummy Load
-	PopDummySink dummysink;
+	// Initialize Magnitude Block
+	PopMagnitude popmag;
 
-
-
-
-	popsdr.connect(dummysink);
 	popsdr.connect(popgpu);
+
+	popsdr.connect(popmag);
+
 	popgpu.connect(popnetwork);
+
+	//popmag.connect(popnetwork);
+
 
 
 
 	// Run Control Loop
-	while(1) {}
+	while(1)
+	{
+		boost::posix_time::seconds workTime(1);
+		boost::this_thread::sleep(workTime);
+	}
 
     return ret;
 }

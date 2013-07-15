@@ -90,7 +90,7 @@ namespace pop
             usrp->get_pp_string() << std::endl;
 
         usrp->set_rx_freq(902840000);
-        usrp->set_rx_rate(1e6);
+        usrp->set_rx_rate(500000);
 
         usrp->set_time_source("external");
 

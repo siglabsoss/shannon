@@ -13,6 +13,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <boost/thread.hpp>
+
 #include <popobject.hpp>
 #include <popsink.hpp>
 
@@ -77,8 +79,11 @@ private:
      */
     OUT_TYPE* create_circular_buffer(size_t memSize)
     {
+        boost::lock_guard<boost::mutex> guard(m_mut);
+
         void* actual_buf;
         void* hint_buf;
+        void* temp_buf;
         void* mirror_buf;
         char path[] = "/dev/shm/popwi-shannon-XXXXXX";
         int fd;
@@ -110,35 +115,46 @@ private:
         if( ret )
             throw PopException( "ftruncate=%d" , ret);
 
-        /* Temporarily allocate twice the memory to make sure we have a
+        /* Temporarily allocate thrice the memory to make sure we have a
            contiguous cirular buffer address space. This is a bit wasteful
            but it's currently the only way to ensure contiguous space. Remember
            if you use this method to make sure to unmap the proper amount of
-           memory (i.e. m_memSize * 2) ! */
-        /*temp_buf = mmap(0, m_memSize * 2, PROT_NONE,
+           memory (i.e. m_memSize * 3) ! This also isn't ideal because if
+           other threads are allocating memory at the same time as this
+           function is running you might get slapped in the face. */
+        temp_buf = mmap(0, m_memSize * 3, PROT_NONE,
             MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
-        printf(" temp_buf=%p\r\n", temp_buf);
+        munmap( temp_buf, m_memSize * 3 );
 
         if( 0 == temp_buf )
-            throw PopException( msg_out_of_memory );*/
+            throw PopException( msg_out_of_memory );
 
         /* Map the actual shared buffer into the same place where we created
            the temporary double sized buffer. */
-        mirror_buf = mmap(0, m_memSize,
+        hint_buf = ((uint8_t*)temp_buf) + m_memSize;
+        actual_buf = mmap(hint_buf, m_memSize,
                           PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-        //if( actual_buf != temp_buf )
-        if( MAP_FAILED == mirror_buf )
+        if( actual_buf != hint_buf )
+        //if( MAP_FAILED == actual_buf )
             throw PopException( msg_out_of_memory );
 
         /* Map the mirrored buffer right above the actual buffer to appear as a
            contiguous circular buffer address space. */
-        hint_buf = ((uint8_t*)mirror_buf) - m_memSize;
-        actual_buf = mmap(hint_buf, m_memSize,
+        hint_buf = ((uint8_t*)actual_buf) + m_memSize;
+        mirror_buf = mmap(hint_buf, m_memSize,
                           PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-        if( hint_buf != actual_buf )
+        if( hint_buf != mirror_buf )
+            throw PopException( msg_out_of_memory );
+
+        /* Map the mirroed buffer right below the actual buffer to appear as a
+           contiguous circular buffer address space. */
+        mirror_buf = mmap(temp_buf, m_memSize,
+                          PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+        if( temp_buf != mirror_buf )
             throw PopException( msg_out_of_memory );
 
         close( fd );
@@ -156,6 +172,9 @@ private:
             munmap( (void*)buf, size );
 
             mirror_buf = ((uint8_t*)m_bufPtr) + m_memSize;
+            munmap( (void*)mirror_buf, size);
+
+            mirror_buf = ((uint8_t*)m_bufPtr) - m_memSize;
             munmap( (void*)mirror_buf, size);
         }
     }
@@ -316,7 +335,12 @@ protected:
 
     /// Attached Classes
     std::vector<PopSink<OUT_TYPE>* > m_rgSources;
+
+    /// static mutex for memmapping the shit out of everything
+    static boost::mutex m_mut;
 };
+
+template <class OUT_TYPE> boost::mutex PopSource<OUT_TYPE> ::m_mut;
 
 } // namespace pop
 

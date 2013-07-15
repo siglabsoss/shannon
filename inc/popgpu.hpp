@@ -27,6 +27,7 @@ namespace pop
 
 	private:
 		void process(std::complex<float>* in, float* out, size_t len);
+		void init();
 
 		std::complex<float> *mp_demod_func; ///< PN code vector
 
