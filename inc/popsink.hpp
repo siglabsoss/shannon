@@ -10,12 +10,73 @@
 #ifndef __POP_SINK_HPP_
 #define __POP_SINK_HPP_
 
+#include <queue>
+
 #include <boost/thread.hpp>
 
 #include <popobject.hpp>
 
 namespace pop
 {
+
+template<typename T>
+struct buffer_read_pointer
+{
+    T* data;
+    size_t len;
+    buffer_read_pointer(T* d, size_t l) : data(d), len(l) {}
+    buffer_read_pointer() : data(0), len(0) {}
+};
+
+
+template<typename T>
+class concurrent_queue
+{
+private:
+    std::queue<T> the_queue;
+    mutable boost::mutex the_mutex;
+    boost::condition_variable the_condition_variable;
+public:
+    void push(T const& data)
+    {
+        boost::mutex::scoped_lock lock(the_mutex);
+        the_queue.push(data);
+        lock.unlock();
+        the_condition_variable.notify_one();
+    }
+
+    bool empty() const
+    {
+        boost::mutex::scoped_lock lock(the_mutex);
+        return the_queue.empty();
+    }
+
+    bool try_pop(T& popped_value)
+    {
+        boost::mutex::scoped_lock lock(the_mutex);
+        if(the_queue.empty())
+        {
+            return false;
+        }
+        
+        popped_value=the_queue.front();
+        the_queue.pop();
+        return true;
+    }
+
+    void wait_and_pop(T& popped_value)
+    {
+        boost::mutex::scoped_lock lock(the_mutex);
+        while(the_queue.empty())
+        {
+            the_condition_variable.wait(lock);
+        }
+        
+        popped_value=the_queue.front();
+        the_queue.pop();
+    }
+
+};
 
 /**
  * Data Sink Class
@@ -33,13 +94,12 @@ public:
      * zero indicates that the class can accept any number of input samples.
      */
     PopSink(size_t nInBuf = 0, int is_threaded = 1) : m_reqBufSize(nInBuf),
-        m_sourceBufIdx(0), m_pThread(0), m_pBarrier(0)
+        m_sourceBufIdx(0), m_pThread(0)
     {
         set_name("PopSink");
 
         if( is_threaded )
         {
-            m_pBarrier = new boost::barrier(2);
             m_pThread = new boost::thread(boost::bind(&PopSink::run, this));
         }
     }
@@ -49,7 +109,6 @@ public:
      */
     ~PopSink()
     {
-        delete m_pBarrier;
         delete m_pThread;
     }
 
@@ -63,11 +122,13 @@ public:
      */
      void run()
      {
+        buffer_read_pointer<IN_TYPE> buf;
+
         while(1)
         {
-            m_pBarrier->wait();
-
-            process( m_pInBuf, m_bufSize );
+            m_readQueue.wait_and_pop(buf);
+            
+            process( buf.data, buf.len );
         }
      }
 
@@ -86,9 +147,7 @@ public:
 
         if( m_pThread )
         {
-            m_pInBuf = in;
-            m_bufSize = size;
-            m_pBarrier->wait();
+            m_readQueue.push(buffer_read_pointer<IN_TYPE>(in,size));
         }
         else
             process( in, size );
@@ -109,17 +168,11 @@ public: // TODO: this should be protected, but having some issues with the frien
     /// In Buffer index in respective PopSource
     size_t m_sourceBufIdx;
 
-    /// In Buffer pointer (active at time of thread barrier release)
-    IN_TYPE *m_pInBuf;
-
-    /// In Buffer pointer length (active at time of thread barrier release)
-    size_t m_bufSize;
-
     /// thread
     boost::thread *m_pThread;
 
-    /// thread barrier
-    boost::barrier *m_pBarrier;
+    /// buffer read queue
+    concurrent_queue<buffer_read_pointer<IN_TYPE> > m_readQueue;
 
     template <class OUT_TYPE> friend class PopSource;
 };
