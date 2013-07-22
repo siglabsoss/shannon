@@ -57,7 +57,7 @@ namespace pop
 	/**
 	 * Constructor for Software Defined radio class.
 	 */
-	PopSdr::PopSdr() : mp_thread(0)
+	PopSdr::PopSdr() : PopSource<>("PopSdr"), mp_thread(0)
 	{
 		start();
 	}

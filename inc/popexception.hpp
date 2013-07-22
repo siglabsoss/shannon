@@ -25,6 +25,8 @@ namespace pop
 			va_list args;
 			size_t nSize;
 
+			va_start( args, format );
+
 			nSize = vsnprintf( 0, 0, format, args );
 
 			m_pszMsg = (char*)malloc( nSize + 3 /* EOL */);

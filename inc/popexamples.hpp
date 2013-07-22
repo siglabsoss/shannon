@@ -16,10 +16,9 @@ namespace pop
 class PopPiSource : public PopSource<uint8_t>
 {
 public:
-    PopPiSource() {
-        set_name("PopPiSource");
-    }
+    PopPiSource() : PopSource<uint8_t>("PopPiSource"), b(0) { }
 public:
+    int b;
     void start()
     {
         unsigned n;
@@ -31,8 +30,10 @@ public:
             a = get_buffer();
             for( n = 0; n < 12; n++ )
                 a[n] = n;
+            printf("%d\r\n", b);
+            b += 12;
             process();
-            boost::posix_time::milliseconds workTime(100);
+            boost::posix_time::milliseconds workTime(50);
             boost::this_thread::sleep(workTime);
         }
     }
@@ -85,12 +86,12 @@ class PopAddPi : public PopBlock<float, float>
 class PopTest1 : public PopSink<uint8_t>
 {
 public:
-	PopTest1() : PopSink<uint8_t>(11) {}
+	PopTest1() : PopSink<uint8_t>("PopTest1", 11) {}
     void init() { }
     void process(const uint8_t* data, size_t size)
     {
         unsigned n;
-        for(n=0;n<10;n++)
+        for(n=0;n<11;n++)
             printf("%02x ", data[n]);
         /*printf("... ");
         for(n=290;n<300;n++)
@@ -102,7 +103,7 @@ public:
 class PopIntAdd : public PopBlock<uint8_t, uint8_t>
 {
 public:
-    PopIntAdd() : PopBlock(100, 100) { }
+    PopIntAdd() : PopBlock("PopIntAdd", 100, 100) { }
     void init() { }
     void process(const uint8_t* in, uint8_t* out, size_t size)
     {
@@ -116,7 +117,7 @@ public:
 class PopMagnitude : public PopBlock<std::complex<float>, float>
 {
 public:
-    PopMagnitude() : PopBlock<std::complex<float>, float>(65536,65536) { }
+    PopMagnitude() : PopBlock<std::complex<float>, float>("PopMagnitude", 65536,65536) { }
 private:
     void init() { }
     void process(const std::complex<float>* in, float* out, size_t size)

@@ -51,9 +51,7 @@ namespace pop
 class PopObject
 {
 public:
-    PopObject() : m_name("PopObject")
-    {
-    }
+    PopObject(const char* name = "PopObject") : m_name(name) { }
     ~PopObject() { }
     void set_name(const char* name) {m_name = name;}
     const char* get_name() {return m_name;}

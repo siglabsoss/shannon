@@ -57,6 +57,14 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
+	PopPiSource pisource;
+	PopTest1 test;
+
+	pisource.connect(test);
+
+	pisource.start();
+
+#if 0
 	// Initialize Graphics Card
 	PopGpu popgpu;
 	popgpu.start_thread();
@@ -78,7 +86,7 @@ int main(int argc, char *argv[])
 
 	//popmag.connect(popnetwork);
 
-
+#endif
 
 
 	// Run Control Loop

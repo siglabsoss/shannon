@@ -96,10 +96,9 @@ protected:
      * @param nInBuf Size of input buffer in number of samples. A value of
      * zero indicates that the class can accept any number of input samples.
      */
-    PopSink(size_t nInBuf = 0) : m_reqBufSize(nInBuf),
-        m_sourceBufIdx(0), m_pThread(0)
+    PopSink(const char* name, size_t nInBuf = 0) : PopObject(name), m_reqBufSize(nInBuf),
+        m_sourceBufIdx(0), m_pThread(0), m_curSourceBufPtr(0)
     {
-        set_name("PopSink");
     }
 
     /**
@@ -152,8 +151,28 @@ private:
         {
             wait_and_pop( buf );
 
+            set_current_sink_buffer_pointer( buf.data );
+
             process( buf.data, buf.len );
         }
+    }
+
+    /**
+     * Get current source buffer pointer.
+     */
+    const IN_TYPE* get_current_sink_buffer_pointer()
+    {
+        boost::mutex::scoped_lock lock(m_csbpMutex);
+        return m_curSourceBufPtr;
+    }
+
+    /**
+     * Set current source buffer pointer.
+     */
+    void set_current_sink_buffer_pointer(const IN_TYPE* ptr)
+    {
+        boost::mutex::scoped_lock lock(m_csbpMutex);
+        m_curSourceBufPtr = ptr;
     }
 
     /**
@@ -191,6 +210,12 @@ private:
 
     /// thread
     boost::thread *m_pThread;
+
+    /// Current source buffer pointer
+    const IN_TYPE* m_curSourceBufPtr;
+
+    /// Current source buffer pointer access mutex
+    boost::mutex m_csbpMutex;
 
     // friend classes
     template <typename> friend class PopSource;

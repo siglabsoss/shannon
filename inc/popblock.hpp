@@ -33,9 +33,9 @@ public:
      * zero indicates that the class can accept any number of input samples.
      * @param sizeBuf Size of output buffer in number of samples.
      */
-    PopBlock(size_t reqBufSize = 0, size_t sizeBuf = 0) :
-        PopSink<IN_TYPE>(reqBufSize),
-        PopSource<OUT_TYPE>(sizeBuf)
+    PopBlock(const char* name = "PopBlock", size_t reqBufSize = 0, size_t sizeBuf = 0) :
+        PopSink<IN_TYPE>(name, reqBufSize),
+        PopSource<OUT_TYPE>(name, sizeBuf)
     {
     }
 

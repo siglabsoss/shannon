@@ -38,9 +38,8 @@ extern "C" void cleanup();
 namespace pop
 {
 
-	PopGpu::PopGpu(): PopBlock<std::complex<float>, float>( 65536, 65536 )
+	PopGpu::PopGpu(): PopBlock<std::complex<float>, float>( "PopGpu", 65536, 65536 )
 	{
-
 	}
 
 	void PopGpu::init()
@@ -180,9 +179,9 @@ namespace pop
 		// testing
 		tLast = t2 - tLastProcess; // calcualte time since last process call... 
 		tLastProcess = microsec_clock::local_time();
-		if (tLast.total_microseconds() > 70000){
-			cerr << "[POPGPU] - Overflow" << endl;
-		}
+		// if (tLast.total_microseconds() > 70000){
+		// 	cerr << "[POPGPU] - Overflow" << endl;
+		// }
 
 		cout << "[POPGPU] - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
 	}
