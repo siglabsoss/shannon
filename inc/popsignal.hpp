@@ -59,7 +59,7 @@ public:
     /**
      * Class constructor.
      */
-    PopSignal() { }
+    PopSignal(const char* name = "PopSignal") : PopObject(name) { }
 
     /**
      * Class destructor.

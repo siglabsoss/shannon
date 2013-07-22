@@ -57,14 +57,17 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
+#if 0
+	// test code
 	PopPiSource pisource;
 	PopTest1 test;
 
 	pisource.connect(test);
 
 	pisource.start();
+#endif
 
-#if 0
+#if 1
 	// Initialize Graphics Card
 	PopGpu popgpu;
 	popgpu.start_thread();
