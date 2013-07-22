@@ -19,24 +19,26 @@
 namespace pop
 {
 
+// forward declaration of PopSource
+template<typename> class PopSource;
+
 template<typename T>
 struct buffer_read_pointer
 {
-    T* data;
+    const T* data;
     size_t len;
-    buffer_read_pointer(T* d, size_t l) : data(d), len(l) {}
+    buffer_read_pointer(const T* d, size_t l) : data(d), len(l) {}
     buffer_read_pointer() : data(0), len(0) {}
 };
 
 
-template<typename T>
-class concurrent_queue
+template<typename T> class concurrent_queue
 {
 private:
     std::queue<T> the_queue;
     mutable boost::mutex the_mutex;
     boost::condition_variable the_condition_variable;
-public:
+protected:
     void push(T const& data)
     {
         boost::mutex::scoped_lock lock(the_mutex);
@@ -58,7 +60,7 @@ public:
         {
             return false;
         }
-        
+
         popped_value=the_queue.front();
         the_queue.pop();
         return true;
@@ -71,7 +73,7 @@ public:
         {
             the_condition_variable.wait(lock);
         }
-        
+
         popped_value=the_queue.front();
         the_queue.pop();
     }
@@ -84,10 +86,11 @@ public:
  * (RTTI) to be enabled in the compiler. On gcc this should be on by default.
  * Class is mostly a template to process sources of data.
  */
-template <class IN_TYPE = std::complex<float> >
-class PopSink : public PopObject
+template <typename IN_TYPE = std::complex<float> >
+class PopSink : public PopObject,
+    private concurrent_queue<buffer_read_pointer<IN_TYPE> >
 {
-public:
+protected:
     /**
      * Class constructor.
      * @param nInBuf Size of input buffer in number of samples. A value of
@@ -108,46 +111,55 @@ public:
     }
 
     /**
-     * Start Thread
-     */
-     void start_thread()
-     {
-        if( 0 == m_pThread )
-            m_pThread = new boost::thread(boost::bind(&PopSink::run, this));
-     }
-
-    /**
      * Needs to be implemented by child class to handle incoming data.
      */
-    virtual void process(IN_TYPE* in, size_t size) = 0;
+    virtual void process(const IN_TYPE* in, size_t size) = 0;
 
     /**
      * Needs to be implemented by child class to initialize anything
      * that needs to be called from the same thread.
      */
-     virtual void init() = 0;
+    virtual void init() = 0;
 
+public:
+    /**
+     * Start Thread
+     */
+    void start_thread()
+    {
+        if( 0 == m_pThread )
+            m_pThread = new boost::thread(boost::bind(&PopSink::run, this));
+    }
+
+    /**
+     * Returns requested sample size for sink.
+     */
+    size_t sink_size() {
+        return m_reqBufSize;
+    }
+
+private:
     /**
      * Thread loop.
      */
-     void run()
-     {
+    void run()
+    {
         buffer_read_pointer<IN_TYPE> buf;
 
         init();
 
         while(1)
         {
-            m_readQueue.wait_and_pop(buf);
-            
+            wait_and_pop( buf );
+
             process( buf.data, buf.len );
         }
-     }
+    }
 
     /**
      * Called by connecting block to unblock data.
      */
-    void unblock(IN_TYPE* in, size_t size)
+    void unblock(const IN_TYPE* in, size_t size)
     {
         // check to for a valid amount of input samples
         if( 0 != m_reqBufSize )
@@ -158,7 +170,7 @@ public:
             throw PopException( msg_passing_invalid_amount_of_samples );
 
         if( m_pThread )
-            m_readQueue.push(buffer_read_pointer<IN_TYPE>(in,size));
+            push( buffer_read_pointer<IN_TYPE>(in,size) );
         else
             process( in, size );
     }
@@ -166,12 +178,11 @@ public:
     /**
      * Helper function when the amount of data received is apriori known.
      */
-    int unblock(IN_TYPE* buf)
+    int unblock(IN_TYPE* const buf)
     {
-        return unblock(buf, m_reqBufSize);
+        return unblock( buf, m_reqBufSize );
     }
 
-public: // TODO: this should be protected, but having some issues with the friend statement
     /// In Buffer size in number of samples
     size_t m_reqBufSize;
 
@@ -181,10 +192,8 @@ public: // TODO: this should be protected, but having some issues with the frien
     /// thread
     boost::thread *m_pThread;
 
-    /// buffer read queue
-    concurrent_queue<buffer_read_pointer<IN_TYPE> > m_readQueue;
-
-    template <class OUT_TYPE> friend class PopSource;
+    // friend classes
+    template <typename> friend class PopSource;
 };
 
 } // namespace pop

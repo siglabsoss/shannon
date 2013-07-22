@@ -82,6 +82,7 @@ link_directories(
 ########################################################################
 # Add subdirectories
 ########################################################################
-add_subdirectory(src)	
+add_subdirectory(src)
+add_subdirectory(3rd)
 add_subdirectory(doc)
 

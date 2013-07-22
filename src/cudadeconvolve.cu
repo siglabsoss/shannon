@@ -23,7 +23,7 @@ struct cuComplex
 	float r;
 	float i;
 
-	__device__ cuComplex( float a, float b ) : r(a), i(b) {}
+	__device__ cuComplex( float a=0, float b=0 ) : r(a), i(b) {}
 
 	__device__ float magnitude2( void )
 	{
@@ -53,11 +53,27 @@ __global__ void deconvolve(cuComplex *pn, cuComplex *data,
 {
 	int n;
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int temp;
+
+	// move data to local memory
+	// Moving in chunks of 1024 samples(4kB). SM = 48kB
+	__shared__ cuComplex smem_data[1024];
+	__shared__ cuComplex smem_pn[1024]; //TODO: iterate over blocks
+
+	smem_data[threadIdx.x] = data[threadIdx.x];
+	smem_pn[threadIdx.x] = pn[threadIdx.x];
+
+	// Must sync to ensure all data copied in
+	__syncthreads();
 
 	cuComplex s = cuComplex(0.0, 0.0);
 
+	// Perform deconvolutoin
 	for( n = 0; n < pn_len; n++)
-		s += data[n + i] * pn[n];
+		temp = n % 1024;
+		//s += shrd_data[n + i] * shrd_pn[n];
+		s += smem_data[temp] * smem_pn[temp]; // Indexing all wrong here. Computation speed test only
+
 
 	product[i] = s.magnitude2();
 }
@@ -71,7 +87,7 @@ extern "C"
 	size_t h_len; ///< length of data in samples
 
 
-	void start_deconvolve(complex<float> *h_data, float *h_product)
+	void start_deconvolve(const complex<float> *h_data, float *h_product)
 	{
 		// copy new memory to old
 		cudaMemcpy(d_dataold, d_datanew, h_len * sizeof(cuComplex), cudaMemcpyDeviceToDevice);

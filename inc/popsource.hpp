@@ -29,7 +29,7 @@ namespace pop
  * (RTTI) to be enabled in the compiler. On gcc this should be on by default.
  * Class is mostly a template to process sinks of data.
  */
-template <class OUT_TYPE = std::complex<float> >
+template <typename OUT_TYPE = std::complex<float> >
 class PopSource : public PopObject
 {
 public:
@@ -258,7 +258,7 @@ public:
         for( it = m_rgSources.begin(); it != m_rgSources.end(); it++ )
         {
             // get source buffer index and num_new_pts
-            req_samples_from_sink = (*it)->m_reqBufSize;
+            req_samples_from_sink = (*it)->sink_size();
             size_t &sink_idx_into_buffer = (*it)->m_sourceBufIdx;
 
             uncopied_pts = num_new_pts + m_bufIdx - sink_idx_into_buffer - 1;

@@ -18,6 +18,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <cuda_profiler_api.h>
 
 #include "cuda/helper_cuda.h"
 
@@ -30,7 +31,7 @@ using namespace boost::posix_time;
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" void start_deconvolve(complex<float> *data,float *product);
+extern "C" void start_deconvolve(const complex<float> *data,float *product);
 extern "C" void init_deconvolve(complex<float> *pn, size_t len);
 extern "C" void cleanup();
 
@@ -155,24 +156,34 @@ namespace pop
 	    }
 	    
 	    // allocate CUDA memory
-	    init_deconvolve(mp_demod_func, GPU_CRUNCH_SIZE);		
+	    init_deconvolve(mp_demod_func, GPU_CRUNCH_SIZE);	
 	}
 
 
 	/**
 	 * Process data.
 	 */
-	void PopGpu::process(complex<float>* in, float* out, size_t len)
+	void PopGpu::process(const complex<float>* in, float* out, size_t len)
 	{
 		ptime t1, t2;
-		time_duration td;
+		time_duration td, tLast;
 		t1 = microsec_clock::local_time();
 
+		//cudaProfilerStart();
 		// call the GPU to process work
 		start_deconvolve(in, out);
+		//cudaProfilerStop();
 
 		t2 = microsec_clock::local_time();
 		td = t2 - t1;
+
+		// testing
+		tLast = t2 - tLastProcess; // calcualte time since last process call... 
+		tLastProcess = microsec_clock::local_time();
+		if (tLast.total_microseconds() > 70000){
+			cerr << "[POPGPU] - Overflow" << endl;
+		}
+
 		cout << "[POPGPU] - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
 	}
 

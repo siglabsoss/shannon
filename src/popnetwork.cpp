@@ -71,7 +71,7 @@ namespace pop
 				boost::asio::placeholders::bytes_transferred));
 	}
 
-	void PopNetwork::process(float* data, size_t len)
+	void PopNetwork::process(const float* data, size_t len)
 	{
 		socket_.send_to(boost::asio::buffer(data, NETWORK_PACKET_SIZE * sizeof(float)),
 			outgoing_endpoint_);

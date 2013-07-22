@@ -47,10 +47,10 @@ public:
     }
 
 
-    virtual void process(IN_TYPE* in, OUT_TYPE* out, size_t size) = 0;
+    virtual void process(const IN_TYPE* in, OUT_TYPE* out, size_t size) = 0;
 
 
-    void process(IN_TYPE* in, size_t size)
+    void process(const IN_TYPE* in, size_t size)
     {
         OUT_TYPE* buf;
 

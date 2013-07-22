@@ -9,7 +9,13 @@
 
 set(shannon_SOURCES
 	shannon.cpp
+	popsdr.cpp
 	popgpu.cpp
+	popnetwork.cpp
+	popassert.c)
+
+set(maxwell_SOURCES
+	maxwell.cpp
 	popsdr.cpp
 	popnetwork.cpp
 	popassert.c)
@@ -22,3 +28,7 @@ cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
 add_executable(shannon ${shannon_SOURCES})
 
 target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME} vrb)
+
+add_executable(maxwell ${maxwell_SOURCES})
+
+target_link_libraries(maxwell ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME} vrb)

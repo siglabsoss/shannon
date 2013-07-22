@@ -42,7 +42,7 @@ class PopDummySink : public PopSink<>
 {
 public:
     void init() { }
-    void process(std::complex<float>* data, size_t size)
+    void process(const std::complex<float>* data, size_t size)
     {
         static int a = 0;
 
@@ -58,7 +58,7 @@ public:
 class PopAdd: public PopBlock<>
 {
     void init() { }
-    void process(std::complex<float>* in, std::complex<float>* out,
+    void process(const std::complex<float>* in, std::complex<float>* out,
         size_t size)
     {
         size_t n;
@@ -71,7 +71,7 @@ class PopAdd: public PopBlock<>
 class PopAddPi : public PopBlock<float, float>
 {
     void init() { }
-    void process(float* in, float* out, size_t size)
+    void process(const float* in, float* out, size_t size)
     {
         size_t n;
 
@@ -87,7 +87,7 @@ class PopTest1 : public PopSink<uint8_t>
 public:
 	PopTest1() : PopSink<uint8_t>(11) {}
     void init() { }
-    void process(uint8_t* data, size_t size)
+    void process(const uint8_t* data, size_t size)
     {
         unsigned n;
         for(n=0;n<10;n++)
@@ -104,7 +104,7 @@ class PopIntAdd : public PopBlock<uint8_t, uint8_t>
 public:
     PopIntAdd() : PopBlock(100, 100) { }
     void init() { }
-    void process(uint8_t* in, uint8_t* out, size_t size)
+    void process(const uint8_t* in, uint8_t* out, size_t size)
     {
         for( unsigned n = 0; n < size; n++ )
         {
@@ -119,7 +119,7 @@ public:
     PopMagnitude() : PopBlock<std::complex<float>, float>(65536,65536) { }
 private:
     void init() { }
-    void process(std::complex<float>* in, float* out, size_t size)
+    void process(const std::complex<float>* in, float* out, size_t size)
     {
         for( size_t n = 0; n < size; n++ )
             out[n] = std::abs(in[n]);

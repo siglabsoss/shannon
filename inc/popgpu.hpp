@@ -14,8 +14,10 @@
 #include <cstring>
 #include <boost/thread.hpp>
 #include <boost/signals2.hpp>
+#include <boost/timer.hpp>
 
 #include <popblock.hpp>
+using namespace boost::posix_time;
 
 namespace pop
 {
@@ -26,10 +28,12 @@ namespace pop
 		~PopGpu();
 
 	private:
-		void process(std::complex<float>* in, float* out, size_t len);
+		void process(const std::complex<float>* in, float* out, size_t len);
 		void init();
 
 		std::complex<float> *mp_demod_func; ///< PN code vector
+
+		ptime tLastProcess; // temp
 
 	};
 }

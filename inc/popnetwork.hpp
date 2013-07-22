@@ -19,7 +19,7 @@ namespace pop
 	public:
 		PopNetwork(int incoming_port = 5004, int outgoing_port = 35005);
 		~PopNetwork();
-		void process(float* data, std::size_t size);
+		void process(const float* data, std::size_t size);
 
 	private:
 		void handle_receive(const boost::system::error_code& error,

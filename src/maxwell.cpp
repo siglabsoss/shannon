@@ -10,13 +10,13 @@
 
 #include <iostream>
 #include <complex>
+#include <typeinfo>
 
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
 
 #include <popnetwork.hpp>
 #include <popsdr.hpp>
-#include <popgpu.hpp>
 #include <popexamples.hpp>
 
 using namespace boost;
@@ -35,10 +35,10 @@ int main(int argc, char *argv[])
 	int ret = 0;
 	unsigned inport, outport;
 
-	cout << "Shannon - Base station Digital Signal Processing (DSP) Core" << endl;
+	cout << "Maxwell - Server Side Signal Processing (S3P) Core" << endl;
 	cout << "Copyright (c) 2013. PopWi Technology Group, Inc." << endl << endl;
 
-	po::options_description desc("Shannon Command-line Options");
+	po::options_description desc("Maxwell Command-line Options");
 	desc.add_options()
 	    ("help", "help message")
 	    ("inport", po::value<unsigned>(&inport)->default_value(5004), "Incoming UDP port")
@@ -57,10 +57,6 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
-	// Initialize Graphics Card
-	PopGpu popgpu;
-	popgpu.start_thread();
-
 	// Initialize Software Defined Radio (SDR) and start
 	PopSdr popsdr;
 
@@ -70,15 +66,11 @@ int main(int argc, char *argv[])
 	// Initialize Magnitude Block
 	PopMagnitude popmag;
 
-	popsdr.connect(popgpu);
-
 	//popsdr.connect(popmag);
-
-	popgpu.connect(popnetwork);
 
 	//popmag.connect(popnetwork);
 
-
+	//printf("typeid(popmag).name() = %s\r\n", typeid(&popmag).name());
 
 
 	// Run Control Loop
