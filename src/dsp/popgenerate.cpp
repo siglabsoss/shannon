@@ -1,9 +1,10 @@
-#include "popgenerate.hpp"
-#include "popnetwork.hpp"
 #include <memory>
 #include <iostream>	
 
 #include <math.h>
+
+#include "dsp/popgenerate.hpp"
+#include "net/popnetwork.hpp"
 
 /******************************************************************************
  *

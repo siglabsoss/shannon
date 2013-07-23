@@ -10,11 +10,10 @@
 #ifndef __POP_SINK_HPP_
 #define __POP_SINK_HPP_
 
-#include <queue>
-
 #include <boost/thread.hpp>
 
-#include <popobject.hpp>
+#include "core/popobject.hpp"
+#include "core/popqueue.hpp"
 
 namespace pop
 {
@@ -32,53 +31,6 @@ struct buffer_read_pointer
 };
 
 
-template<typename T> class concurrent_queue
-{
-private:
-    std::queue<T> the_queue;
-    mutable boost::mutex the_mutex;
-    boost::condition_variable the_condition_variable;
-protected:
-    void push(T const& data)
-    {
-        boost::mutex::scoped_lock lock(the_mutex);
-        the_queue.push(data);
-        lock.unlock();
-        the_condition_variable.notify_one();
-    }
-
-    bool empty() const
-    {
-        boost::mutex::scoped_lock lock(the_mutex);
-        return the_queue.empty();
-    }
-
-    bool try_pop(T& popped_value)
-    {
-        boost::mutex::scoped_lock lock(the_mutex);
-        if(the_queue.empty())
-        {
-            return false;
-        }
-
-        popped_value=the_queue.front();
-        the_queue.pop();
-        return true;
-    }
-
-    void wait_and_pop(T& popped_value)
-    {
-        boost::mutex::scoped_lock lock(the_mutex);
-        while(the_queue.empty())
-        {
-            the_condition_variable.wait(lock);
-        }
-
-        popped_value=the_queue.front();
-        the_queue.pop();
-    }
-
-};
 
 /**
  * Data Sink Class
@@ -88,7 +40,7 @@ protected:
  */
 template <typename IN_TYPE = std::complex<float> >
 class PopSink : public PopObject,
-    private concurrent_queue<buffer_read_pointer<IN_TYPE> >
+    private PopQueue<buffer_read_pointer<IN_TYPE> >
 {
 protected:
     /**

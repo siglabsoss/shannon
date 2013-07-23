@@ -7,7 +7,7 @@
 *
 ******************************************************************************/
 
-#include "popassert.h"
+#include "core/popassert.h"
 
 char *g_rgszPopError[] = {"POP_ERROR_NONE",
 						  "POP_ERROR_UNKNOWN",

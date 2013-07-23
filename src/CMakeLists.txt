@@ -7,28 +7,22 @@
 #
 ###############################################################################
 
-set(shannon_SOURCES
-	shannon.cpp
-	popsdr.cpp
-	popgpu.cpp
-	popnetwork.cpp
-	popassert.c)
-
-set(maxwell_SOURCES
-	maxwell.cpp
-	popsdr.cpp
-	popnetwork.cpp
-	popassert.c)
 
 set(gpuacc_SRCS
-	cudadeconvolve.cu)
+	dsp/prota/popprotadespread.cu)
+
+set(shannon_SOURCES
+	app/shannon.cpp
+	core/popassert.c
+	core/popsignal.cpp
+	dsp/popgenerate.cpp
+	dsp/prota/popprotadespread.cpp
+	net/popnetwork.cpp
+	sdr/popuhd.cpp)
 
 cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
 
 add_executable(shannon ${shannon_SOURCES})
 
-target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME} vrb)
+target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
 
-add_executable(maxwell ${maxwell_SOURCES})
-
-target_link_libraries(maxwell ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME} vrb)

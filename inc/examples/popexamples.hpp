@@ -7,7 +7,7 @@
 *
 ******************************************************************************/
 
-#include <popblock.hpp>
+#include "core/popblock.hpp"
 
 namespace pop
 {

@@ -22,8 +22,8 @@
 #include <uhd/utils/thread_priority.hpp>
 #include <uhd/utils/safe_main.hpp>
 
-// shannon components
-#include "popsdr.hpp"
+// PopWi components
+#include "sdr/popuhd.hpp"
 
 
 using namespace std;
@@ -57,7 +57,7 @@ namespace pop
 	/**
 	 * Constructor for Software Defined radio class.
 	 */
-	PopSdr::PopSdr() : PopSource<>("PopSdr"), mp_thread(0)
+	PopUhd::PopUhd() : PopSource<>("PopUhd"), mp_thread(0)
 	{
 		start();
 	}
@@ -66,7 +66,7 @@ namespace pop
 	/**
 	 * Destructor for Software Defined radio class.
 	 */
-	PopSdr::~PopSdr()
+	PopUhd::~PopUhd()
 	{
 		// if thread is still running then shut it down
 		// TODO
@@ -78,7 +78,7 @@ namespace pop
 	 * run in its own thread. This only stops if it is commanded to
 	 * do so or on error.
 	 */
-	POP_ERROR PopSdr::run()
+	POP_ERROR PopUhd::run()
 	{
         /* This will fail unless you have sudo permissions but its ok.
            Giving UHD thread priority control can reduce overflows.*/
@@ -166,7 +166,7 @@ namespace pop
 	/**
 	 * Start sampling RF data. This calls its own thread.
 	 */
-	POP_ERROR PopSdr::start()
+	POP_ERROR PopUhd::start()
 	{
 		// check to see if thread is already running for this object
 		if( mp_thread ) return POP_ERROR_ALREADY_RUNNING;
@@ -174,7 +174,7 @@ namespace pop
         if( usrp ) return POP_ERROR_ALREADY_RUNNING;
 
 		// create a new threat that runs object's process I/O loop
-		mp_thread = new boost::thread(boost::bind(&PopSdr::run, this));
+		mp_thread = new boost::thread(boost::bind(&PopUhd::run, this));
 
 		// if thread was not created return an error
 		if( 0 == mp_thread ) return POP_ERROR_UNKNOWN;
@@ -186,7 +186,7 @@ namespace pop
 	/**
 	 * Stop sampling RF data.
 	 */
-	POP_ERROR PopSdr::stop()
+	POP_ERROR PopUhd::stop()
 	{
 		return POP_ERROR_NONE;
 	}

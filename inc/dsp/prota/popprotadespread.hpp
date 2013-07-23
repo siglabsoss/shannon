@@ -7,8 +7,8 @@
 *
 ******************************************************************************/
 
-#ifndef __POP_GPU_H
-#define __POP_GPU_H
+#ifndef __POP_PROT_A_DESPREAD_H
+#define __POP_PROT_A_DESPREAD_H
 
 #include <complex>
 #include <cstring>
@@ -16,16 +16,17 @@
 #include <boost/signals2.hpp>
 #include <boost/timer.hpp>
 
-#include <popblock.hpp>
+#include "core/popblock.hpp"
+
 using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopGpu : public PopBlock<std::complex<float>, float>
+	class PopProtADespread : public PopBlock<std::complex<float>, float>
 	{
 	public:
-		PopGpu();
-		~PopGpu();
+		PopProtADespread();
+		~PopProtADespread();
 
 	private:
 		void process(const std::complex<float>* in, float* out, size_t len);
@@ -38,4 +39,4 @@ namespace pop
 	};
 }
 
-#endif // __POP_GPU_H
+#endif // __POP_PROT_A_DESPREAD_H

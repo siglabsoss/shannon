@@ -11,43 +11,20 @@
 #define __POP_SIGNAL_HPP_
 
 #include <vector>
+#include <iterator>
 #include <cstring>
+#include <complex>
+#include <cstdio>
 
 #include <boost/shared_ptr.hpp>
 
+#include "core/popobject.hpp"
+#include "core/popqueue.hpp"
+#include "core/popmessage.hpp"
+#include "core/popslot.hpp"
+
 namespace pop
 {
-
-
-class PopMessage : public PopObject
-{
-public:
-    PopMessage() { set_name( "PopMessage" ); }
-    ~PopMessage() { }
-};
-
-
-/**
- * Slot Class.
- * Receives signals from signal class.
- */
-class PopSlot : public PopObject
-{
-public:
-    /**
-     * Class constructor.
-     */
-	PopSlot() { }
-
-    /**
-     * Class destructor.
-     */
-	~PopSlot() { }
-
-private:
-    
-};
-
 
 /**
  * Signal Class.
@@ -69,20 +46,44 @@ public:
     /**
      * Connects a PopSlot to the current signal.
      */
-    connect(PopSlot &slot);
+    void connect(PopSlot &slot)
+    {
+        std::vector<PopSlot *>::iterator it;
+
+        // do nothing if slot is already connected
+        for( it = m_slots.begin(); it != m_slots.end(); it++ )
+            if( *it == &slot ) return;
+
+        m_slots.push_back(&slot);
+    }
 
     /**
      * Disconnect a PopSlot from the current signal.
      */
-    disconnect(PopSlot &slot);
+    void disconnect(PopSlot &slot);
 
-private:
+    void start()
+    {
+        PopMsgSharedPtr track( new PopMessage("MSG_TRACK") );
+
+        //track->add("time",5.5);
+        //track->add("address","0:0:0:124f:b3ee");
+
+        push(track);
+    }
+
+protected:
     /**
      * Pushes the data to any attached signals
      */
-    push(boost::shared_ptr<PopMessage> msg);
+    void push(PopMsgSharedPtr msg)
+    {
+        std::vector<PopSlot *>::iterator it;
 
-
+        // do nothing if slot is already connected
+        for( it = m_slots.begin(); it != m_slots.end(); it++ )
+            (*it)->receive( this, msg );
+    }
 
 private:
     std::vector<PopSlot *> m_slots;

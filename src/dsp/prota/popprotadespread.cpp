@@ -7,8 +7,6 @@
 *
 ******************************************************************************/
 
-#include "popgpu.hpp"
-
 #include <memory>
 #include <fstream>
 #include <iostream>
@@ -21,6 +19,8 @@
 #include <cuda_profiler_api.h>
 
 #include "cuda/helper_cuda.h"
+
+#include "dsp/prota/popprotadespread.hpp"
 
 using namespace std;
 using namespace boost::posix_time;
@@ -38,11 +38,11 @@ extern "C" void cleanup();
 namespace pop
 {
 
-	PopGpu::PopGpu(): PopBlock<std::complex<float>, float>( "PopGpu", 65536, 65536 )
+	PopProtADespread::PopProtADespread(): PopBlock<std::complex<float>, float>( "PopProtADespread", 65536, 65536 )
 	{
 	}
 
-	void PopGpu::init()
+	void PopProtADespread::init()
 	{
 	    int deviceCount = 0;
 
@@ -162,7 +162,7 @@ namespace pop
 	/**
 	 * Process data.
 	 */
-	void PopGpu::process(const complex<float>* in, float* out, size_t len)
+	void PopProtADespread::process(const complex<float>* in, float* out, size_t len)
 	{
 		ptime t1, t2;
 		time_duration td, tLast;
@@ -190,7 +190,7 @@ namespace pop
 	 /**
 	  * Standard class deconstructor.
 	  */
-	PopGpu::~PopGpu()
+	PopProtADespread::~PopProtADespread()
 	{
 		// free CUDA memory
 		cleanup();

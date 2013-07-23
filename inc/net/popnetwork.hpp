@@ -10,7 +10,7 @@
 #include <complex>
 #include <boost/asio.hpp>
 
-#include <popsink.hpp>
+#include "core/popsink.hpp"
 
 namespace pop
 {

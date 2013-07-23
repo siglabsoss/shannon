@@ -10,7 +10,7 @@
 #ifndef __POP_ENDIAN_H
 #define __POP_ENDIAN_H
 
-#include <popblock.hpp>
+#include "core/popblock.hpp"
 
 namespace pop
 {

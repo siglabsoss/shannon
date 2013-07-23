@@ -10,8 +10,8 @@
 #ifndef __POP_BLOCK_HPP_
 #define __POP_BLOCK_HPP_
 
-#include <popsink.hpp>
-#include <popsource.hpp>
+#include "core/popsink.hpp"
+#include "core/popsource.hpp"
 
 namespace pop
 {

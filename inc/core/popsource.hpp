@@ -16,9 +16,9 @@
 
 #include <boost/thread.hpp>
 
-#include <popobject.hpp>
-#include <popsink.hpp>
-#include <popexception.hpp>
+#include "core/popobject.hpp"
+#include "core/popsink.hpp"
+#include "core/popexception.hpp"
 
 #define POPSOURCE_NUM_BUFFERS 20 // minimum 2 buffers
 

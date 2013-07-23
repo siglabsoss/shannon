@@ -9,17 +9,11 @@
 
 #include <typeinfo>
 
-#include "popsignal.hpp"
+#include "core/popsignal.hpp"
 
 
 namespace pop
 {
-	PopSignal::push(boost::shared_ptr<void> data)
-	{
-		const char* name;
-
-		name = typeid(&data)::name();
-	}
 
 
 }

@@ -7,8 +7,8 @@
 *
 ******************************************************************************/
 
-#ifndef __POP_SDR_H
-#define __POP_SDR_H
+#ifndef __POP_UHD_H
+#define __POP_UHD_H
 
 #include <cstring>
 #include <complex>
@@ -17,19 +17,18 @@
 #include <boost/signals2.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
 
-#include "popassert.h"
-
-#include <popsource.hpp>
+#include "core/popassert.h"
+#include "core/popsource.hpp"
 
 namespace pop
 {
 	typedef void (*SDR_DATA_FUNC)(void* data, std::size_t len);
 
-	class PopSdr : public PopSource<>
+	class PopUhd : public PopSource<>
 	{
 	public:
-		PopSdr();
-		~PopSdr();
+		PopUhd();
+		~PopUhd();
 		POP_ERROR start();
 		POP_ERROR stop();
 
@@ -43,4 +42,4 @@ namespace pop
 	};
 }
 
-#endif // __POP_SDR_H
+#endif // __POP_UHD_H

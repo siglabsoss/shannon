@@ -14,10 +14,12 @@
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
 
-#include <popnetwork.hpp>
-#include <popsdr.hpp>
-#include <popgpu.hpp>
-#include <popexamples.hpp>
+#include "net/popnetwork.hpp"
+#include "sdr/popuhd.hpp"
+#include "examples/popexamples.hpp"
+#include "core/popsignal.hpp"
+#include "dsp/prota/popprotadespread.hpp"
+#include "dsp/prota/popprotatdmabin.hpp"
 
 using namespace boost;
 using namespace pop;
@@ -33,16 +35,18 @@ int test()
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-	unsigned inport, outport;
+	unsigned server_port;
+	string server_name;
 
-	cout << "Shannon - Base station Digital Signal Processing (DSP) Core" << endl;
+	cout << "Shannon - PopWi Digital Signal Processing (DSP) Core" << endl;
 	cout << "Copyright (c) 2013. PopWi Technology Group, Inc." << endl << endl;
 
 	po::options_description desc("Shannon Command-line Options");
 	desc.add_options()
 	    ("help", "help message")
-	    ("inport", po::value<unsigned>(&inport)->default_value(5004), "Incoming UDP port")
-	    ("outport", po::value<unsigned>(&outport)->default_value(35005), "Outgoing UDP port")
+	    ("server", po::value<string>(&server_name)->default_value("papa.popwi.com"), "Remote Manager Location")
+	    ("file", po::value<string>(&server_name)->default_value("shannon.xml"), "Setup File")
+	    ("server-port", po::value<unsigned>(&server_port)->default_value(35005), "Incoming UDP port")
 	;
 
 	po::variables_map vm;
@@ -68,12 +72,21 @@ int main(int argc, char *argv[])
 #endif
 
 #if 1
+	PopProtATdmaBin bin;
+	PopSlot slot;
+
+	bin.connect(slot);
+
+	bin.start();
+#endif
+
+#if 0
 	// Initialize Graphics Card
 	PopGpu popgpu;
 	popgpu.start_thread();
 
 	// Initialize Software Defined Radio (SDR) and start
-	PopSdr popsdr;
+	PopUhd popuhd;
 
 	// Initialize Network Connection
 	PopNetwork popnetwork;
@@ -81,9 +94,9 @@ int main(int argc, char *argv[])
 	// Initialize Magnitude Block
 	PopMagnitude popmag;
 
-	popsdr.connect(popgpu);
+	popuhd.connect(popgpu);
 
-	//popsdr.connect(popmag);
+	//popuhd.connect(popmag);
 
 	popgpu.connect(popnetwork);
 

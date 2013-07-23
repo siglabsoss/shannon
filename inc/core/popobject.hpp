@@ -15,10 +15,9 @@
 #include <complex>
 #include <vector>
 
-#include <popexception.hpp>
-#include <popassert.h>
-
-#include <language.h>
+#include "core/popexception.hpp"
+#include "core/popassert.h"
+#include "core/language.h"
 
 #define SAMPLES1K   (1UL << 10)
 #define SAMPLES2K   (1UL << 11)

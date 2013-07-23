@@ -7,14 +7,14 @@
 *
 ******************************************************************************/
 
-#include "popnetwork.hpp"
-
 #include <iostream>
 #include <stdexcept>
 
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
+
+#include "net/popnetwork.hpp"
 
 using boost::asio::ip::udp;
 using namespace boost::asio;
