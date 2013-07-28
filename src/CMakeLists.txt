@@ -14,10 +14,9 @@ set(gpuacc_SRCS
 set(shannon_SOURCES
 	app/shannon.cpp
 	core/popassert.c
-	core/popsignal.cpp
 	dsp/popgenerate.cpp
 	dsp/prota/popprotadespread.cpp
-	net/popnetwork.cpp
+	net/popnetworkcomplex.cpp
 	sdr/popuhd.cpp)
 
 cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
@@ -25,4 +24,5 @@ cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
 add_executable(shannon ${shannon_SOURCES})
 
 target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
+CUDA_ADD_CUFFT_TO_TARGET( shannon )
 

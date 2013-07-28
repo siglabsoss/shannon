@@ -14,12 +14,13 @@
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
 
-#include "net/popnetwork.hpp"
+#include "net/popnetworkcomplex.hpp"
 #include "sdr/popuhd.hpp"
 #include "examples/popexamples.hpp"
-#include "core/popsignal.hpp"
 #include "dsp/prota/popprotadespread.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
+
+#include "core/popsourcemsg.hpp"
 
 using namespace boost;
 using namespace pop;
@@ -65,42 +66,59 @@ int main(int argc, char *argv[])
 	// test code
 	PopPiSource pisource;
 	PopTest1 test;
+	PopOdd strange;
+	PopPoop quark;
+	//PopSourceMsg msg;
+
 
 	pisource.connect(test);
 
-	pisource.start();
+	//msg.add("MSG_TRACKER", 34.12325f);
+
+	//pisource.start();
+	//strange.start();
+	//strange.start();
+	//strange.connect(quark);
+	//strange.start();
+
+	PopAlice alice;
+	PopBob bob;
+
+	alice.connect(bob);
+
+	alice.start();
 #endif
 
 #if 1
-	PopProtATdmaBin bin;
-	PopSlot slot;
-
-	bin.connect(slot);
-
-	bin.start();
-#endif
-
-#if 0
 	// Initialize Graphics Card
-	PopGpu popgpu;
-	popgpu.start_thread();
+	PopProtADespread despread;
+	despread.start_thread();
 
+	// Initialize Protocol A bin
+	//PopProtATdmaBin bin;
+	
 	// Initialize Software Defined Radio (SDR) and start
 	PopUhd popuhd;
 
+	// Initialize Decimator
+	PopDecimate<complex<float> > decimate(64);
+
 	// Initialize Network Connection
-	PopNetwork popnetwork;
+	PopNetworkComplex popnetwork;
 
-	// Initialize Magnitude Block
-	PopMagnitude popmag;
+	popuhd.connect(despread);
 
-	popuhd.connect(popgpu);
-
-	//popuhd.connect(popmag);
-
-	popgpu.connect(popnetwork);
+	despread.connect(popnetwork);
+	
+	//popuhd.connect(decimate);
+	//decimate.connect(popnetwork);
 
 	//popmag.connect(popnetwork);
+	//popmag.connect(popdec);
+
+	//popdec.connect(popnetwork);
+
+	popuhd.start();
 
 #endif
 

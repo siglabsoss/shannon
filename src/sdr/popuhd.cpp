@@ -59,7 +59,6 @@ namespace pop
 	 */
 	PopUhd::PopUhd() : PopSource<>("PopUhd"), mp_thread(0)
 	{
-		start();
 	}
 
 
@@ -89,8 +88,8 @@ namespace pop
         std::cout << boost::format("Using Device: %s") %
             usrp->get_pp_string() << std::endl;
 
-        usrp->set_rx_freq(902840000);
-        usrp->set_rx_rate(500000);
+        usrp->set_rx_freq(POP_PROTA_BLOCK_A_UPLK);
+        usrp->set_rx_rate(POP_PROTA_BLOCK_A_WIDTH);
 
         usrp->set_time_source("external");
 
@@ -114,21 +113,8 @@ namespace pop
 
         //allocate buffers to receive with samples (one buffer per channel)
         const size_t samps_per_buff = rx_stream->get_max_num_samps();
-        std::vector<std::vector<std::complex<float> > > buffs( usrp->get_rx_num_channels(), std::vector<std::complex<float> >(samps_per_buff * NUM_RX_BUFS) );
 
-        //create a vector of pointers to point to each of the channel buffers
-        std::vector<std::vector<std::complex<float> *> > buff_ptrs(NUM_RX_BUFS, std::vector<std::complex<float> *>(buffs.size(),0));
-        for( size_t j = 0; j < NUM_RX_BUFS; j++ )
-        {
-        	for (size_t i = 0; i < buffs.size(); i++)
-    		{
-    			buff_ptrs[j][i] = &buffs[i].front();
-    		}
-        }
-
-
-        resize_buffer( samps_per_buff );
-        
+        size_t samps_received;
 
         //the first call to recv() will block this many seconds before receiving
         double timeout = 1.5 + 0.1; //timeout (delay before receive + padding)
@@ -137,10 +123,10 @@ namespace pop
 		{
 			std::vector<std::complex<float> *> buf;
 
-			buf.push_back(get_buffer());
+			buf.push_back(get_buffer(samps_per_buff));
 
             //receive a single packet, TODO confirm num samps received
-            rx_stream->recv(buf, samps_per_buff, md, timeout);
+            samps_received = rx_stream->recv(buf, samps_per_buff, md, timeout);
 
             //use a small timeout for subsequent packets
             timeout = 0.1;
@@ -154,8 +140,8 @@ namespace pop
                 ) % md.error_code % uhd_error[md.error_code]));
             }
 
-            // wrap around rx buffer index
-            process();
+            // process new data in source
+            process(samps_received);
 		}
 
 		return POP_ERROR_UNKNOWN; // it should never actually get here

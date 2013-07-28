@@ -15,20 +15,24 @@
 #include <errno.h>
 
 #include <boost/thread.hpp>
+#include <boost/timer.hpp>
+#include <boost/math/common_factor.hpp>
 
 #include "core/popobject.hpp"
 #include "core/popsink.hpp"
 #include "core/popexception.hpp"
 
-#define POPSOURCE_NUM_BUFFERS 20 // minimum 2 buffers
+using namespace boost::posix_time;
 
 namespace pop
 {
 
+/* Guaranteed minimum number of buffers for both sink and source. May be much
+   larger than this due to memory page alignment. */
+#define POPSOURCE_NUM_BUFFERS 20
+
 /**
  * Data Source Class
- * Note this is a polymorphic class which requires Run-Time Type Information
- * (RTTI) to be enabled in the compiler. On gcc this should be on by default.
  * Class is mostly a template to process sinks of data.
  */
 template <typename OUT_TYPE = std::complex<float> >
@@ -40,68 +44,58 @@ protected:
      * @param sizeBuf The default length of the output buffer in samples. If
      * set to zero then no output buffer is allocated.
      */
-    PopSource(const char* name = "PopSource", size_t sizeBuf = 0) :
-        PopObject(name), m_bufIdx(0), m_bufPtr(0),
-        m_sizeBuf(sizeBuf), m_prefSize(sizeBuf)
+    PopSource(const char* name = "PopSource") :
+        PopObject(name), m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0),
+        m_bytesAllocated(0), m_lastReqSize(0)
     {
-        if( sizeBuf )
-            m_bufPtr = create_circular_buffer( sizeBuf * sizeof(OUT_TYPE) );
-    }
-    ~PopSource()
-    {
-        free_circular_buffer(m_bufPtr, m_memSize);
     }
 
     /**
-     * Resize buffer. Make sure to call this before get_buffer to make sure
-     * there's enough space.
-     * @param size Total buffer size in number of samples.
+     * Class deconstructor.
      */
-    void resize_buffer(size_t size)
+    ~PopSource()
     {
-        // set the preferred buffer size for convenient functions
-        m_prefSize = size;
-
-        if( size > m_sizeBuf )
-        {
-            // TODO: resize circular buffer instead of destroy
-
-            free_circular_buffer(m_bufPtr, m_memSize);
-
-            m_sizeBuf = size;
-
-            m_bufPtr = create_circular_buffer( m_sizeBuf * sizeof(OUT_TYPE) );
-        }
+        free_circular_buffer(m_bufPtr, m_bytesAllocated);
     }
+
 
     /**
      * Processes new source data and calls any connected sinks.
      */
     void process(OUT_TYPE* data, size_t num_new_pts)
     {
+        ptime t1, t2;
+        time_duration td;
+        t1 = microsec_clock::local_time();
+
         typename std::vector<PopSink<OUT_TYPE>* >::iterator it;
         size_t uncopied_pts;
         size_t req_samples_from_sink;
 
-        // check to see how much data has been received.
-        if( num_new_pts > m_sizeBuf )
-            throw PopException(msg_too_much_data);
+        // if no connected sinks then do nothing
+        if( 0 == m_rgSources.size() )
+            return;
 
-        if( num_new_pts == 0 )
-            throw PopException(msg_passing_invalid_amount_of_samples);
+        // if no data is passed then do nothing
+        if( 0 == num_new_pts )
+            return;
 
-        if( 0 != m_prefSize )
-            if( m_prefSize != num_new_pts )
-                throw PopException(msg_passing_invalid_amount_of_samples);
-
-        /* Check to see if this is an external buffer (i.e. one that was not
-        previously allocated with get_buffer() ). If it is external, copy it */
+        // If the data is from an external array then copy data into buffer.
         if( data != (m_bufPtr + m_bufIdx) )
         {
-            check_for_overflows(num_new_pts);
+            // Automatically grow the buffer if there is not enough space.
+            if( num_new_pts * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
+                resize_buffer(num_new_pts);
 
+            // Copy data into buffer
             // TODO: make this a SSE2 memcpy
             memcpy(m_bufPtr + m_bufIdx, data, num_new_pts * sizeof(OUT_TYPE));
+        }
+        else
+        {
+            // check to see how much data has been received.
+            if( num_new_pts > m_lastReqSize )
+                throw PopException(msg_too_much_data);
         }
 
         /* iterate through list of sources and determine how many times
@@ -111,7 +105,7 @@ protected:
             // get source buffer index and number of uncopied points
             size_t &sink_idx_into_buffer = (*it)->m_sourceBufIdx;
             req_samples_from_sink = (*it)->sink_size();
-            uncopied_pts = (m_bufIdx - sink_idx_into_buffer) % m_sizeBuf + num_new_pts;
+            uncopied_pts = ((m_bufIdx+m_sizeBuf) - sink_idx_into_buffer) % m_sizeBuf + num_new_pts;
 
             // If there's no specific length requested then send all available.
             if( 0 == req_samples_from_sink )
@@ -131,11 +125,21 @@ protected:
                     sink_idx_into_buffer %= m_sizeBuf;
                     uncopied_pts -= req_samples_from_sink;
                 }
+
+            // check for overflow
+            if( (*it)->queue_size() >= POPSOURCE_NUM_BUFFERS )
+                throw PopException(msg_object_overflow, get_name(),
+                    (*it)->get_name());
         }
 
         // advance buffer pointer
         m_bufIdx += num_new_pts;
         m_bufIdx %= m_sizeBuf;
+
+        t2 = microsec_clock::local_time();
+        td = t2 - t1;
+
+        //std::cout << get_name() << " process " << num_new_pts << " points in time: " << td.total_microseconds() << "us" << std::endl;
     }
 
     /**
@@ -144,7 +148,15 @@ protected:
      */
     void process(OUT_TYPE* out)
     {
-        process( out, m_prefSize );
+        process( out, m_lastReqSize );
+    }
+
+    /**
+     * Call this function when new data has been written into the buffer.
+     */
+    void process(size_t num_new_pts)
+    {
+        process( m_bufPtr + m_bufIdx, num_new_pts );
     }
 
     /**
@@ -152,27 +164,29 @@ protected:
      */
     void process()
     {
-        process( m_bufPtr + m_bufIdx, m_prefSize );
+        process( m_bufPtr + m_bufIdx, m_lastReqSize );
     }
 
     /**
      * Get next buffer. This is an efficient way of writing directly into
      * the objects data structure to avoid having to make a copy of the data.
      */
-    OUT_TYPE* get_buffer()
+    OUT_TYPE* get_buffer(size_t sizeBuf)
     {
-        /* before we give out a pointer for the user to write to we want to
-           make sure that we will not cause an overflow. However, we're
-           checking to make sure the next m_prefSize bytes are free. The
-           user may write less than this, but its recommended that they
-           don't write more. Also, if they write less, they may get an
-           overflow earlier than they would normally expect. A better method
-           is for the user to specify how many bytes they want, but this
-           takes away flexibility. */
-        check_for_overflows(m_prefSize);
+        // remember allocated size for process() helper function
+        m_lastReqSize = sizeBuf;
+
+        // automatically grow buffer if needed
+        if( sizeBuf * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
+            resize_buffer(sizeBuf);
+
+        // only called if no size requested and no sinks are connected
+        if( 0 == m_bufPtr )
+            throw PopException(msg_no_buffer_allocated, get_name());
 
         return m_bufPtr + m_bufIdx;
     }
+
 
 public:
     /**
@@ -180,17 +194,9 @@ public:
      */
     void connect(PopSink<OUT_TYPE> &sink)
     {
-        // determine if output buffer is big enough for sink
-        if( (sink.m_reqBufSize * POPSOURCE_NUM_BUFFERS) > m_sizeBuf )
-        {
-            // TODO: resize circular buffer instead of destroy
-
-            free_circular_buffer(m_bufPtr, m_memSize);
-
-            m_sizeBuf = sink.m_reqBufSize * POPSOURCE_NUM_BUFFERS;
-
-            m_bufPtr =create_circular_buffer( m_sizeBuf * sizeof(OUT_TYPE) );
-        }
+        // automatically grow buffer if needed
+        if( sink.sink_size() * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
+            resize_buffer(sink.sink_size());
 
         // set read index
         sink.m_sourceBufIdx = m_bufIdx;
@@ -199,26 +205,24 @@ public:
         m_rgSources.push_back(&sink);
     }
 
+
 private:
     /**
-     * Guaranteed to give the next page size multiple for a given buffer size.
+     * Guaranteed to give the next page size multiple for a requested buffer
+     * size. Buffer size will be expanded to fit both an integer number of page
+     * tables and an integer number of data chunks. This can also be stated as
+     * "The least common mulitple of PAGESIZE and CHUNK, greater than REQUEST"
+     * JDB: tested 7/25/2013
      */
-    size_t calc_page_size( size_t size )
+    size_t calc_page_size( size_t size, size_t chunk_size )
     {
-        // make sure we are at minimum one page
-        size |= sysconf(_SC_PAGESIZE) - 1;
+        size_t lcm;
 
-        // algorithm for determining required pages
-        size |= size >> 1;
-        size |= size >> 2;
-        size |= size >> 4;
-        size |= size >> 8;
-        size |= size >> 16;
-        size |= size >> 32;
-        size += 1;
+        // find the least common multiple greater than size
+        lcm = boost::math::lcm<size_t>(sysconf(_SC_PAGESIZE), chunk_size);
 
-        // make sure that we didn't wrap around
-        PopAssert( size );
+        // ceil(size/lcm) * lcm
+        size = ((size + lcm - 1) / lcm) * lcm;
 
         return size;
     }
@@ -226,43 +230,41 @@ private:
     /**
      * Create a circular buffer at least memSize bytes long.
      */
-    OUT_TYPE* create_circular_buffer(size_t memSize)
+    void* create_circular_buffer(size_t& bytes_allocated, size_t chunk_size)
     {
         void* temp_buf;
         void* actual_buf;
         void* mirror_buf;
         int ret;
 
-        m_memSize = calc_page_size( memSize );
-
-        m_sizeBuf = m_memSize / sizeof(OUT_TYPE);
-
         printf(GREEN);
         printf(msg_create_new_circ_buf, get_name());
-        printf(msg_requested_mem_size, memSize, m_memSize, m_sizeBuf);
-        printf(RESETCOLOR "\r\n");
+        printf(msg_create_new_circ_buf_dbg_1, chunk_size, bytes_allocated);
 
-        if( m_memSize % sizeof(OUT_TYPE) )
-            throw PopException( msg_page_div_into_data );
+        // calculate how many pages required
+        bytes_allocated = calc_page_size( bytes_allocated, chunk_size );
+
+        printf(msg_create_new_circ_buf_dbg_2, bytes_allocated);
+        printf(RESETCOLOR "\r\n");
 
         /* Temporarily allocate thrice the memory to make sure we have a
            contiguous cirular buffer address space. This is a bit wasteful
            but it's currently the only way to ensure contiguous space. Remember
            if you use this method to make sure to unmap the proper amount of
-           memory (i.e. m_memSize * 3) ! */
-        temp_buf = mmap(0, m_memSize * 3, PROT_READ | PROT_WRITE,
+           memory (i.e. bytes_allocated * 3) ! */
+        temp_buf = mmap(0, bytes_allocated * 3, PROT_READ | PROT_WRITE,
             MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
         // map actual buffer (second third of address space) into first third of memory map
-        actual_buf = ((uint8_t*)temp_buf) + m_memSize;
-        ret = remap_file_pages(actual_buf, m_memSize, 0, 0, 0);
+        actual_buf = ((uint8_t*)temp_buf) + bytes_allocated;
+        ret = remap_file_pages(actual_buf, bytes_allocated, 0, 0, 0);
 
         if( ret )
             throw PopException( "#1 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
 
         // map mirror buffer (third third of address space) into first third of memory map
-        mirror_buf = ((uint8_t*)temp_buf) + (2 * m_memSize);
-        ret = remap_file_pages(mirror_buf, m_memSize, 0, 0, 0);
+        mirror_buf = ((uint8_t*)temp_buf) + (2 * bytes_allocated);
+        ret = remap_file_pages(mirror_buf, bytes_allocated, 0, 0, 0);
 
         if( ret )
             throw PopException( "#2 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
@@ -271,9 +273,9 @@ private:
         // TODO: don't know if this works as expected. are my original higher remappings
         // maintained? Who knows! Would be nice to use 66% less memory. BTW, if you
         // put this line back in, make sure to change the munmap size!!
-        //mremap(temp_buf, m_memSize * 3, m_memSize, MREMAP_FIXED, temp_buf);
+        //mremap(temp_buf, bytes_allocated * 3, bytes_allocated, MREMAP_FIXED, temp_buf);
 
-        return (OUT_TYPE*)actual_buf;
+        return actual_buf;
     }
 
     void free_circular_buffer(OUT_TYPE* buf, size_t size)
@@ -284,29 +286,27 @@ private:
         {
             printf(RED "Freeing circular buffer for object %s", get_name());
 
-            mirror_buf = ((uint8_t*)m_bufPtr) - m_memSize;
+            mirror_buf = ((uint8_t*)m_bufPtr) - size;
             munmap( (void*)mirror_buf, size * 3);
         }
     }
 
-    void check_for_overflows(size_t num_new_pts)
+    /**
+     * Resize buffer. Make sure to call this before get_buffer to make sure
+     * there's enough space.
+     * @param sizeBuf Total buffer size in number of samples.
+     */
+    void resize_buffer(size_t sizeBuf)
     {
-        typename std::vector<PopSink<OUT_TYPE>* >::iterator it;
+        // TODO: resize circular buffer instead of destroy
 
-        /* Iterate through all the connected sinks to make sure that the 
-           number of new points requested will not overwrite any existing
-           process. */
-        for( it = m_rgSources.begin(); it != m_rgSources.end(); it++ )
-        {
-            const OUT_TYPE* cur_source_buf_ptr =
-                                      (*it)->get_current_sink_buffer_pointer();
-            // check for overflows
-            if( cur_source_buf_ptr )
-                if( (((m_bufPtr + m_bufIdx) - cur_source_buf_ptr) %
-                    m_sizeBuf + num_new_pts) > m_sizeBuf )
-                    throw PopException(msg_object_overflow, get_name(),
-                                       (*it)->get_name());
-        }
+        free_circular_buffer(m_bufPtr, m_bytesAllocated);
+
+        m_bytesAllocated = sizeBuf * sizeof(OUT_TYPE) * POPSOURCE_NUM_BUFFERS;
+
+        m_bufPtr = (OUT_TYPE*)create_circular_buffer( m_bytesAllocated, sizeof(OUT_TYPE) );
+
+        m_sizeBuf = m_bytesAllocated / sizeof(OUT_TYPE);
     }
 
     /// Current Out Buffer index
@@ -318,11 +318,11 @@ private:
     /// Out Buffer size in number of samples
     size_t m_sizeBuf;
 
-    /// Preferred window size in number of samples
-    size_t m_prefSize;
-
     /// Total amount of memory (in bytes) allocated for Out Buffer
-    size_t m_memSize;
+    size_t m_bytesAllocated;
+
+    /// Last requested buffer size
+    size_t m_lastReqSize;
 
     /// Attached Classes
     std::vector<PopSink<OUT_TYPE>* > m_rgSources;

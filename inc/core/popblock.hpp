@@ -33,9 +33,9 @@ public:
      * zero indicates that the class can accept any number of input samples.
      * @param sizeBuf Size of output buffer in number of samples.
      */
-    PopBlock(const char* name = "PopBlock", size_t reqBufSize = 0, size_t sizeBuf = 0) :
+    PopBlock(const char* name = "PopBlock", size_t reqBufSize = 0) :
         PopSink<IN_TYPE>(name, reqBufSize),
-        PopSource<OUT_TYPE>(name, sizeBuf)
+        PopSource<OUT_TYPE>(name)
     {
     }
 
@@ -53,11 +53,15 @@ public:
     void process(const IN_TYPE* in, size_t size)
     {
         OUT_TYPE* buf;
+        size_t out_size = size;
 
-        buf = PopSource<OUT_TYPE>::get_buffer();
+        out_size *= 1; // INTERPOLATION RATE
+        out_size /= 1; // DECIMATION RATE
+
+        buf = PopSource<OUT_TYPE>::get_buffer(out_size);
 
         // crunch data per user application
-        process(in, buf, size);
+        process(in, buf, out_size);
 
         // call attached sinks
         PopSource<OUT_TYPE>::process();

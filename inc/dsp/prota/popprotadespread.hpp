@@ -22,15 +22,20 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopProtADespread : public PopBlock<std::complex<float>, float>
+	class PopProtADespread : public PopSink<std::complex<float> >, public PopSource<std::complex<float> >
 	{
 	public:
 		PopProtADespread();
 		~PopProtADespread();
 
 	private:
-		void process(const std::complex<float>* in, float* out, size_t len);
+		void process(const std::complex<float>* in, size_t len);
 		void init();
+
+		void gen_dft(std::complex<float>* out, size_t bins);
+		void gen_inv_dft(std::complex<float>* out, size_t bins);
+		void gen_carrier(std::complex<float>* out, size_t bins, size_t harmonic);
+
 
 		std::complex<float> *mp_demod_func; ///< PN code vector
 

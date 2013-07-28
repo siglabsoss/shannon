@@ -61,6 +61,12 @@ protected:
         popped_value=the_queue.front();
         the_queue.pop();
     }
+public:
+    size_t queue_size()
+    {
+        boost::mutex::scoped_lock lock(the_mutex);
+        return the_queue.size();
+    }
 
 };
 

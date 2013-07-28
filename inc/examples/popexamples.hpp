@@ -12,6 +12,99 @@
 namespace pop
 {
 
+struct odd
+{
+    uint8_t a, b, c;
+};
+
+class PopOdd : public PopSource<struct odd>
+{
+public:
+    PopOdd() : PopSource<struct odd>("PopOdd") { }
+
+    void start()
+    {
+        odd one[86];
+
+        process(one, 86);
+    }
+};
+
+class PopPoop : public PopSink<struct odd>
+{
+public:
+    PopPoop() : PopSink<struct odd>("PopPoop") { }
+    void process(const struct odd* data, size_t size)
+    {
+        printf("received %lu struct odd from PopPoop\r\n", size);
+    }
+    void init()
+    {
+        
+    }
+};
+
+struct PopMsg
+{
+    char origin[20];
+    char desc[20];
+    uint16_t len;
+    uint8_t data[0];
+};
+
+class PopBob : public PopSink<PopMsg>
+{
+public:
+    PopBob() : PopSink<PopMsg>("PopBob") { }
+    void init() { }
+    void process(const PopMsg* data, size_t size)
+    {
+        printf("received %lu PopBob(s)\r\n", size);
+    }
+
+};
+
+template <typename FORMAT>
+class PopDecimate : public PopSink<FORMAT>, public PopSource<FORMAT>
+{
+public:
+    PopDecimate(unsigned rate = 2) : PopSink<FORMAT>("PopDecimate"), PopSource<FORMAT>("PopDecimate"), m_rate(rate)
+    {
+
+    }
+    void init() {}
+    void process(const FORMAT* data, size_t size)
+    {
+        size_t n;
+        FORMAT* out;
+
+        out = PopSource<FORMAT>::get_buffer(size/m_rate);
+
+        for( n = 0; n < size/m_rate; n++)
+            out[n] = data[n*m_rate];
+
+        PopSource<FORMAT>::process();
+    }
+    unsigned m_rate;
+};
+
+
+class PopAlice : public PopSource<PopMsg>
+{
+public:
+    PopAlice() : PopSource<PopMsg>("PopAlice") { }
+
+    void send_message(const char* desc, void*, size_t bytes)
+    {
+
+    }
+    void start()
+    {
+        PopMsg *msg = (PopMsg*)malloc(sizeof(PopMsg) + 10);
+
+        process(msg, 1);
+    }
+};
 
 class PopPiSource : public PopSource<uint8_t>
 {
@@ -23,11 +116,10 @@ public:
     {
         unsigned n;
         uint8_t* a;
-        resize_buffer(12);
 
         while(1)
         {
-            a = get_buffer();
+            a = get_buffer(12);
             for( n = 0; n < 12; n++ )
                 a[n] = n;
             printf("%d\r\n", b);
@@ -103,7 +195,7 @@ public:
 class PopIntAdd : public PopBlock<uint8_t, uint8_t>
 {
 public:
-    PopIntAdd() : PopBlock("PopIntAdd", 100, 100) { }
+    PopIntAdd() : PopBlock("PopIntAdd", 100) { }
     void init() { }
     void process(const uint8_t* in, uint8_t* out, size_t size)
     {
@@ -114,16 +206,20 @@ public:
     }
 };
 
-class PopMagnitude : public PopBlock<std::complex<float>, float>
+class PopMagnitude : public PopSink<std::complex<float> >, public PopSource<float>
 {
 public:
-    PopMagnitude() : PopBlock<std::complex<float>, float>("PopMagnitude", 65536,65536) { }
+    PopMagnitude() : PopSink<std::complex<float> >("PopMagnitude", 65536), PopSource<float>("PopMagnitude") { }
 private:
     void init() { }
-    void process(const std::complex<float>* in, float* out, size_t size)
+    void process(const std::complex<float>* in, size_t size)
     {
+        float *out = get_buffer(size);
+
         for( size_t n = 0; n < size; n++ )
             out[n] = std::abs(in[n]);
+
+        PopSource<float>::process();
     }
 };
 

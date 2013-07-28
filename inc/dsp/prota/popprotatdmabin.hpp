@@ -14,17 +14,17 @@
 #include <cstring>
 
 #include "core/popsink.hpp"
-#include "core/popsignal.hpp"
+#include "core/popsourcemsg.hpp"
 
 namespace pop
 {
 /**
  * PopWi Protocol A TDMA binning class.
  */
-class PopProtATdmaBin : public PopSink<>, public PopSignal
+class PopProtATdmaBin : public PopSink<float>
 {
 public:
-	PopProtATdmaBin() : PopSink<>("PopProtATdmaBin", 65536), PopSignal("PopProtATdmaBin") { }
+	PopProtATdmaBin() : PopSink<float>("PopProtATdmaBin", 65536) { }
 
 private:
 	void process(const std::complex<float>* in, size_t len)
@@ -34,7 +34,7 @@ private:
 
 	void init()
 	{
-		// TODO: initialize here
+		// TrODO: initialize here
 	}
 
 };

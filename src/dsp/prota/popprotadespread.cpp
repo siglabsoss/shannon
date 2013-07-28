@@ -31,14 +31,15 @@ using namespace boost::posix_time;
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" void start_deconvolve(const complex<float> *data,float *product);
+extern "C" void start_deconvolve(const complex<float> *data, complex<float> *product);
 extern "C" void init_deconvolve(complex<float> *pn, size_t len);
 extern "C" void cleanup();
 
 namespace pop
 {
 
-	PopProtADespread::PopProtADespread(): PopBlock<std::complex<float>, float>( "PopProtADespread", 65536, 65536 )
+	PopProtADespread::PopProtADespread(): PopSink<complex<float> >( "PopProtADespread", 65536 ),
+		PopSource<std::complex<float> >( "PopProtADespread" )
 	{
 	}
 
@@ -155,14 +156,68 @@ namespace pop
 	    }
 	    
 	    // allocate CUDA memory
-	    init_deconvolve(mp_demod_func, GPU_CRUNCH_SIZE);	
+	    init_deconvolve(mp_demod_func, GPU_CRUNCH_SIZE);
+	}
+
+	/**
+	 * Generates DFT matrix.
+	 * @param out must be at least bins*bins samples big
+	 */
+	void PopProtADespread::gen_dft(complex<float>* out, size_t bins)
+	{
+		size_t x, y, idx;
+		
+		for( x = 0; x < bins; x++ )
+		{
+			for( y = 0; y < bins; y++ )
+			{
+				idx = x + y * bins;
+				out[idx].real(cos(-2.0 * M_PI * x * y / bins));
+				out[idx].imag(sin(-2.0 * M_PI * x * y / bins));
+			}
+		}
+	}
+
+	/**
+	 * Generates Inverse DFT matrix.
+	 * @param out must be at least bins*bins samples big
+	 */
+	void PopProtADespread::gen_inv_dft(complex<float>* out, size_t bins)
+	{
+		size_t x, y, idx;
+		
+		for( x = 0; x < bins; x++ )
+		{
+			for( y = 0; y < bins; y++ )
+			{
+				idx = x + y * bins;
+				out[idx].real(cos(2.0 * M_PI * x * y / bins));
+				out[idx].imag(sin(2.0 * M_PI * x * y / bins));
+			}
+		}
+	}
+
+	/**
+	 * Generate carrier
+	 * @param bins vector length in number of samples
+	 * @param harmonic sine wave frequency. Must be multiple of sample frequency
+	 */
+	void PopProtADespread::gen_carrier(complex<float>* out, size_t bins, size_t harmonic)
+	{
+		size_t x;
+
+		for( x = 0; x < bins; x++ )
+		{
+			out[x].real(cos(-2.0 * M_PI * x * harmonic / bins));
+			out[x].imag(sin(-2.0 * M_PI * x * harmonic / bins));
+		}
 	}
 
 
 	/**
 	 * Process data.
 	 */
-	void PopProtADespread::process(const complex<float>* in, float* out, size_t len)
+	void PopProtADespread::process(const complex<float>* in, size_t len)
 	{
 		ptime t1, t2;
 		time_duration td, tLast;
@@ -170,7 +225,9 @@ namespace pop
 
 		//cudaProfilerStart();
 		// call the GPU to process work
+		complex<float> *out = get_buffer(1040);
 		start_deconvolve(in, out);
+		PopSource<complex<float> >::process();
 		//cudaProfilerStop();
 
 		t2 = microsec_clock::local_time();
@@ -183,7 +240,7 @@ namespace pop
 		// 	cerr << "[POPGPU] - Overflow" << endl;
 		// }
 
-		cout << "[POPGPU] - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
+		cout << PopSource<complex<float> >::get_name() << " - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
 	}
 
 

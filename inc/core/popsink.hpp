@@ -40,7 +40,7 @@ struct buffer_read_pointer
  */
 template <typename IN_TYPE = std::complex<float> >
 class PopSink : public PopObject,
-    private PopQueue<buffer_read_pointer<IN_TYPE> >
+    public PopQueue<buffer_read_pointer<IN_TYPE> >
 {
 protected:
     /**
@@ -49,7 +49,7 @@ protected:
      * zero indicates that the class can accept any number of input samples.
      */
     PopSink(const char* name, size_t nInBuf = 0) : PopObject(name), m_reqBufSize(nInBuf),
-        m_sourceBufIdx(0), m_pThread(0), m_curSourceBufPtr(0)
+        m_sourceBufIdx(0), m_pThread(0)
     {
     }
 
@@ -103,28 +103,8 @@ private:
         {
             wait_and_pop( buf );
 
-            set_current_sink_buffer_pointer( buf.data );
-
             process( buf.data, buf.len );
         }
-    }
-
-    /**
-     * Get current source buffer pointer.
-     */
-    const IN_TYPE* get_current_sink_buffer_pointer()
-    {
-        boost::mutex::scoped_lock lock(m_csbpMutex);
-        return m_curSourceBufPtr;
-    }
-
-    /**
-     * Set current source buffer pointer.
-     */
-    void set_current_sink_buffer_pointer(const IN_TYPE* ptr)
-    {
-        boost::mutex::scoped_lock lock(m_csbpMutex);
-        m_curSourceBufPtr = ptr;
     }
 
     /**
@@ -135,10 +115,10 @@ private:
         // check to for a valid amount of input samples
         if( 0 != m_reqBufSize )
             if( size != m_reqBufSize )
-                throw PopException( msg_passing_invalid_amount_of_samples );
+                throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
 
         if( 0 == size )
-            throw PopException( msg_passing_invalid_amount_of_samples );
+            throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
 
         if( m_pThread )
             push( buffer_read_pointer<IN_TYPE>(in,size) );
@@ -162,12 +142,6 @@ private:
 
     /// thread
     boost::thread *m_pThread;
-
-    /// Current source buffer pointer
-    const IN_TYPE* m_curSourceBufPtr;
-
-    /// Current source buffer pointer access mutex
-    boost::mutex m_csbpMutex;
 
     // friend classes
     template <typename> friend class PopSource;
