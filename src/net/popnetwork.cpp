@@ -24,6 +24,8 @@ using namespace std;
 #define NETWORK_STREAM_DATA_TYPE float
 #define NETWORK_BUFFER_SIZE_BYTES (NETWORK_PACKET_SIZE * 100 * sizeof(NETWORK_STREAM_DATA_TYPE))   // in bytes
 
+#define OUTGOING_IP_ADDRESS "127.0.0.1"
+//#define OUTGOING_IP_ADDRESS "173.167.119.220"
 
 namespace pop
 {
@@ -44,7 +46,7 @@ namespace pop
 
 		/* We set the outgoing address on the first incoming packet
 		   and set the outgoing port here. */
-		outgoing_endpoint_.address(ip::address::from_string("173.167.119.220"));
+		outgoing_endpoint_.address(ip::address::from_string(OUTGOING_IP_ADDRESS));
 		outgoing_endpoint_.port(outgoing_port);
 
 		if( NETWORK_BUFFER_SIZE_BYTES % sizeof(NETWORK_STREAM_DATA_TYPE) )
@@ -73,8 +75,7 @@ namespace pop
 
 	void PopNetwork::process(const float* data, size_t len)
 	{
-		socket_.send_to(boost::asio::buffer(data, NETWORK_PACKET_SIZE * sizeof(float)),
-			outgoing_endpoint_);
+		socket_.send_to(boost::asio::buffer(data, NETWORK_PACKET_SIZE * sizeof(float)),outgoing_endpoint_);
 
 	}
 

@@ -20,7 +20,7 @@
 #include "dsp/prota/popprotadespread.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
 
-#include "core/popsourcemsg.hpp"
+//#include "core/popsourcemsg.hpp"
 
 using namespace boost;
 using namespace pop;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	PopUhd popuhd;
 
 	// Initialize Decimator
-	PopDecimate<complex<float> > decimate(64);
+	//PopDecimate<complex<float> > decimate(64);
 
 	// Initialize Network Connection
 	PopNetworkComplex popnetwork;

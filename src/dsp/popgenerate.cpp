@@ -14,7 +14,7 @@
  *
  *****************************************************************************/
 
-#define POP_SAMPLE_RATE 1000000
+#define POP_SAMPLE_RATE 3200000
 #define POP_FREQ_SAMPLE_POINTS 32 // number of frequency sample points
 #define POP_FREQ_ERROR 160 // frequency sample range in part-per-million
 
@@ -48,11 +48,17 @@
 #define POP_CODE_C_CHANNELS 50 //number of spreading channels
 #define POP_CODE_C_BASEBAND 0 //hz
 
+#define POP_GAUSSIAN_BT 0.5 // gaussian BT coefficient
+#define POP_GAUSSIAN_NT 2 // number of symbol periods between beginning and peak of Gaussian impulse response
+
+
 namespace pop
 {
 	SYMBOL_SET code_a;
 	SYMBOL_SET code_b;
 	SYMBOL_SET code_c;
+
+	PN_CODE GMSK_code;
 
 
 	// frequency hopping channel sequence
@@ -70,6 +76,130 @@ namespace pop
 		memcpy((void*)__temp_return, (void*)&code_b[0][0][0], 12000);
 
 		return __temp_return;
+	}
+
+	/**
+	 *	Generates a gaussian filtered bitstream from a given PN sequence. 
+	 *	> Configured for a two-symbol modulator, such as 2-GMSK
+	 *  > Outputs a vector of floats, normalized to [0 1]
+	 *  >> Must supply pointer for output data - size = sizeof(float)*pn_len*oversamp_factor
+	 */
+	void popGenGaussian(const uint8_t * codeIn, float * out, uint32_t pn_len, uint32_t oversamp_factor){
+		uint32_t gaussian_size, os_idx;
+		uint32_t gauss_idx, oversamp_size, i, j; 
+		uint32_t symbol, byteIdx, byteMod;
+		uint32_t os_byteIdx, os_byteMod; 
+		double gaussian_sum;
+
+		double tSymbol = 1.0/POP_CODE_A_CHIP_RATE;
+		double gauss_b = POP_GAUSSIAN_BT/tSymbol;
+		double gauss_a = 1.0/gauss_b * sqrt(log(2)/2);
+
+		printf("gauss params: %f : %f : %f \n", tSymbol, gauss_b, gauss_a);
+
+		// Allocate arrays
+		gaussian_size = (POP_GAUSSIAN_NT * oversamp_factor * 2) + 1;
+		oversamp_size = pn_len * oversamp_factor;
+
+		double arr_t [gaussian_size];
+		double gaussian [gaussian_size];
+		uint8_t oversampled_code [oversamp_size]; // init to 0
+
+		double t_start = -POP_GAUSSIAN_NT*tSymbol;
+		double dt = tSymbol/oversamp_factor;
+
+		// Populate arrays
+		for(i = 0; i < gaussian_size; i++){
+			arr_t[i] = t_start + (dt * i);
+			gaussian[i] = sqrt(M_PI)/gauss_a * exp(-pow(M_PI * arr_t[i] / gauss_a, 2));
+			gaussian_sum += gaussian[i];
+		}
+
+		// Init
+		for(i = 0; i < oversamp_size; i++){
+			oversampled_code[i] = 0;
+		}
+
+		// Normalize Gaussian
+		for(i = 0; i < gaussian_size; i++){
+			gaussian[i] /= gaussian_sum;
+		}
+
+		// Generate oversampled (original) data vector
+		for(i = 0; i < pn_len; i++){
+			byteIdx = i / 8;
+			byteMod = i % 8;
+			symbol = (codeIn[byteIdx] >> byteMod) & 0x1;
+			//printf("byte: %X, ")
+			for(j = 0; j < oversamp_factor; j++){
+				os_idx = i * oversamp_factor + j;
+				os_byteIdx = os_idx / 8;
+				os_byteMod = os_idx % 8;
+				oversampled_code[os_byteIdx] |= (symbol << os_byteMod);
+			}
+		}
+
+		// Apply Gaussian filter to oversampled data vector
+		// Todo: verify PN edge filter truncation
+		for(i = 0; i < oversamp_size; i++){
+			// ensure starting with empty mem
+			out[i] = 0;
+
+			for(j = 0; j < gaussian_size; j++){
+				// condition index of gaussian step response
+				gauss_idx = i - (floor(gaussian_size/2)) + j;
+				if(gauss_idx < 0) gauss_idx = 0; // truncate early overrun
+				if(gauss_idx >= oversamp_size) gauss_idx = oversamp_size - 1; // truncate late overrun
+
+				// Find the symbol
+				byteIdx = gauss_idx / 8;
+				byteMod = gauss_idx % 8;
+				symbol = (oversampled_code[byteIdx] >> byteMod) & 0x1;
+
+				// Compute
+				out[i] += (float)symbol * (float)gaussian[j];
+			}
+		}
+		
+		// returns gaussian-smoothed PN code, with oversampling, to float* out
+	}
+
+
+	void popGenGMSK(const uint8_t *codeIn, std::complex<float> *out, int pn_len, int oversamp_factor){
+		uint32_t oversamp_pn_len, idx;
+		double symbol, ref_chan;
+		float ref_freq, ref_freq_dev;
+
+		oversamp_pn_len = pn_len * oversamp_factor;
+
+		// Allocate arrays
+		GMSK_code.resize(oversamp_pn_len);
+		float filteredCode [oversamp_pn_len];
+
+		// Apply gaussian to PN code
+		popGenGaussian(codeIn, filteredCode, pn_len, oversamp_factor);
+
+		// Modulate the code
+		for( idx = 0; idx < oversamp_pn_len; idx++ )
+		{
+			// Get the symbol (this is a double!)
+			symbol = filteredCode[idx];
+
+			/// MSK (a specific case of FSK) frequency deviation
+			/// TODO: make adjustable for frequency sample points
+			ref_freq_dev = (float)symbol * (float)POP_CODE_B_FREQ_DEV;
+
+			/// modulation frequency
+			/// TODO: make adjustable for frequency sample points
+			ref_chan = 0;
+
+			ref_freq = (float)ref_chan * (float)POP_CODE_C_CHANNEL_SPACING +
+			           (float)POP_CODE_B_BASEBAND + 0.0 + ref_freq_dev;
+
+			GMSK_code[idx].real(sinf(2.0*M_PI*ref_freq*(float)idx / (float(oversamp_factor)) ));
+			GMSK_code[idx].imag(cosf(2.0*M_PI*ref_freq*(float)idx / (float(oversamp_factor)) ));
+		}
+
 	}
 
 	/**
@@ -182,7 +312,7 @@ namespace pop
 	{
 		printf("\r\n");
 		printf("[popwi / popgenerate] nominal sample rate: %d\r\n", POP_SAMPLE_RATE);
-		popAlgo001();
+		//popAlgo001();
 		printf("\r\n");
 	}
 

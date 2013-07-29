@@ -21,12 +21,16 @@
 #include "cuda/helper_cuda.h"
 
 #include "dsp/prota/popprotadespread.hpp"
+#include "dsp/popgenerate.hpp"
 
 using namespace std;
 using namespace boost::posix_time;
 
-#define GPU_CRUNCH_SIZE 65536 // in samples
-#define GPU_BUFFER_SIZE (GPU_CRUNCH_SIZE * 100)   // in samples
+#define OVERSAMP_FACTOR 2
+#define PN_LEN 1040
+#define GPU_CRUNCH_SIZE (PN_LEN * OVERSAMP_FACTOR) // in samples
+//#define GPU_CRUNCH_SIZE 65536 // in samples
+
 
 /**************************************************************************
  * CUDA Function Prototypes
@@ -45,17 +49,13 @@ namespace pop
 
 	void PopProtADespread::init()
 	{
-	    int deviceCount = 0;
+	    // Generate GMSK reference waveform.... 
+	    mp_demod_func = (complex<float>*) malloc(GPU_CRUNCH_SIZE * sizeof(complex<float>));
+    	popGenGMSK(__code_m512_zeros, mp_demod_func, PN_LEN, OVERSAMP_FACTOR);
 
-	    mp_demod_func = (complex<float>*)
-	    	malloc(GPU_CRUNCH_SIZE * sizeof(complex<float>));
-
-	    ifstream is("dat/pn_code_short.raw", ifstream::binary);
-	    is.read( (char*)mp_demod_func, GPU_CRUNCH_SIZE * sizeof(complex<float>));
-	    is.close();
-
+    	// Init CUDA
+	 	int deviceCount = 0;
 	    cout << "initializing graphics card(s)...." << endl;
-
 	    cudaError_t error_id = cudaGetDeviceCount(&deviceCount);
 
 	    if (error_id != cudaSuccess)
@@ -225,20 +225,13 @@ namespace pop
 
 		//cudaProfilerStart();
 		// call the GPU to process work
-		complex<float> *out = get_buffer(1040);
+		complex<float> *out = get_buffer(1040*2); // make sure to bump this up if we do additional padding (interpolation)
 		start_deconvolve(in, out);
 		PopSource<complex<float> >::process();
 		//cudaProfilerStop();
 
 		t2 = microsec_clock::local_time();
 		td = t2 - t1;
-
-		// testing
-		tLast = t2 - tLastProcess; // calcualte time since last process call... 
-		tLastProcess = microsec_clock::local_time();
-		// if (tLast.total_microseconds() > 70000){
-		// 	cerr << "[POPGPU] - Overflow" << endl;
-		// }
 
 		cout << PopSource<complex<float> >::get_name() << " - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
 	}

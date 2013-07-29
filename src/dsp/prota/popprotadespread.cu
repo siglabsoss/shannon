@@ -18,6 +18,7 @@
 using namespace std;
 
 #define MAX_THREADS_PER_BLOCK 1024
+#define IFFT_PADDING_FACTOR 2
 
 
 __device__ float magnitude2( cuComplex& in )
@@ -33,7 +34,7 @@ __device__ cuComplex operator*(const cuComplex& a, const cuComplex& b)
 	return r;
 }
 
-__device__ cuComplex operator+=(const cuComplex& a, const cuComplex& b)
+__device__ cuComplex operator+(const cuComplex& a, const cuComplex& b)
 {
 	cuComplex r;
 	r.x = a.x + b.x;
@@ -45,33 +46,36 @@ __device__ cuComplex operator+=(const cuComplex& a, const cuComplex& b)
 __global__ void deconvolve(cuComplex *pn, cuComplex *data,
 	float *product, int pn_len)
 {
-	int n;
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
-	int temp;
+	int memIdx;
+
+	if(i >= pn_len) return;
 
 	// move data to local memory
-	// Moving in chunks of 1024 samples(4kB). SM = 48kB
-	__shared__ cuComplex smem_data[1024];
-	__shared__ cuComplex smem_pn[1024]; //TODO: iterate over blocks
+	// Shared mem size = 48kB
+	//__shared__ cuComplex smem_data[2080*2];
+	__shared__ cuComplex smem_pn[2080];
 
-	smem_data[threadIdx.x] = data[threadIdx.x];
-	smem_pn[threadIdx.x] = pn[threadIdx.x];
-
+	// Copy in contiguous chunks of data into SMEM. __sync after each chunk to ensure coalesced access
+	for(int memRow = 0; memRow < gridDim.x; memRow++){
+		memIdx = memRow * blockDim.x + threadIdx.x;
+		if(memIdx < pn_len){
+			//smem_data[memIdx] = data[memIdx];
+			smem_pn[memIdx] = pn[memIdx];
+		}
+		__syncthreads();
+	}
 	// Must sync to ensure all data copied in
-	__syncthreads();
 
-	//cuComplex s = cuComplex(0.0, 0.0);
 	cuComplex s;
 	s.x = 0.0;
 	s.y = 0.0;
-
 	// Perform deconvolutoin
-	for( n = 0; n < pn_len; n++)
-		temp = n % 1024;
-		//s += shrd_data[n + i] * shrd_pn[n];
-		s += smem_data[temp] * smem_pn[temp]; // Indexing all wrong here. Computation speed test only
-
-
+	for(int n = 0; n < pn_len; n++){
+		s = s + (data[n+i] * smem_pn[n]);
+	}
+	
+	// output mag result
 	product[i] = magnitude2(s);
 }
 
@@ -82,6 +86,7 @@ extern "C"
 	cuComplex *d_dataa;
 	cuComplex *d_datab;
 	cuComplex *d_datac;
+	cuComplex *d_datac_padded;
 	cuComplex *d_datad;
 	cufftHandle plan1;
 	cufftHandle plan2;
@@ -93,15 +98,14 @@ extern "C"
 	{
 		unsigned small_bin_start;
 		unsigned small_bin_width = 1040;
+		unsigned small_bin_width_padded = small_bin_width * IFFT_PADDING_FACTOR;
+
 
 		// copy new memory to old
 		cudaMemcpy(d_dataold, d_dataa, h_len * sizeof(cuComplex), cudaMemcpyDeviceToDevice);
 
 		// copy new host data into device memory
 		cudaMemcpy(d_dataa, h_data, h_len * sizeof(cuComplex), cudaMemcpyHostToDevice);
-
-		// Task the SM's
-		//deconvolve<<<64, 1024>>>(d_prncode, d_dataold, d_product, h_len);
 
 		// perform FFT on spectrum
 		cufftExecC2C(plan1, (cufftComplex*)d_dataa, (cufftComplex*)d_datab, CUFFT_FORWARD);
@@ -110,16 +114,26 @@ extern "C"
 		// shift zero-frequency component to center of spectrum
 		small_bin_start = ((16059 + 32768) % 65536);
 		// chop spectrum up into 50 spreading channels
-		cudaMemcpy(d_datac, d_datab + small_bin_start, 1040 * sizeof(cuComplex), cudaMemcpyDeviceToDevice);
+		//cudaMemcpy(d_datac, d_datab + small_bin_start, 1040 * sizeof(cuComplex), cudaMemcpyDeviceToDevice);
+		// >> cpy into longer, padded vector
+		cudaMemcpy(d_datac_padded, d_datab + small_bin_start, 1040 * sizeof(cuComplex), cudaMemcpyDeviceToDevice);
 
 		// put back into time domain
-		cufftExecC2C(plan2, (cufftComplex*)d_datac, (cufftComplex*)d_datad, CUFFT_INVERSE);
+		cufftExecC2C(plan2, (cufftComplex*)d_datac_padded, (cufftComplex*)d_datad, CUFFT_INVERSE);
 		cudaThreadSynchronize();
   		checkCudaErrors(cudaGetLastError());
 		
-	    // Copy results to host
-		cudaMemcpy(h_product, d_datad, small_bin_width * sizeof(complex<float>), cudaMemcpyDeviceToHost);
-		//memcpy(h_product, h_data, 1040 * sizeof(complex<float>));
+	    // Copy [IFFT] results to host
+		//cudaMemcpy(h_product, d_datad, small_bin_width_padded * sizeof(complex<float>), cudaMemcpyDeviceToHost);
+
+		// Task the SM's
+		// 1040 * 2 = 2080 samples
+		// -> 128 Th/Bl
+		// -> ~17 Bl
+		deconvolve<<<17, 128>>>(d_prncode, d_dataold, d_product, small_bin_width_padded);
+		
+		// Copy [deconvolved] results to host
+		cudaMemcpy(h_product, d_product, small_bin_width_padded * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
 
@@ -128,8 +142,8 @@ extern "C"
 		h_len = len;
 
 		// verify that we're a multiple of samples of a thread block
-		if( 0 != (h_len % MAX_THREADS_PER_BLOCK) )
-			throw runtime_error("[POPGPU] - sample length needs to be multiple of block size.\r\n");
+		//if( 0 != (h_len % MAX_THREADS_PER_BLOCK) )
+		//	throw runtime_error("[POPGPU] - sample length needs to be multiple of block size.\r\n");
 
 		// allocate CUDA memory
 		checkCudaErrors(cudaMalloc(&d_prncode, h_len * sizeof(cuComplex)));
@@ -138,18 +152,22 @@ extern "C"
 		checkCudaErrors(cudaMalloc(&d_product, h_len * sizeof(float)));
 		checkCudaErrors(cudaMalloc(&d_datab, 655536 * sizeof(cuComplex)));
 		checkCudaErrors(cudaMalloc(&d_datac, 1040 * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_datad, 1040 * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_datac_padded, 1040 * IFFT_PADDING_FACTOR * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_datad, 1040 * IFFT_PADDING_FACTOR * sizeof(cuComplex)));
 
 		// initialize CUDA memory
 		checkCudaErrors(cudaMemcpy(d_prncode, h_pn, h_len, cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemset(d_dataold, 0, h_len * sizeof(cuComplex)));
 		checkCudaErrors(cudaMemset(d_dataa, 0, h_len * sizeof(cuComplex)));		
 		checkCudaErrors(cudaMemset(d_product, 0, h_len * sizeof(float)));
+		checkCudaErrors(cudaMemset(d_datac_padded, 0, 1040 * IFFT_PADDING_FACTOR * sizeof(cuComplex)));
 
 	    // setup FFT plans
 	    cufftPlan1d(&plan1, 65536, CUFFT_C2C, 1);
-	    cufftPlan1d(&plan2, 1040, CUFFT_C2C, 1);
+	    cufftPlan1d(&plan2, 1040 * IFFT_PADDING_FACTOR, CUFFT_C2C, 1);
+	    printf("[Popwi::popprotadespread]: init deconvolve complete \n");
 	}
+
 
 	//Free all the memory that we allocated
 	//TODO: check that this is comprehensive

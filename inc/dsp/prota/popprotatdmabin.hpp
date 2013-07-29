@@ -14,7 +14,7 @@
 #include <cstring>
 
 #include "core/popsink.hpp"
-#include "core/popsourcemsg.hpp"
+//#include "core/popsourcemsg.hpp"
 
 namespace pop
 {

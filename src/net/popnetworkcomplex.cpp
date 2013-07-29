@@ -21,6 +21,8 @@ using boost::asio::ip::udp;
 using namespace boost::asio;
 using namespace std;
 
+//#define OUTGOING_IP_ADDRESS "127.0.0.1"
+#define OUTGOING_IP_ADDRESS "173.167.119.220"
 
 namespace pop
 {
@@ -35,7 +37,7 @@ namespace pop
 
 		/* We set the outgoing address on the first incoming packet
 		   and set the outgoing port here. */
-		outgoing_endpoint_.address(ip::address::from_string("173.167.119.220"));
+		outgoing_endpoint_.address(ip::address::from_string(OUTGOING_IP_ADDRESS));
 		outgoing_endpoint_.port(outgoing_port);
 	}
 

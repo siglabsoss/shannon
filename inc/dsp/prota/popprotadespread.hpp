@@ -36,11 +36,7 @@ namespace pop
 		void gen_inv_dft(std::complex<float>* out, size_t bins);
 		void gen_carrier(std::complex<float>* out, size_t bins, size_t harmonic);
 
-
 		std::complex<float> *mp_demod_func; ///< PN code vector
-
-		ptime tLastProcess; // temp
-
 	};
 }
 
