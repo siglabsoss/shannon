@@ -129,13 +129,13 @@ namespace pop
 		for(i = 0; i < pn_len; i++){
 			byteIdx = i / 8;
 			byteMod = i % 8;
-			symbol = (codeIn[byteIdx] >> byteMod) & 0x1;
+			symbol = (codeIn[byteIdx] >> (7-byteMod)) & 0x1;
 			//printf("byte: %X, ")
 			for(j = 0; j < oversamp_factor; j++){
 				os_idx = i * oversamp_factor + j;
 				os_byteIdx = os_idx / 8;
 				os_byteMod = os_idx % 8;
-				oversampled_code[os_byteIdx] |= (symbol << os_byteMod);
+				oversampled_code[os_byteIdx] |= (symbol << (7-os_byteMod));
 			}
 		}
 
@@ -154,13 +154,44 @@ namespace pop
 				// Find the symbol
 				byteIdx = gauss_idx / 8;
 				byteMod = gauss_idx % 8;
-				symbol = (oversampled_code[byteIdx] >> byteMod) & 0x1;
+				symbol = (oversampled_code[byteIdx] >> (7-byteMod)) & 0x1;
 
 				// Compute
 				out[i] += (float)symbol * (float)gaussian[j];
 			}
 		}
-		
+
+		// DEBUG - CHECK VECTORS
+		if(1){
+			int nDebugBytes = 4;
+			printf(" ---- popGenGaussian DEBUG --- \n");
+
+			printf("PN CODE: ");
+			for( i = 0; i < nDebugBytes; i++){
+				printf("0x%X ",codeIn[i]);
+			}
+			printf("\n");
+
+			printf("RAW: ");
+			for( i = 0; i < nDebugBytes*8; i++){
+				byteIdx = i / 8;
+				byteMod = i % 8;
+				symbol = (codeIn[byteIdx] >> (7-byteMod)) & 0x1;
+				printf("%d",symbol);
+			}
+			printf("\n");
+
+			printf("OVERSAMP: ");
+			for( i = 0; i < nDebugBytes*8; i++){
+				byteIdx = i / 8;
+				byteMod = i % 8;
+				symbol = (oversampled_code[byteIdx] >> (7-byteMod)) & 0x1;
+				printf("%d",symbol);
+			}
+			printf("\n");
+			printf(" ---- /popGenGaussian DEBUG --- \n");
+		}
+
 		// returns gaussian-smoothed PN code, with oversampling, to float* out
 	}
 
@@ -178,7 +209,19 @@ namespace pop
 
 		// Apply gaussian to PN code
 		popGenGaussian(codeIn, filteredCode, pn_len, oversamp_factor);
+		// DEBUG - CHECK VECTORS
+		if(1){
+			int nDebugBytes = 4;
+			printf(" ---- popGenGMSK DEBUG --- \n");
 
+			printf("GAUSS DATA: ");
+			for(int i = 0; i < nDebugBytes*8; i++){
+				printf("%f ",filteredCode[i]);
+			}
+			printf("\n");
+
+			printf(" ---- /popGenGMSK DEBUG --- \n");
+		}
 		// Modulate the code
 		for( idx = 0; idx < oversamp_pn_len; idx++ )
 		{

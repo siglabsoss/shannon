@@ -21,8 +21,8 @@ using boost::asio::ip::udp;
 using namespace boost::asio;
 using namespace std;
 
-//#define OUTGOING_IP_ADDRESS "127.0.0.1"
-#define OUTGOING_IP_ADDRESS "173.167.119.220"
+#define OUTGOING_IP_ADDRESS "127.0.0.1"
+//#define OUTGOING_IP_ADDRESS "173.167.119.220"
 
 namespace pop
 {

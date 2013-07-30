@@ -51,7 +51,10 @@ namespace pop
 	{
 	    // Generate GMSK reference waveform.... 
 	    mp_demod_func = (complex<float>*) malloc(GPU_CRUNCH_SIZE * sizeof(complex<float>));
-    	popGenGMSK(__code_m512_zeros, mp_demod_func, PN_LEN, OVERSAMP_FACTOR);
+
+	    // Select code here.. 
+    	//popGenGMSK(__code_m512_zeros, mp_demod_func, PN_LEN, OVERSAMP_FACTOR);
+    	popGenGMSK(__code_m4k_001, mp_demod_func, PN_LEN, OVERSAMP_FACTOR);
 
     	// Init CUDA
 	 	int deviceCount = 0;
