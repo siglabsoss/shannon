@@ -10,7 +10,6 @@ namespace pop
 	void *popCallback(void* data,std::size_t size);
 	void popGenGMSK(const uint8_t *, std::complex<float> *, int, int);
 
-
 	typedef std::vector< std::complex<float> > PN_CODE;
 	typedef std::vector<PN_CODE> PN_CODE_FREQ_SCAN;
 	typedef std::vector<PN_CODE_FREQ_SCAN> SYMBOL_SET;
@@ -18,9 +17,6 @@ namespace pop
 	extern SYMBOL_SET code_a;
 	extern SYMBOL_SET code_b;
 	extern SYMBOL_SET code_c;
-
-	extern PN_CODE GMSK_code;
-
 
 	const uint8_t __code_m512_zeros[] = {
 	   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,

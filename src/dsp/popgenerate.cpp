@@ -58,8 +58,6 @@ namespace pop
 	SYMBOL_SET code_b;
 	SYMBOL_SET code_c;
 
-	PN_CODE GMSK_code;
-
 
 	// frequency hopping channel sequence
 	uint8_t __pop_hop_sequence[] = { 9, 44, 45, 17, 30, 18, 3, 48, 11, 13, 35,
@@ -204,24 +202,11 @@ namespace pop
 		oversamp_pn_len = pn_len * oversamp_factor;
 
 		// Allocate arrays
-		GMSK_code.resize(oversamp_pn_len);
 		float filteredCode [oversamp_pn_len];
 
 		// Apply gaussian to PN code
 		popGenGaussian(codeIn, filteredCode, pn_len, oversamp_factor);
-		// DEBUG - CHECK VECTORS
-		if(1){
-			int nDebugBytes = 4;
-			printf(" ---- popGenGMSK DEBUG --- \n");
 
-			printf("GAUSS DATA: ");
-			for(int i = 0; i < nDebugBytes*8; i++){
-				printf("%f ",filteredCode[i]);
-			}
-			printf("\n");
-
-			printf(" ---- /popGenGMSK DEBUG --- \n");
-		}
 		// Modulate the code
 		for( idx = 0; idx < oversamp_pn_len; idx++ )
 		{
@@ -239,8 +224,29 @@ namespace pop
 			ref_freq = (float)ref_chan * (float)POP_CODE_C_CHANNEL_SPACING +
 			           (float)POP_CODE_B_BASEBAND + 0.0 + ref_freq_dev;
 
-			GMSK_code[idx].real(sinf(2.0*M_PI*ref_freq*(float)idx / (float(oversamp_factor)) ));
-			GMSK_code[idx].imag(cosf(2.0*M_PI*ref_freq*(float)idx / (float(oversamp_factor)) ));
+			out[idx].real(sinf(2.0*M_PI*ref_freq*(float)idx / (float(oversamp_factor)) ));
+			out[idx].imag(cosf(2.0*M_PI*ref_freq*(float)idx / (float(oversamp_factor)) ));
+		}
+
+		// DEBUG - CHECK VECTORS
+		if(1){
+			int nDebugBytes = 4;
+			printf(" ---- popGenGMSK DEBUG --- \n");
+
+			printf("GAUSS DATA: ");
+			for(int i = 0; i < nDebugBytes*8; i++){
+				printf("%f ",filteredCode[i]);
+			}
+			printf("\n\n");
+
+			printf("GMSK WAVEFORM DATA: ");
+			for(int i = 0; i < nDebugBytes*8; i++){
+				printf("R:%f ",out[i].real());
+				printf("C:%f ",out[i].imag());
+			}
+			printf("\n\n");
+
+			printf(" ---- /popGenGMSK DEBUG --- \n");
 		}
 
 	}

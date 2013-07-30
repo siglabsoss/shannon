@@ -43,8 +43,7 @@ __device__ cuComplex operator+(const cuComplex& a, const cuComplex& b)
 }
 
 
-__global__ void deconvolve(cuComplex *pn, cuComplex *data,
-	float *product, int pn_len)
+__global__ void deconvolve(cuComplex *pn, cuComplex *data, cuComplex *product, int pn_len)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	int memIdx;
@@ -76,7 +75,9 @@ __global__ void deconvolve(cuComplex *pn, cuComplex *data,
 	}
 	
 	// output mag result
-	product[i] = magnitude2(s);
+	//product[i] = magnitude2(s);
+	product[i] = s;
+
 }
 
 extern "C"
@@ -90,7 +91,7 @@ extern "C"
 	cuComplex *d_datad;
 	cufftHandle plan1;
 	cufftHandle plan2;
-	float *d_product;
+	cuComplex *d_product;
 	size_t h_len; ///< length of data in samples
 
 
@@ -99,7 +100,6 @@ extern "C"
 		unsigned small_bin_start;
 		unsigned small_bin_width = 1040;
 		unsigned small_bin_width_padded = small_bin_width * IFFT_PADDING_FACTOR;
-
 
 		// copy new memory to old
 		cudaMemcpy(d_dataold, d_dataa, h_len * sizeof(cuComplex), cudaMemcpyDeviceToDevice);
@@ -128,12 +128,11 @@ extern "C"
 
 		// Task the SM's
 		// 1040 * 2 = 2080 samples
-		// -> 128 Th/Bl
-		// -> ~17 Bl
+		// -> 128 Th/Bl & ~17 Bl
 		deconvolve<<<17, 128>>>(d_prncode, d_dataold, d_product, small_bin_width_padded);
 		
 		// Copy [deconvolved] results to host
-		cudaMemcpy(h_product, d_product, small_bin_width_padded * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_product, d_product, small_bin_width_padded * sizeof(complex<float>), cudaMemcpyDeviceToHost);
 	}
 
 
@@ -149,23 +148,24 @@ extern "C"
 		checkCudaErrors(cudaMalloc(&d_prncode, h_len * sizeof(cuComplex)));
 		checkCudaErrors(cudaMalloc(&d_dataold, h_len * sizeof(cuComplex) * 2));
 		d_dataa = d_dataold + h_len; ///< make this sequential to old data
-		checkCudaErrors(cudaMalloc(&d_product, h_len * sizeof(float)));
+		checkCudaErrors(cudaMalloc(&d_product, h_len * sizeof(complex<float>)));
 		checkCudaErrors(cudaMalloc(&d_datab, 655536 * sizeof(cuComplex)));
 		checkCudaErrors(cudaMalloc(&d_datac, 1040 * sizeof(cuComplex)));
 		checkCudaErrors(cudaMalloc(&d_datac_padded, 1040 * IFFT_PADDING_FACTOR * sizeof(cuComplex)));
 		checkCudaErrors(cudaMalloc(&d_datad, 1040 * IFFT_PADDING_FACTOR * sizeof(cuComplex)));
 
 		// initialize CUDA memory
-		checkCudaErrors(cudaMemcpy(d_prncode, h_pn, h_len, cudaMemcpyHostToDevice));
+		checkCudaErrors(cudaMemcpy(d_prncode, h_pn, h_len * sizeof(cuComplex), cudaMemcpyHostToDevice));
 		checkCudaErrors(cudaMemset(d_dataold, 0, h_len * sizeof(cuComplex)));
 		checkCudaErrors(cudaMemset(d_dataa, 0, h_len * sizeof(cuComplex)));		
-		checkCudaErrors(cudaMemset(d_product, 0, h_len * sizeof(float)));
+		checkCudaErrors(cudaMemset(d_product, 0, h_len * sizeof(complex<float>)));
 		checkCudaErrors(cudaMemset(d_datac_padded, 0, 1040 * IFFT_PADDING_FACTOR * sizeof(cuComplex)));
 
 	    // setup FFT plans
 	    cufftPlan1d(&plan1, 65536, CUFFT_C2C, 1);
 	    cufftPlan1d(&plan2, 1040 * IFFT_PADDING_FACTOR, CUFFT_C2C, 1);
-	    printf("[Popwi::popprotadespread]: init deconvolve complete \n");
+
+	    printf("\n[Popwi::popprotadespread]: init deconvolve complete \n");
 	}
 
 
