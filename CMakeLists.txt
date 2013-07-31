@@ -12,10 +12,15 @@
 ########################################################################
 # Project setup
 ########################################################################
-cmake_minimum_required(VERSION 2.6)
+
+cmake_minimum_required(VERSION 2.8)
 project(shannon CXX C)
+
 set(shannon_VERSION_MAJOR 0)
 set(shannon_VERSION_MINOR 1)
+set(shannon_VERSION_PATCH 0)
+
+set(shannon_VERSION ${shannon_VERSION_MAJOR}.${shannon_VERSION_MINOR}.${shannon_VERSION_PATCH})
 
 set(CMAKE_BUILD_TYPE debug)
 
@@ -85,4 +90,4 @@ link_directories(
 add_subdirectory(src)
 add_subdirectory(3rd)
 add_subdirectory(doc)
-
+add_subdirectory(tools)

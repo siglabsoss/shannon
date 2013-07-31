@@ -171,7 +171,7 @@ extern "C"
 		cuComplex* new_data = old_data + h_len_pn;
 
   		// deconvolve PN codes
-		deconvolve<<<1, 800>>>(d_prncode, old_data, new_data, d_datae, h_len_pn);
+		deconvolve<<<10, 80>>>(d_prncode, old_data, new_data, d_datae, h_len_pn);
 		cudaThreadSynchronize();
 		
 		// Copy [deconvolved] results to host

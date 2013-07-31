@@ -224,8 +224,8 @@ namespace pop
 			// ref_freq = (float)ref_chan * (float)POP_CODE_C_CHANNEL_SPACING +
 			//            (float)POP_CODE_B_BASEBAND + 0.0 + ref_freq_dev;
 
-			out[idx].real(sinf(2.0*M_PI*ref_freq_dev*(float)idx / (float(POP_CODE_C_CHIP_RATE) * oversamp_factor) ));
-			out[idx].imag(cosf(2.0*M_PI*ref_freq_dev*(float)idx / (float(POP_CODE_C_CHIP_RATE) * oversamp_factor) ));
+			out[idx].real(cosf(2.0*M_PI*ref_freq_dev*(float)idx / (float(POP_CODE_C_CHIP_RATE) * oversamp_factor) ));
+			out[idx].imag(sinf(2.0*M_PI*ref_freq_dev*(float)idx / (float(POP_CODE_C_CHIP_RATE) * oversamp_factor) ));
 		}
 
 		// DEBUG - CHECK VECTORS

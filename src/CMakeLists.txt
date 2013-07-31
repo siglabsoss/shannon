@@ -26,3 +26,4 @@ add_executable(shannon ${shannon_SOURCES})
 target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
 CUDA_ADD_CUFFT_TO_TARGET( shannon )
 
+add_custom_target(run COMMAND shannon DEPENDS shannon WORKING_DIRECTORY ${CMAKE_PROJECT_DIR})
