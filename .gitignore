@@ -11,3 +11,6 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 Doxyfile
+
+# all recorded sample data
+*.raw
