@@ -22,7 +22,10 @@ namespace pop
 	class PopNetworkComplex : public PopSink<NETWORK_STREAM_DATA_TYPE >
 	{
 	public:
-		PopNetworkComplex(int incoming_port = 5004, int outgoing_port = 35005);
+		PopNetworkComplex(const char* incoming_address = "127.0.0.1",
+			              int incoming_port = 5004,
+			              const char* outgoing_address = "127.0.0.1",
+			              int outgoing_port = 5005);
 		~PopNetworkComplex();
 		void process(const NETWORK_STREAM_DATA_TYPE* data, std::size_t size);
 

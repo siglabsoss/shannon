@@ -19,32 +19,32 @@
 #define POP_FREQ_ERROR 160 // frequency sample range in part-per-million
 
 #define POP_CODE_A_SYMBOLS 265 // number of symbols per code
-#define POP_CODE_A_CHIPS 32767 //number of chips per symbol
-#define POP_CODE_A_CHIP_RATE 25986 //chips per second
-#define POP_CODE_A_CHIPS_PER_HOP 512 //hz
-#define POP_CODE_A_FREQ_DEV 12993 //hz (difference between mark and space)
-#define POP_CODE_A_HOPPING_PERIOD 20000 //ns
-#define POP_CODE_A_CHANNEL_SPACING 25391 //hz
+#define POP_CODE_A_CHIPS 40000 //number of chips per symbol
+#define POP_CODE_A_CHIP_RATE 50781.25 //chips per second
+#define POP_CODE_A_CHIPS_PER_HOP 400 //hz
+#define POP_CODE_A_FREQ_DEV 25390.625 //hz (difference between mark and space)
+#define POP_CODE_A_HOPPING_PERIOD 8145000 //ns
+#define POP_CODE_A_CHANNEL_SPACING 50781.25 //hz
 #define POP_CODE_A_CHANNELS 50 //number of spreading channels
 #define POP_CODE_A_BASEBAND 0 //hz
 
-#define POP_CODE_B_SYMBOLS 1 // 265 // number of symbols per code
-#define POP_CODE_B_CHIPS 8192 //number of chips per symbol
-#define POP_CODE_B_CHIP_RATE 25986 //chips per second
-#define POP_CODE_B_CHIPS_PER_HOP 512 //hz
-#define POP_CODE_B_FREQ_DEV 12993 //hz (difference between mark and space)
-#define POP_CODE_B_HOPPING_PERIOD 20000 //ns
-#define POP_CODE_B_CHANNEL_SPACING 25391 //hz
+#define POP_CODE_B_SYMBOLS 265 // number of symbols per code
+#define POP_CODE_B_CHIPS 4000 //number of chips per symbol
+#define POP_CODE_B_CHIP_RATE 50781.25 //chips per second
+#define POP_CODE_B_CHIPS_PER_HOP 400 //hz
+#define POP_CODE_B_FREQ_DEV 25390.625 //hz (difference between mark and space)
+#define POP_CODE_B_HOPPING_PERIOD 8145000 //ns
+#define POP_CODE_B_CHANNEL_SPACING 50781.25 //hz
 #define POP_CODE_B_CHANNELS 50 //number of spreading channels
 #define POP_CODE_B_BASEBAND 0 //hz
 
 #define POP_CODE_C_SYMBOLS 265 // number of symbols per code
-#define POP_CODE_C_CHIPS 512 //number of chips per symbol
-#define POP_CODE_C_CHIP_RATE 25986 //chips per second
-#define POP_CODE_C_CHIPS_PER_HOP 512 //hz
-#define POP_CODE_C_FREQ_DEV 12993 //hz (difference between mark and space)
-#define POP_CODE_C_HOPPING_PERIOD 20000 //ns
-#define POP_CODE_C_CHANNEL_SPACING 25391 //hz
+#define POP_CODE_C_CHIPS 400 //number of chips per symbol
+#define POP_CODE_C_CHIP_RATE 50781.25 //chips per second
+#define POP_CODE_C_CHIPS_PER_HOP 400 //hz
+#define POP_CODE_C_FREQ_DEV 25390.625 //hz (difference between mark and space)
+#define POP_CODE_C_HOPPING_PERIOD 8145000 //ns
+#define POP_CODE_C_CHANNEL_SPACING 50781.25 //hz
 #define POP_CODE_C_CHANNELS 50 //number of spreading channels
 #define POP_CODE_C_BASEBAND 0 //hz
 
@@ -89,7 +89,7 @@ namespace pop
 		uint32_t os_byteIdx, os_byteMod; 
 		double gaussian_sum;
 
-		double tSymbol = 1.0/POP_CODE_A_CHIP_RATE;
+		double tSymbol = 1.0/POP_CODE_C_CHIP_RATE;
 		double gauss_b = POP_GAUSSIAN_BT/tSymbol;
 		double gauss_a = 1.0/gauss_b * sqrt(log(2)/2);
 
@@ -215,17 +215,17 @@ namespace pop
 
 			/// MSK (a specific case of FSK) frequency deviation
 			/// TODO: make adjustable for frequency sample points
-			ref_freq_dev = (float)symbol * (float)POP_CODE_B_FREQ_DEV;
+			ref_freq_dev = (symbol - 0.5) * (float)POP_CODE_C_FREQ_DEV;
 
 			/// modulation frequency
 			/// TODO: make adjustable for frequency sample points
 			ref_chan = 0;
 
-			ref_freq = (float)ref_chan * (float)POP_CODE_C_CHANNEL_SPACING +
-			           (float)POP_CODE_B_BASEBAND + 0.0 + ref_freq_dev;
+			// ref_freq = (float)ref_chan * (float)POP_CODE_C_CHANNEL_SPACING +
+			//            (float)POP_CODE_B_BASEBAND + 0.0 + ref_freq_dev;
 
-			out[idx].real(sinf(2.0*M_PI*ref_freq*(float)idx / (float(oversamp_factor)) ));
-			out[idx].imag(cosf(2.0*M_PI*ref_freq*(float)idx / (float(oversamp_factor)) ));
+			out[idx].real(sinf(2.0*M_PI*ref_freq_dev*(float)idx / (float(POP_CODE_C_CHIP_RATE) * oversamp_factor) ));
+			out[idx].imag(cosf(2.0*M_PI*ref_freq_dev*(float)idx / (float(POP_CODE_C_CHIP_RATE) * oversamp_factor) ));
 		}
 
 		// DEBUG - CHECK VECTORS

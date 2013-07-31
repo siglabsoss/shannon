@@ -26,35 +26,38 @@
 using namespace std;
 using namespace boost::posix_time;
 
-#define OVERSAMP_FACTOR 2
-#define PN_LEN 1040
-#define GPU_CRUNCH_SIZE (PN_LEN * OVERSAMP_FACTOR) // in samples
-//#define GPU_CRUNCH_SIZE 65536 // in samples
+#define OVERSAMPLE_FACTOR 2
+
+#define PN_NUM_SYMBOLS 400
+#define PN_SIZE (PN_NUM_SYMBOLS * OVERSAMPLE_FACTOR) // in samples
+#define FFT_SIZE 65536
+#define CHAN_SIZE 1040
 
 
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" void start_deconvolve(const complex<float> *data, complex<float> *product);
-extern "C" void init_deconvolve(complex<float> *pn, size_t len);
+extern "C" size_t gpu_channel_split(const complex<float> *in);
+extern "C" size_t gpu_demod(complex<float> *out);
+extern "C" void init_deconvolve(complex<float> *pn, size_t len_pn, size_t len_fft, size_t len_chan);
 extern "C" void cleanup();
 
 namespace pop
 {
 
-	PopProtADespread::PopProtADespread(): PopSink<complex<float> >( "PopProtADespread", 65536 ),
-		PopSource<std::complex<float> >( "PopProtADespread" )
+	PopProtADespread::PopProtADespread(): PopSink<complex<float> >( "PopProtADespread", FFT_SIZE ),
+		PopSource<complex<float> >( "PopProtADespread" ), mp_demod_func(0)
 	{
 	}
 
 	void PopProtADespread::init()
 	{
 	    // Generate GMSK reference waveform.... 
-	    mp_demod_func = (complex<float>*) malloc(GPU_CRUNCH_SIZE * sizeof(complex<float>));
+	    mp_demod_func = (complex<float>*) malloc(PN_SIZE * sizeof(complex<float>));
 
 	    // Select code here.. 
-    	//popGenGMSK(__code_m512_zeros, mp_demod_func, PN_LEN, OVERSAMP_FACTOR);
-    	popGenGMSK(__code_m4k_001, mp_demod_func, PN_LEN, OVERSAMP_FACTOR);
+    	//popGenGMSK(__code_m512_zeros, mp_demod_func, PN_NUM_SYMBOLS, OVERSAMPLE_FACTOR);
+    	popGenGMSK(__code_m512_zeros, mp_demod_func, PN_NUM_SYMBOLS, OVERSAMPLE_FACTOR);
 
     	// Init CUDA
 	 	int deviceCount = 0;
@@ -157,9 +160,12 @@ namespace pop
 	        printf("  Compute Mode:\n");
 	        printf("     < %s >\n", sComputeMode[deviceProp.computeMode]);
 	    }
+
+	    // choose which device to use for this thread
+	    cudaSetDevice(0);
 	    
 	    // allocate CUDA memory
-	    init_deconvolve(mp_demod_func, GPU_CRUNCH_SIZE);
+	    init_deconvolve( mp_demod_func, PN_SIZE, FFT_SIZE, CHAN_SIZE );
 	}
 
 	/**
@@ -222,15 +228,23 @@ namespace pop
 	 */
 	void PopProtADespread::process(const complex<float>* in, size_t len)
 	{
+		size_t chan_buf_len;
 		ptime t1, t2;
 		time_duration td, tLast;
 		t1 = microsec_clock::local_time();
 
 		//cudaProfilerStart();
 		// call the GPU to process work
-		complex<float> *out = get_buffer(1040*2); // make sure to bump this up if we do additional padding (interpolation)
-		start_deconvolve(in, out);
-		PopSource<complex<float> >::process();
+		chan_buf_len = gpu_channel_split(in);
+
+		while( chan_buf_len >= PN_SIZE)
+		{
+			complex<float> *out = get_buffer(PN_SIZE);
+			chan_buf_len = gpu_demod(out);
+			PopSource<complex<float> >::process();
+		}
+		
+		
 		//cudaProfilerStop();
 
 		t2 = microsec_clock::local_time();
@@ -245,6 +259,9 @@ namespace pop
 	  */
 	PopProtADespread::~PopProtADespread()
 	{
+		if( mp_demod_func )
+			free(mp_demod_func);
+
 		// free CUDA memory
 		cleanup();
 	}

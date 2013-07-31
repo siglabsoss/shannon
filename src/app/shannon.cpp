@@ -36,7 +36,8 @@ int test()
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-	unsigned server_port;
+	unsigned incoming_port, outgoing_port;
+	string incoming_address, outgoing_address;
 	string server_name;
 
 	cout << "Shannon - PopWi Digital Signal Processing (DSP) Core" << endl;
@@ -47,7 +48,10 @@ int main(int argc, char *argv[])
 	    ("help", "help message")
 	    ("server", po::value<string>(&server_name)->default_value("papa.popwi.com"), "Remote Manager Location")
 	    ("file", po::value<string>(&server_name)->default_value("shannon.xml"), "Setup File")
-	    ("server-port", po::value<unsigned>(&server_port)->default_value(35005), "Incoming UDP port")
+	    ("incoming-address", po::value<string>(&incoming_address)->default_value("173.167.119.220"), "Incoming UDP address")
+	    ("incoming-port", po::value<unsigned>(&incoming_port)->default_value(5004), "Incoming UDP port")
+	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("173.167.119.220"), "Outgoing UDP address")
+	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(35005), "Outgoing UDP port")
 	;
 
 	po::variables_map vm;
@@ -104,12 +108,26 @@ int main(int argc, char *argv[])
 	//PopDecimate<complex<float> > decimate(64);
 
 	// Initialize Network Connection
-	PopNetworkComplex popnetwork;
+	PopNetworkComplex popnetwork(incoming_address.c_str(), incoming_port,
+		                         outgoing_address.c_str(), outgoing_port);
 
 	popuhd.connect(despread);
 
+	PopDecimate<complex<float> > decimate(2);
+
+	despread.connect(decimate);
+
+	//decimate.connect(popnetwork);
+
+	PopMagnitude popmag;
+
+	PopDumpToFile<complex<float> > dump;
+
+	//despread.connect(dump);
 	despread.connect(popnetwork);
 	
+	//popmag.connect(popnetwork);
+		
 	//popuhd.connect(decimate);
 	//decimate.connect(popnetwork);
 

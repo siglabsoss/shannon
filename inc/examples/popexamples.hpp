@@ -7,6 +7,8 @@
 *
 ******************************************************************************/
 
+#include <fstream>
+
 #include "core/popblock.hpp"
 
 namespace pop
@@ -204,6 +206,34 @@ public:
             out[n] = in[n] + 0x20;
         }
     }
+};
+
+template <typename T>
+class PopDumpToFile : public PopSink<T>
+{
+public:
+    PopDumpToFile(const char* file_name = "dump.raw") : PopSink<T>("PopDumpToFile"),
+        m_fileName(file_name)
+    {
+        printf("%s - created %s file\r\n", PopSink<T>::get_name(), m_fileName);
+        m_fs.open(m_fileName, std::ofstream::binary);
+    }
+    ~PopDumpToFile()
+    {
+        m_fs.close();
+    }
+private:
+    void init()
+    {
+    }
+    void process(const T* in, size_t size)
+    {
+        printf("+");
+        size_t bytes = size * sizeof(T);
+        m_fs.write((const char*)in, bytes);
+    }
+    std::ofstream m_fs;
+    const char* m_fileName;
 };
 
 class PopMagnitude : public PopSink<std::complex<float> >, public PopSource<float>

@@ -21,15 +21,12 @@ using boost::asio::ip::udp;
 using namespace boost::asio;
 using namespace std;
 
-#define OUTGOING_IP_ADDRESS "127.0.0.1"
-//#define OUTGOING_IP_ADDRESS "173.167.119.220"
-
 namespace pop
 {
 
 	boost::asio::io_service PopNetworkComplex::io_service;
 
-	PopNetworkComplex::PopNetworkComplex(int incoming_port, int outgoing_port)
+	PopNetworkComplex::PopNetworkComplex(const char* incoming_address, int incoming_port, const char* outgoing_address, int outgoing_port)
 	: PopSink<NETWORK_STREAM_DATA_TYPE >("PopNetworkComplex", NETWORK_PACKET_SIZE), socket_(io_service, udp::endpoint(udp::v4(), incoming_port)),
 	incoming_port_(incoming_port), outgoing_port_(outgoing_port)
 	{
@@ -37,7 +34,7 @@ namespace pop
 
 		/* We set the outgoing address on the first incoming packet
 		   and set the outgoing port here. */
-		outgoing_endpoint_.address(ip::address::from_string(OUTGOING_IP_ADDRESS));
+		outgoing_endpoint_.address(ip::address::from_string(outgoing_address));
 		outgoing_endpoint_.port(outgoing_port);
 	}
 
