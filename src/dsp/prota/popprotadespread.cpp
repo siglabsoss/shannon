@@ -37,7 +37,7 @@ using namespace boost::posix_time;
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" size_t gpu_channel_split(const complex<float> *in);
+extern "C" size_t gpu_channel_split(const complex<float> *h_data, complex<float> *out);
 extern "C" size_t gpu_demod(complex<float> *out);
 extern "C" void init_deconvolve(complex<float> *pn, size_t len_pn, size_t len_fft, size_t len_chan);
 extern "C" void cleanup();
@@ -233,16 +233,21 @@ namespace pop
 		time_duration td, tLast;
 		t1 = microsec_clock::local_time();
 
+		complex<float> *out = get_buffer(CHAN_SIZE);
+
 		//cudaProfilerStart();
 		// call the GPU to process work
-		chan_buf_len = gpu_channel_split(in);
+		chan_buf_len = gpu_channel_split(in, out);
 
-		while( chan_buf_len >= PN_SIZE)
-		{
-			complex<float> *out = get_buffer(PN_SIZE);
-			chan_buf_len = gpu_demod(out);
-			PopSource<complex<float> >::process();
-		}
+		// process data
+		PopSource<complex<float> >::process();
+
+		// while( chan_buf_len >= PN_SIZE)
+		// {
+		// 	complex<float> *out = get_buffer(PN_SIZE);
+		// 	chan_buf_len = gpu_demod(out);
+		// 	PopSource<complex<float> >::process();
+		// }
 		
 		
 		//cudaProfilerStop();
@@ -250,7 +255,7 @@ namespace pop
 		t2 = microsec_clock::local_time();
 		td = t2 - t1;
 
-		cout << PopSource<complex<float> >::get_name() << " - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
+		//cout << PopSource<complex<float> >::get_name() << " - 65536 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
 	}
 
 

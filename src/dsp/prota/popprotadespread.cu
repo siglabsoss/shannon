@@ -11,6 +11,7 @@
 #include <complex>
 #include <iostream>
 #include <stdexcept>
+#include <cstdio>
 #include "dsp/utils.hpp"
 
 #include <boost/math/common_factor.hpp>
@@ -72,7 +73,7 @@ __global__ void deconvolve(cuComplex *pn, cuComplex *old, cuComplex *in, cuCompl
 		memIdx1 = n * blockDim.x + threadIdx.x;
 		smem_data[memIdx1] = old[memIdx1];
 	}
-
+0;
 	// copy new buffer into shared memory
 	for( n = 0; n < gridDim.x; n++ )
 	{
@@ -96,7 +97,7 @@ __global__ void deconvolve(cuComplex *pn, cuComplex *old, cuComplex *in, cuCompl
 	 	s = smem_data[n + i] * smem_pn[n] + s;
 	}
 
-	out[i] = s;
+	out[i] = in[i];
 
 }
 
@@ -116,12 +117,20 @@ extern "C"
 	size_t h_len_fft; ///< length of fft in samples
 	size_t h_len_pn;
 	size_t h_decon_idx; ///< index of deconvolution operation
+	size_t h_start_chan = 16059;
 
 
-	size_t gpu_channel_split(const complex<float> *h_data)
+	size_t gpu_channel_split(const complex<float> *h_data, complex<float> *out)
 	{
+		double ch_start, ch_end, ch_ctr;
+
+		ch_start = 903626953 + (3200000 / (double)h_len_fft * (double)h_start_chan) - 1600000;
+		ch_end = 903626953 + (3200000 / (double)h_len_fft * ((double)h_start_chan + 1040)) - 1600000;
+		ch_ctr = (ch_start + ch_end) / 2.0;
+		//printf("channel start: %f (%llu), end: %f, ctr: %f\r\n", ch_start, h_start_chan, ch_end, ch_ctr);
+
 		// shift zero-frequency component to center of spectrum
-		unsigned small_bin_start = (16059 + (h_len_fft/2)) % h_len_fft;;
+		unsigned small_bin_start = (h_start_chan + (h_len_fft/2)) % h_len_fft;
 
 		// calculate zero array size
 		unsigned small_bin_padding = h_len_chan * (IFFT_PADDING_FACTOR-1);
@@ -138,7 +147,7 @@ extern "C"
 
 		
 		// chop spectrum up into 50 spreading channels low side-band
-		cudaMemcpy(d_datac,
+		/*cudaMemcpy(d_datac,
 			       d_datab + small_bin_start + small_bin_sideband,
 			       small_bin_sideband * sizeof(cuComplex),
 			       cudaMemcpyDeviceToDevice);
@@ -159,7 +168,34 @@ extern "C"
 		// put back into time domain
 		cufftExecC2C(plan2, (cufftComplex*)d_datac, (cufftComplex*)d_datad_upper, CUFFT_INVERSE);
 		cudaThreadSynchronize();
+  		checkCudaErrors(cudaGetLastError());*/
+
+		// chop spectrum up into 50 spreading channels low side-band
+		cudaMemcpy(d_datac,
+			       d_datab + small_bin_start + small_bin_sideband,
+			       small_bin_sideband * sizeof(cuComplex),
+			       cudaMemcpyDeviceToDevice);
+		// chop spectrum up into 50 spreading channels high side-band
+		cudaMemcpy(d_datac + small_bin_sideband,
+			       d_datab + small_bin_start,
+			       small_bin_sideband * sizeof(cuComplex),
+			       cudaMemcpyDeviceToDevice);
+
+		// swap double buffer
+		cudaMemcpy(d_datad,
+			       d_datad_upper,
+			       h_len_chan * sizeof(cuComplex),
+			       cudaMemcpyDeviceToDevice);
+		cudaThreadSynchronize();
   		checkCudaErrors(cudaGetLastError());
+
+  		// put back into time domain
+		cufftExecC2C(plan2, (cufftComplex*)d_datac, (cufftComplex*)d_datad_upper, CUFFT_INVERSE);
+		cudaThreadSynchronize();
+  		checkCudaErrors(cudaGetLastError());
+
+  		// Copy results to host
+		cudaMemcpy(out, d_datad_upper, h_len_chan * sizeof(cuComplex), cudaMemcpyDeviceToHost);
 		
   		h_decon_idx += h_len_chan_padded;
   		return h_decon_idx;
@@ -171,11 +207,11 @@ extern "C"
 		cuComplex* new_data = old_data + h_len_pn;
 
   		// deconvolve PN codes
-		deconvolve<<<10, 80>>>(d_prncode, old_data, new_data, d_datae, h_len_pn);
+		//deconvolve<<<10, 80>>>(d_prncode, old_data, new_data, d_datae, h_len_pn);
 		cudaThreadSynchronize();
 		
 		// Copy [deconvolved] results to host
-		cudaMemcpy(out, d_datae, h_len_pn * sizeof(cuComplex), cudaMemcpyDeviceToHost);
+		cudaMemcpy(out, d_datad, h_len_chan * sizeof(cuComplex), cudaMemcpyDeviceToHost);
 
 		h_decon_idx -= h_len_pn;
 		return h_decon_idx;
@@ -195,9 +231,9 @@ extern "C"
 
 		checkCudaErrors(cudaMalloc(&d_dataa, h_len_fft * sizeof(cuComplex)));
 		checkCudaErrors(cudaMalloc(&d_datab, h_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_datac, h_len_chan_padded * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_datad, 2 * h_len_chan_padded * sizeof(cuComplex))); // double buffered
-		d_datad_upper = d_datad + h_len_chan_padded;
+		checkCudaErrors(cudaMalloc(&d_datac, h_len_chan * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_datad, 2 * h_len_chan * sizeof(cuComplex))); // double buffered
+		d_datad_upper = d_datad + h_len_chan;
 		checkCudaErrors(cudaMalloc(&d_datae, h_len_pn * sizeof(cuComplex)));
 
 		// initialize CUDA memory
@@ -205,14 +241,14 @@ extern "C"
 
 		checkCudaErrors(cudaMemset(d_dataa, 0, h_len_fft * sizeof(cuComplex)));
 		checkCudaErrors(cudaMemset(d_datab, 0, h_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMemset(d_datac, 0, h_len_chan_padded * sizeof(cuComplex)));
-		checkCudaErrors(cudaMemset(d_datad, 0, 2 * h_len_chan_padded * sizeof(cuComplex))); // dobule buffered
+		checkCudaErrors(cudaMemset(d_datac, 0, h_len_chan * sizeof(cuComplex)));
+		checkCudaErrors(cudaMemset(d_datad, 0, 2 * h_len_chan * sizeof(cuComplex))); // dobule buffered
 		checkCudaErrors(cudaMemset(d_datae, 0, h_len_pn * sizeof(cuComplex)));
 		
 
 	    // setup FFT plans
 	    cufftPlan1d(&plan1, h_len_fft, CUFFT_C2C, 1);
-	    cufftPlan1d(&plan2, h_len_chan_padded, CUFFT_C2C, 1);
+	    cufftPlan1d(&plan2, h_len_chan, CUFFT_C2C, 1);
 
 	    printf("\n[Popwi::popprotadespread]: init deconvolve complete \n");
 	}

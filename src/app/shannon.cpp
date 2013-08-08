@@ -28,9 +28,20 @@ using namespace std;
 
 namespace po = boost::program_options;
 
-int test()
+extern size_t h_start_chan;
+
+int getch(void)
 {
-	return 0;
+  int ch;
+  struct termios oldt;
+  struct termios newt;
+  tcgetattr(STDIN_FILENO, &oldt); /*store old settings */
+  newt = oldt; /* copy old settings to new settings */
+  newt.c_lflag &= ~(ICANON | ECHO); /* make one change to old settings in new settings */
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt); /*apply the new settings immediatly */
+  ch = getchar(); /* standard getchar call */
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt); /*reapply the old settings */
+  return ch; /*return received char */
 }
 
 int main(int argc, char *argv[])
@@ -39,6 +50,7 @@ int main(int argc, char *argv[])
 	unsigned incoming_port, outgoing_port;
 	string incoming_address, outgoing_address;
 	string server_name;
+	string debug_file;
 
 	cout << "Shannon - PopWi Digital Signal Processing (DSP) Core" << endl;
 	cout << "Copyright (c) 2013. PopWi Technology Group, Inc." << endl << endl;
@@ -52,6 +64,7 @@ int main(int argc, char *argv[])
 	    ("incoming-port", po::value<unsigned>(&incoming_port)->default_value(5004), "Incoming UDP port")
 	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("173.167.119.220"), "Outgoing UDP address")
 	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(35005), "Outgoing UDP port")
+	    ("debug-file", po::value<string>(&debug_file)->default_value("dat/dump.raw"), "filename used for raw data dump")
 	;
 
 	po::variables_map vm;
@@ -121,10 +134,44 @@ int main(int argc, char *argv[])
 
 	PopMagnitude popmag;
 
-	PopDumpToFile<complex<float> > dump;
+	//PopWeightSideBand popwsb;
+	//popwsb.start_thread();
+
+	//PopWeightSideBandDebug popwsbd;
+	//popwsbd.start_thread();
+	PopGmskDemod popgmsk;
+	popgmsk.start_thread();
+
+
+	PopWeightSideBand popwsb;
+	popwsb.start_thread();
+
+	despread.connect(popwsb);
+	despread.connect(popgmsk);
+
+	
+	PopDigitalDeconvolve popdd;
+	popdd.start_thread();
+	popwsb.connect(popdd);
+
+	//despread.connect(popnetwork);
+
+	popdd.connect(popnetwork);
+	//PopDumpToFile<complex<float> > dump(debug_file.c_str());
 
 	//despread.connect(dump);
-	despread.connect(popnetwork);
+	//despread.connect(popwsb);
+	//despread.connect(popwsbd);
+
+	//popwsbd.connect(popnetwork);
+
+	//PopDigitalDeconvolve popdd;
+	//popdd.start_thread();
+
+	//popwsb.connect(popdd);
+	//despread.connect(dump);
+
+	//diff.connect(popnetwork);
 	
 	//popmag.connect(popnetwork);
 		
@@ -140,11 +187,17 @@ int main(int argc, char *argv[])
 
 #endif
 
+	char c;
 
 	// Run Control Loop
 	while(1)
 	{
-		boost::posix_time::seconds workTime(1);
+		/*c = getch();
+		if( c == '-' ) h_start_chan--;
+		if( c == '+' ) h_start_chan++;*/
+
+		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
+		boost::posix_time::microseconds workTime(10);
 		boost::this_thread::sleep(workTime);
 	}
 
