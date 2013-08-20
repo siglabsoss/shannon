@@ -8,6 +8,13 @@
 ******************************************************************************/
 
 #include <fstream>
+#include <iostream>
+
+#include <boost/timer.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/math/special_functions/sinc.hpp>
+
+using namespace boost::posix_time;
 
 #include "core/popblock.hpp"
 
@@ -250,6 +257,178 @@ private:
             out[n] = std::abs(in[n]);
 
         PopSource<float>::process();
+    }
+};
+
+class PopWeightSideBand : public PopSink<std::complex<float> >, public PopSource<uint8_t>
+{
+public:
+    PopWeightSideBand() :PopSink<std::complex<float> >("PopWeightSideBand", 1040), PopSource<uint8_t>("PopWeightSideBand") { }
+private:
+    void init() { }
+    void process(const std::complex<float>* in, size_t size)
+    {
+        size_t n;
+        std::complex<float> theta1, theta2;
+        uint8_t *out;
+
+        out = get_buffer(size / 8);
+
+        memset(out, 0, size / 8);
+
+        theta1 = in[-1] / std::abs(in[-1]);
+        for( n = 0; n < size; n++ )
+        {
+            theta2 = in[n] / std::abs(in[n]);
+
+            // the magic sauce, dawg!!!
+            out[n/8] |= ((~((uint32_t)(fmod(std::arg(theta1) + M_PI + M_PI - std::arg(theta2), M_PI*2) - M_PI))>>31))<<(n%8);
+
+            theta1 = theta2;
+
+            /*if( n%8 == 7 )
+                printf("%02hhx", out[n/8]);*/
+        }
+        //printf("\r\n");
+
+        PopSource<uint8_t>::process();
+    }
+};
+
+#define SINC_SAMPLES_BACK 10
+#define SINC_SAMPLES_FORWARD 10
+#define SINC_SAMPLE_PERIOD 1.96923e-5
+
+class PopGmskDemod : public PopSink<std::complex<float> >, public PopSource<std::complex<float> >
+{
+public:
+    PopGmskDemod() : PopSink<std::complex<float> >("PopGmskDemod", 1040), PopSource<std::complex<float> >("PopGmskDemod") { }
+    ~PopGmskDemod() { }
+private:
+    void init() { }
+    void process(const std::complex<float>* in, size_t size)
+    {
+        signed n, m, p, idx, idx2;
+        std::complex<float>* buf;
+
+        // TODO: get timestamp from attached PopSource
+
+        //buf = (std::complex<float>*)malloc( 1040 * 3 * sizeof(std::complex<float>) );
+
+        buf = get_buffer(1040);
+
+        // perform a sinc interpolation
+        /*for( n = 0; n < (signed)size; n++ )
+        {
+            // scan across arrival phase
+            for( m = 0; m < 3; m++ )
+            {
+                idx = n * 3 + m;
+                buf[idx].real(0.0);
+                buf[idx].imag(0.0);
+
+                // integrate
+                for( p = -SINC_SAMPLES_BACK; p < SINC_SAMPLES_FORWARD - 1; p++ )
+                {
+                    idx2 = n + p - SINC_SAMPLES_FORWARD;
+                    buf[idx] += in[idx2] * boost::math::sinc_pi<float>( (idx - idx2 * SINC_SAMPLE_PERIOD) / SINC_SAMPLE_PERIOD );
+                }
+            }
+        }*/
+
+        PopSource<std::complex<float> >::process();
+    }
+};
+
+class PopWeightSideBandDebug : public PopSink<std::complex<float> >, public PopSource<std::complex<float> >
+{
+public:
+    PopWeightSideBandDebug() :PopSink<std::complex<float> >("PopWeightSideBandDebug", 1040), PopSource<std::complex<float> >("PopWeightSideBandDebug") { }
+private:
+    void init() { }
+    void process(const std::complex<float>* in, size_t size)
+    {
+        size_t n;
+        std::complex<float> theta1, theta2;
+        std::complex<float> *out;
+        float a;
+
+        out = get_buffer(size);
+
+        theta1 = in[-1] / std::abs(in[-1]);
+        for( n = 0; n < size; n++ )
+        {
+            theta2 = in[n] / std::abs(in[n]);
+            a = (fmod(std::arg(theta1) + M_PI + M_PI - std::arg(theta2), M_PI*2) - M_PI)*10.0;
+            out[n].real(a);
+            if( a > 0.0 )
+                out[n].real(30);
+            else
+                out[n].real(-30);
+            out[n].imag(std::abs(in[n]));
+
+            theta1 = theta2;
+
+        }
+
+        PopSource<std::complex<float> >::process();
+    }
+};
+
+const char pn_code_a[] = {0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+                          0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+                          0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+                          0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+                          0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00};
+
+const uint8_t pn_code_b[] = {
+       0x67,0x7A,0xFA,0x1C,0x52,0x07,0x56,0x06,0x08,0x5C,0xBF,0xE4,0xE8,0xAE,0x88,0xDD,
+       0x87,0xAA,0xAF,0x9B,0x04,0xCF,0x9A,0xA7,0xE1,0x94,0x8C,0x25,0xC0,0x2F,0xB8,0xA8,
+       0xC0,0x1C,0x36,0xAE,0x4D,0x6E,0xBE,0x1F,0x99,0x0D,0x4F,0x86,0x9A,0x65,0xCD,0xEA,
+       0x03,0xF0,0x92,0x52,0xDC,0x20,0x8E,0x69,0xFB,0x74,0xE6,0x13,0x2C,0xE7,0x7E,0x25,
+       0xB5,0x78,0xFD,0xFE,0x33,0xAC,0x37,0x2E,0x6B,0x83,0xAC,0xB0,0x22,0x00,0x23,0x97,
+       0xA6,0xEC,0x6F,0xB5,0xBF,0xFC,0xFD,0x4D,0xD4,0xCB,0xF5,0xED,0x1F,0x43,0xFE,0x58,
+       0x23,0xEF,0x4E,0x82,0x32,0xD1,0x52,0xAF,0x0E,0x71,0x8C,0x97,0x05,0x9B,0xD9,0x82};
+
+class PopDigitalDeconvolve : public PopSink<uint8_t>, public PopSource<std::complex<float> >
+{
+public:
+    PopDigitalDeconvolve() : PopSink<uint8_t>("PopDigitalDeconvolve", 1040 / 8), PopSource<std::complex<float> >("PopDigitalDeconvolve") { }
+private:
+    void init() { }
+    void process(const uint8_t * in, size_t size)
+    {
+        signed n, m;
+        signed B, b;
+        unsigned s;
+        uint8_t j, k;
+        ptime t1;
+        t1 = microsec_clock::local_time();
+        std::complex<float>* buf;
+
+        buf = get_buffer(size*8);
+
+        for( n = 0; n < size; n++ )
+        {
+            s = 0;
+            for( m = 0; m < 400; m++ )
+            {
+                B = m / 3 / 8;
+                b = (m / 3) % 8;
+                j = (in[n - 50 + B] >> b) & 0x01;
+                k = (pn_code_b[B] >> (7-b)) & 0x01;
+                s += !(j ^ k); // XNOR
+            }
+            if( s > 300 )
+            {
+                std::cout << to_iso_extended_string(t1) << " - ";
+                printf("signal: %u\r\n", s);
+            }
+            buf[n].real(s);
+            buf[n].imag(s);
+        }
+
+        PopSource<std::complex<float> >::process();
     }
 };
 
