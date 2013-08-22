@@ -327,7 +327,7 @@ extern "C"
 		checkCudaErrors(cudaMemset(d_datab, 0, g_len_fft * sizeof(cuComplex)));
 		checkCudaErrors(cudaMemset(d_datac, 0, g_len_fft * sizeof(cuComplex)));
 		checkCudaErrors(cudaMemset(d_datad, 0, g_len_fft * sizeof(cuComplex)) * 2); // dobule buffered
-		checkCudaErrors(cudaMemset(d_datae, 0, g_len_pn_oversampled * sizeof(cuComplex)));
+		//checkCudaErrors(cudaMemset(d_datae, 0, g_len_pn_oversampled * sizeof(cuComplex)));
 
 		gpu_gen_pn_match_filter_coef(pn_code_b, h_coef, g_len_pn, g_oversample_rate)
 		checkCudaErrors(cudaMemcpy(d_coef, h_coef, g_len_pn_oversampled * sizeof(float)));
