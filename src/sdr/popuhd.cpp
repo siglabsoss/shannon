@@ -91,11 +91,13 @@ namespace pop
         usrp->set_rx_freq(POP_PROTA_BLOCK_A_UPLK);
         usrp->set_rx_rate(POP_PROTA_BLOCK_A_WIDTH);
 
+#ifndef OPTION_DISABLE_GPS
         usrp->set_time_source("external");
 
         // synchronize time across all motherboards (2 seconds to complete)
         usrp->set_time_unknown_pps(uhd::time_spec_t(0.0));
         boost::this_thread::sleep(boost::posix_time::seconds(1));
+#endif
 
         //create a receive streamer
         //linearly map channels (index0 = channel0, index1 = channel1, ...)

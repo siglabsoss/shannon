@@ -17,6 +17,7 @@
 #include <boost/signals2.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
 
+#include "core/global.h"
 #include "core/popassert.h"
 #include "core/popsource.hpp"
 
