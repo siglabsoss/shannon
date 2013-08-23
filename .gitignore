@@ -14,3 +14,7 @@ Doxyfile
 
 # all recorded sample data
 *.raw
+
+# matlab files
+*.asv
+*.mat

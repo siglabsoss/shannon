@@ -1,47 +1,42 @@
 
-function out = shannon_demodulate(in, pn)
+function [p, f, out] = shannon_demodulate(in, pn, osr)
 
-%clear all
 close all
 
 % demodulator constants (change these if needed)
 nsc = size(pn,2); % number of spreading codes
-osr = 1; % oversample rate
-tx_bt = 0.5;
+tx_bt = 0.5; % Gaussian filter -3dB value for GMSK transmitter
 tx_chip_rate = 50781.25;
-fmin = -1000; % minimum frequency (Hz)
-fmax = 1000; % maximum frequency (Hz)
-fsteps = 2000; % number of frequency scan steps
+fmin = -2000; % minimum frequency (Hz)
+fmax = 2000; % maximum frequency (Hz)
+fsteps = 1024; % number of frequency scan steps
 
 % calculated constants (don't change these)
 f = linspace(fmin,fmax,fsteps);
 p = linspace(0,nsc/tx_chip_rate*1000,nsc*osr);
+dbs = nsc * osr * 2; % double buffer size
+sbs = nsc * osr; % single buffer size
 
 % preallocate memory
-cfc(fsteps, osr * nsc) = 0; % convolution filter coefficients
-out(fsteps, osr * nsc) = 0; % output array
+ref(fsteps, dbs) = 0; % reference prn (padded)
+cfc(fsteps, dbs) = 0; % convolution filter coefficients
+pad(fsteps, dbs) = 0; % padded output array
 
-% generate PRN spreading code
-%pn = sign(rand(nsc,1)-0.5)';
-
-% generate reference waveforms for all frequencies
+% generate and pad matched filter for all possible frequencies
 for n = 1:fsteps
-    ref = shannon_gen_pn( pn, osr, tx_bt, tx_chip_rate, f(n), 0 );
-    cfc(n,:) = fft( conj( fliplr( ref ) ) );
+    ref(n,sbs/2+1:sbs+sbs/2) = ...
+        shannon_gen_pn( pn, osr, tx_bt, tx_chip_rate, f(n), 0 );
 end
 
-% generate (or sample) waveform to find
-%in = shannon_gen_pn( pn, osr, tx_bt, tx_chip_rate, 120, 0 );
-in = circshift(in', 100)';
+% calculate convolution filter coefficients
+cfc = fft( conj( fliplr( ref' ) ) )';
 
 % take the fft of input waveform
 in_fft = fft(in);
 
-% multidimensional convolution
+% parametrized convolution (shift to line up with END of spreading code)
 for n = 1:fsteps
-    out(n,:) = ifft( in_fft .* cfc(n,:) );
+    pad(n,:) = circshift( ifft( in_fft .* cfc(n,:))', sbs/2 )'/osr;
 end
 
-surf(p, f, abs(out),'EdgeColor','none');
-xlabel('phase(ms)');
-ylabel('frequency');
+out = pad(:,1:sbs);
