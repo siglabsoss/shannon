@@ -15,6 +15,7 @@
 #include <boost/asio.hpp>
 
 using boost::asio::ip::udp;
+using namespace std;
 
 class server
 {
@@ -23,6 +24,8 @@ public:
     : io_service_(io_service),
       socket_(io_service, udp::endpoint(udp::v4(), port))
   {
+        
+    // start initial async waiting for bytes
     socket_.async_receive_from(
         boost::asio::buffer(data_, max_length), sender_endpoint_,
         boost::bind(&server::handle_receive_from, this,
@@ -35,6 +38,8 @@ public:
   {
     if (!error && bytes_recvd > 0)
     {
+        cout << "received " << bytes_recvd << " bytes" << endl;
+        cout << "echoing them back" << endl;
       socket_.async_send_to(
           boost::asio::buffer(data_, bytes_recvd), sender_endpoint_,
           boost::bind(&server::handle_send_to, this,
@@ -43,6 +48,7 @@ public:
     }
     else
     {
+        cout << "error" << endl;
       socket_.async_receive_from(
           boost::asio::buffer(data_, max_length), sender_endpoint_,
           boost::bind(&server::handle_receive_from, this,
@@ -54,6 +60,8 @@ public:
   void handle_send_to(const boost::system::error_code& /*error*/,
       size_t /*bytes_sent*/)
   {
+      
+      // if we don't call this, server will exit
     socket_.async_receive_from(
         boost::asio::buffer(data_, max_length), sender_endpoint_,
         boost::bind(&server::handle_receive_from, this,
