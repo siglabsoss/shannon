@@ -15,6 +15,8 @@
 #include <boost/program_options.hpp>
 
 #include "net/popnetworkcomplex.hpp"
+#include "net/popnetwork.hpp"
+#include "net/popnetworkjson.hpp"
 #include "sdr/popuhd.hpp"
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotadespread.hpp"
@@ -79,16 +81,16 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
-#if 0
+#if 1
 	// test code
-	PopPiSource pisource;
-	PopTest1 test;
-	PopOdd strange;
-	PopPoop quark;
+//	PopPiSource pisource;
+//	PopTest1 test;
+//        pisource.connect(test);
+
 	//PopSourceMsg msg;
 
 
-	pisource.connect(test);
+	
 
 	//msg.add("MSG_TRACKER", 34.12325f);
 
@@ -99,14 +101,28 @@ int main(int argc, char *argv[])
 	//strange.start();
 
 	PopAlice alice;
+        PopAliceFloat falice;
 	PopBob bob;
-
-	alice.connect(bob);
-
-	alice.start();
+        
+        // source .connect( sync )
+//	alice.connect(bob);
+//	alice.start();
+        
+        cout << "hi" << endl;
+        
+        PopNetworkJson net(4444, 5555);
+        falice.connect(net);
+        falice.start();
+        
+        cout << "done with network" << endl;
+                
+        
+        
+//        net.start_receive();
+        
 #endif
 
-#if 1
+#if 0
 	// Initialize Graphics Card
 	PopProtADespread despread;
 	despread.start_thread();

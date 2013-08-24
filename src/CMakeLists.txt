@@ -17,6 +17,8 @@ set(shannon_SOURCES
 	dsp/popgenerate.cpp
 	dsp/prota/popprotadespread.cpp
 	net/popnetworkcomplex.cpp
+	net/popnetworkjson.cpp
+	net/popnetwork.cpp
 	sdr/popuhd.cpp)
 
 cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
