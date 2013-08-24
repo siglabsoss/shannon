@@ -1,13 +1,21 @@
-function shannon_process_rf(in)
+% shannon_process_rf
+% Dense GMSK demodulator
+%
+% @param in RF input
+% @param sps samples per second
+%
 
-close all
+function out = shannon_process_rf(in, sps)
 
 % demodulator constants (change these if needed)
-osr = 10; % oversample rate (1 = no oversampling)
-tx_bt = 0.5; % Gaussian filter -3dB value for GMSK transmitter
-tx_chip_rate = 50781.25;
-pn = [-1, 1, 1,-1,-1, 1, 1, 1,-1, 1, 1, 1, 1,-1, 1,-1, 1, 1, 1,...
-       1, 1,-1, 1,-1,-1,-1,-1, 1, 1, 1,-1,-1,-1, 1,-1, 1,-1,-1,...
+bt = 0.5; % Gaussian foslter -3dB bandwidth symbol time
+tcr = 50781.25; % transmitter chip rate
+fsearch = 4000; % frequency search space in Hz
+pn = [-1, 1, 1,-1,-1, 1, 1, 1, ... % 0110 0111 = 0x67
+      -1, 1, 1, 1, 1,-1, 1,-1, ...
+       1, 1, 1, 1, 1,-1, 1,-1, ...
+      -1,-1,-1, 1, 1, 1,-1,-1, ...
+      -1, 1,-1, 1,-1,-1,...
        1,-1,-1,-1,-1,-1,-1, 1, 1, 1,-1, 1,-1, 1,-1, 1, 1,-1,-1,...
       -1,-1,-1,-1, 1, 1,-1,-1,-1,-1,-1, 1,-1,-1,-1,-1, 1,-1, 1,...
        1, 1,-1,-1, 1,-1, 1, 1, 1, 1, 1, 1, 1, 1, 1,-1,-1, 1,-1,...
@@ -32,26 +40,46 @@ pn = [-1, 1, 1,-1,-1, 1, 1, 1,-1, 1, 1, 1, 1,-1, 1,-1, 1, 1, 1,...
        1, 1,-1,-1, 1, 1,-1, 1,-1,-1, 1, 1, 1, 1, 1, 1,-1, 1, 1,...
       -1, 1, 1, 1,-1, 1,-1,-1, 1, 1, 1,-1,-1, 1, 1,-1,-1,-1,-1,...
        1,-1,-1, 1, 1,-1,-1, 1,-1, 1, 1,-1,-1, 1, 1, 1,-1,-1, 1,...
-       1, 1,-1, 1, 1, 1, 1, 1, 1,-1,-1,-1, 1,-1,-1, 1,-1, 1 ]; % __code_m4k
+       1, 1,-1, 1, 1, 1, 1, 1, 1,-1,-1,-1, 1,-1,-1, 1,-1, 1 ]; % __code_m4k_001
+
+   
+%pn = fliplr(pn);
+%pn = -1 * pn;
 
 % calculated constants (don't change these)
-nsc = size(pn,2); % number of spreading codes
-dbs = nsc*osr*2; % double buffer size
-sbs = nsc*osr;   % single buffer size
-len = size(in,2); % rf recording length
-cps = size(pn,2); % chips per symbol
-N = floor(len / sbs) % number of convolutions to perform
+ncs = size(pn,2); % number of chips per symbol
 
-% demodulate
+len = size(in,2); % rf recording length
+
+osr = sps / tcr; % oversample rate;
+osl = round(osr * ncs / 2) * 2; % oversampled symbol length (in samples) must be even
+
+N = floor(len / osl); % number of convolutions to perform
+dt = 2 * osl / sps; % convolution filter time (padded)
+fsteps = 2 * ceil(fsearch * dt); % number of frequency steps
+
+
+% generate convolution foslter coefficients
+cfc = shannon_calculate_cfc(pn, osl, bt);
+
+
+%preallocate
+out(fsteps,len) = 0;
+
+
+% demodulate (piecewise)
 for n = 2:N
-    [~, ~, out(:,(n-1)*sbs+1:n*sbs)] = shannon_demodulate(in((n-2)*sbs+1:n*sbs), pn, osr);
+    out(:,(n-1)*osl+1:n*osl) = ...
+        shannon_demodulate(in((n-2)*osl+1:n*osl), cfc, fsteps);
 end
 
+
 % display
-%surf(p, f, abs(out),'EdgeColor','none');
-surf(abs(out),'EdgeColor','none');
-zlim([0 500]);
+f = linspace(-fsearch, fsearch, fsteps);
+t = linspace(0, len / sps, len);
+surf(t, f, abs(out),'EdgeColor','none');
+%zlim([0 10]);
 title('GMSK spreading (512 chips)');
-xlabel('phase(ms)');
+xlabel('time(s)');
 ylabel('frequency');
 

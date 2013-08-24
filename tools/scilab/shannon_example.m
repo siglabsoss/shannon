@@ -1,8 +1,11 @@
+clear all
+close all
+
 % example constants (change these if needed)
-osr = 10; % oversample rate
+osr = 1; % oversample rate
 phase = 0; % synthesized input phase offset
-toa = -200; % synthesized time of arrival
-tx_bt = 0.5; % Gaussian filter -3dB value for GMSK transmitter
+toa = 0; % synthesized time of arrival
+bt = 0.5; % Gaussian filter -3dB value for GMSK transmitter
 tx_chip_rate = 50781.25;
 ferror = 0; % frequency error
 phase = 0; % phase of pn code in radians
@@ -42,24 +45,22 @@ sbs = nsc*osr;   % single buffer size
     
     
 % generate (or sample) waveform to find
-in = shannon_gen_pn( pn, osr, tx_bt, tx_chip_rate, ferror, 0 );
+in = shannon_gen_pn( pn, bt );
 
 % pad (double buffer)
-in_pad(dbs) = 0;
-in_pad(1,sbs/2+1:sbs+sbs/2) = in;
+in = padarray(in', sbs/2)';
 
 % phase shift (test)
-in_pad = circshift(in_pad', round(phase / 2 / pi * osr) + toa * osr)';
+in = circshift(in', round(phase / 2 / pi * osr) + toa * osr)';
 
-% decimate
-%in_fft = fftshift(fft(in));
-%decimated = ifft(fftshift(in_fft(nsc*osr/2-nsc/2+1:nsc*osr/2+nsc/2)))/osr;
+% generate convolution filter coefficients
+cfc = shannon_calculate_cfc(pn, sbs, bt);
 
 % demodulate
-[p, f, out] = shannon_demodulate(in_pad, pn, osr);
+out = shannon_demodulate(in, cfc, 80) / osr;
 
 % display
-surf(p, f, abs(out),'EdgeColor','none');
+surf(abs(out),'EdgeColor','none');
 zlim([0 500]);
 title('GMSK spreading (512 chips)');
 xlabel('phase(ms)');
