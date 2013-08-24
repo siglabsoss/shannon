@@ -42,6 +42,10 @@ namespace pop
 
             
              start_receive();
+             
+             // start network thread to respoind to incomming packets
+             if( 0 == m_pThread )
+                m_pThread = new boost::thread(boost::bind(&PopNetworkJson::thread_run, this));
             
              
 
@@ -58,8 +62,7 @@ namespace pop
 
 		mp_buf = (uint8_t*)malloc(NETWORK_BUFFER_SIZE_BYTES);
                 
-                // this is blocking
-                PopNetworkJson::io_service.run();
+
 	}
 
 	PopNetworkJson::~PopNetworkJson()
@@ -70,6 +73,14 @@ namespace pop
 	void PopNetworkJson::init()
 	{
 	}
+        
+        
+        
+        void PopNetworkJson::thread_run()
+        {
+            // this is blocking
+            PopNetworkJson::io_service.run();
+        }
 
 	void PopNetworkJson::start_receive()
 	{

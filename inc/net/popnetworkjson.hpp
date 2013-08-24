@@ -1,3 +1,6 @@
+#ifndef __POP_NETWORK_JSON_
+#define __POP_NETWORK_JSON_
+
 /******************************************************************************
 * Copyright 2013 PopWi Technology Group, Inc. (PTG)
 *
@@ -45,5 +48,11 @@ namespace pop
 		char recv_buffer_[POPNETWORK_SOCKET_MAXLEN];
 
 		static boost::asio::io_service io_service;
+                
+                boost::thread *m_pThread; ///< thead for boost's io_service.run();
+                
+                void thread_run();
 	};
 } // namespace pop
+
+#endif
