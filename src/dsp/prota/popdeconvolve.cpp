@@ -25,7 +25,7 @@ namespace pop
 {
 
 #define SPREADING_LENGTH 512
-#define SPREADING_BINS 320
+#define SPREADING_BINS 160
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
@@ -154,7 +154,7 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 	}
 
 	// sinc interpolate to sample frequency
-	for( m = 0; m < osl; m++ )
+/*	for( m = 0; m < osl; m++ )
 	{
 		yp[m] = complex<float>(0.0, 0.0);
 		for( n = 0; n < ncs; n++ )
@@ -165,13 +165,13 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 			else
 				yp[m] += sin(a) / a * y[n];
 		}
-	}
+	}*/
 
 	// complex conjugate and flip
 	for( m = 0; m < osl; m++ )
 	{
-		yc[m].real(+yp[osl-m].real());
-		yc[m].imag(-yp[osl-m].imag());
+		yc[m].real(+y[osl-m].real());
+		yc[m].imag(-y[osl-m].imag());
 	}
 
 	// pad and discrete fourier transform
@@ -180,7 +180,7 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 		cfc[m] = complex<float>(0.0, 0.0);
 		for( n = 0; n < osl; n++ )
 		{
-			q = (float)osl / 4.0 + (float)n; ///< padded index
+			q = (float)osl / 2.0 + (float)n; ///< padded index
 			a = -2.0 * M_PI * (float)m * q / (2.0 * (float)osl);
 			cfc[m] += yc[n] * complex<float>( cos(a), sin(a) );
 		}

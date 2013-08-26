@@ -61,10 +61,10 @@ int main(int argc, char *argv[])
 	    ("help", "help message")
 	    ("server", po::value<string>(&server_name)->default_value("papa.popwi.com"), "Remote Manager Location")
 	    ("file", po::value<string>(&server_name)->default_value("shannon.xml"), "Setup File")
-	    ("incoming-address", po::value<string>(&incoming_address)->default_value("173.167.119.220"), "Incoming UDP address")
+	    ("incoming-address", po::value<string>(&incoming_address)->default_value("127.0.0.1"), "Incoming UDP address")
 	    ("incoming-port", po::value<unsigned>(&incoming_port)->default_value(5004), "Incoming UDP port")
-	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("173.167.119.220"), "Outgoing UDP address")
-	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(35005), "Outgoing UDP port")
+	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("127.0.0.1"), "Outgoing UDP address")
+	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(5005), "Outgoing UDP port")
 	    ("debug-file", po::value<string>(&debug_file)->default_value("dat/dump.raw"), "filename used for raw data dump")
 	;
 
@@ -109,8 +109,8 @@ int main(int argc, char *argv[])
 
 #if 1
 	// Initialize Graphics Card
-	PopChanFilter despread;
-	despread.start_thread();
+	PopChanFilter chanfilter;
+	chanfilter.start_thread();
 
 	// Initialize Protocol A bin
 	//PopProtATdmaBin bin;
@@ -125,16 +125,17 @@ int main(int argc, char *argv[])
 	PopNetworkComplex popnetwork(incoming_address.c_str(), incoming_port,
 		                         outgoing_address.c_str(), outgoing_port);
 
-	popuhd.connect(despread);
+	popuhd.connect(chanfilter);
 
 	PopProtADeconvolve deconvolve;
 	deconvolve.start_thread();
 
-	despread.connect(deconvolve);
+	chanfilter.connect(deconvolve);
+	chanfilter.connect(popnetwork);
 
 	//PopDecimate<complex<float> > decimate(2);
 
-	//despread.connect(decimate);
+	//chanfilter.connect(decimate);
 
 	//decimate.connect(popnetwork);
 
@@ -152,22 +153,22 @@ int main(int argc, char *argv[])
 	//PopWeightSideBand popwsb;
 	//popwsb.start_thread();
 
-	//despread.connect(popwsb);
-	//despread.connect(popgmsk);
+	//chanfilter.connect(popwsb);
+	//chanfilter.connect(popgmsk);
 
 	
 	//PopDigitalDeconvolve popdd;
 	//popdd.start_thread();
 	//popwsb.connect(popdd);
 
-	//despread.connect(popnetwork);
+	//chanfilter.connect(popnetwork);
 
 	//popdd.connect(popnetwork);
 	//PopDumpToFile<complex<float> > dump(debug_file.c_str());
 
-	//despread.connect(dump);
-	//despread.connect(popwsb);
-	//despread.connect(popwsbd);
+	//chanfilter.connect(dump);
+	//chanfilter.connect(popwsb);
+	//chanfilter.connect(popwsbd);
 
 	//popwsbd.connect(popnetwork);
 
@@ -175,7 +176,7 @@ int main(int argc, char *argv[])
 	//popdd.start_thread();
 
 	//popwsb.connect(popdd);
-	//despread.connect(dump);
+	//chanfilter.connect(dump);
 
 	//diff.connect(popnetwork);
 	

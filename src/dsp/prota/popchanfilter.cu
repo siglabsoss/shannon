@@ -89,14 +89,12 @@ extern "C"
 	cuComplex* d_datab;
 	cuComplex* d_datac;
 	cuComplex* d_datad;
-	cuComplex* d_datad_upper;
 	cufftHandle plan1;
 	cufftHandle plan2;
 	size_t g_len_chan; ///< length of time series in samples
 	size_t g_len_chan_padded; ///< length of interpolated time series
 	size_t g_len_fft; ///< length of fft in samples
 	size_t g_start_chan = 16059;
-	size_t g_oversample_rate = 50;
 
 
 	size_t gpu_channel_split(const complex<float> *h_data, complex<float> *out)
@@ -119,6 +117,7 @@ extern "C"
 
 		// copy new host data into device memory
 		cudaMemcpy(d_dataa, h_data, g_len_fft * sizeof(cuComplex), cudaMemcpyHostToDevice);
+		cudaThreadSynchronize();
 
 		// perform FFT on spectrum
 		cufftExecC2C(plan1, (cufftComplex*)d_dataa, (cufftComplex*)d_datab, CUFFT_FORWARD);
@@ -135,22 +134,17 @@ extern "C"
 			       d_datab + small_bin_start,
 			       small_bin_sideband * sizeof(cuComplex),
 			       cudaMemcpyDeviceToDevice);
-
-		// swap double buffer
-		cudaMemcpy(d_datad,
-			       d_datad_upper,
-			       g_len_chan_padded * sizeof(cuComplex),
-			       cudaMemcpyDeviceToDevice);
 		cudaThreadSynchronize();
-  		checkCudaErrors(cudaGetLastError());
+
 
 		// put back into time domain
-		cufftExecC2C(plan2, (cufftComplex*)d_datac, (cufftComplex*)d_datad_upper, CUFFT_INVERSE);
+		cufftExecC2C(plan2, (cufftComplex*)d_datac, (cufftComplex*)d_datad, CUFFT_INVERSE);
 		cudaThreadSynchronize();
   		checkCudaErrors(cudaGetLastError());
 
   		// Copy results to host
-		cudaMemcpy(out, d_datad_upper, g_len_chan * sizeof(cuComplex), cudaMemcpyDeviceToHost);
+		cudaMemcpy(out, d_datad, g_len_chan * sizeof(cuComplex), cudaMemcpyDeviceToHost);
+		cudaThreadSynchronize();
 		
   		return 0;
 	}
@@ -166,14 +160,13 @@ extern "C"
 		checkCudaErrors(cudaMalloc(&d_dataa, g_len_fft * sizeof(cuComplex)));
 		checkCudaErrors(cudaMalloc(&d_datab, g_len_fft * sizeof(cuComplex)));
 		checkCudaErrors(cudaMalloc(&d_datac, g_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_datad, g_len_fft * sizeof(cuComplex) * 2)); // double buffered
-		d_datad_upper = d_datad + g_len_chan;
+		checkCudaErrors(cudaMalloc(&d_datad, g_len_fft * sizeof(cuComplex)));
 
 		// initialize CUDA memory
 		checkCudaErrors(cudaMemset(d_dataa, 0, g_len_fft * sizeof(cuComplex)));
 		checkCudaErrors(cudaMemset(d_datab, 0, g_len_fft * sizeof(cuComplex)));
 		checkCudaErrors(cudaMemset(d_datac, 0, g_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMemset(d_datad, 0, g_len_fft * sizeof(cuComplex) * 2)); // dobule buffered
+		checkCudaErrors(cudaMemset(d_datad, 0, g_len_fft * sizeof(cuComplex)));
 
 	    // setup FFT plans
 	    cufftPlan1d(&plan1, g_len_fft, CUFFT_C2C, 1);
