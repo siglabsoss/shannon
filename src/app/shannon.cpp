@@ -17,8 +17,9 @@
 #include "net/popnetworkcomplex.hpp"
 #include "sdr/popuhd.hpp"
 #include "examples/popexamples.hpp"
-#include "dsp/prota/popprotadespread.hpp"
+#include "dsp/prota/popchanfilter.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
+#include "dsp/prota/popdeconvolve.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
@@ -108,7 +109,7 @@ int main(int argc, char *argv[])
 
 #if 1
 	// Initialize Graphics Card
-	PopProtADespread despread;
+	PopChanFilter despread;
 	despread.start_thread();
 
 	// Initialize Protocol A bin
@@ -126,37 +127,42 @@ int main(int argc, char *argv[])
 
 	popuhd.connect(despread);
 
-	PopDecimate<complex<float> > decimate(2);
+	PopProtADeconvolve deconvolve;
+	deconvolve.start_thread();
 
-	despread.connect(decimate);
+	despread.connect(deconvolve);
+
+	//PopDecimate<complex<float> > decimate(2);
+
+	//despread.connect(decimate);
 
 	//decimate.connect(popnetwork);
 
-	PopMagnitude popmag;
+	//PopMagnitude popmag;
 
 	//PopWeightSideBand popwsb;
 	//popwsb.start_thread();
 
 	//PopWeightSideBandDebug popwsbd;
 	//popwsbd.start_thread();
-	PopGmskDemod popgmsk;
-	popgmsk.start_thread();
+	//PopGmskDemod popgmsk;
+	//popgmsk.start_thread();
 
 
-	PopWeightSideBand popwsb;
-	popwsb.start_thread();
+	//PopWeightSideBand popwsb;
+	//popwsb.start_thread();
 
-	despread.connect(popwsb);
-	despread.connect(popgmsk);
+	//despread.connect(popwsb);
+	//despread.connect(popgmsk);
 
 	
-	PopDigitalDeconvolve popdd;
-	popdd.start_thread();
-	popwsb.connect(popdd);
+	//PopDigitalDeconvolve popdd;
+	//popdd.start_thread();
+	//popwsb.connect(popdd);
 
 	//despread.connect(popnetwork);
 
-	popdd.connect(popnetwork);
+	//popdd.connect(popnetwork);
 	//PopDumpToFile<complex<float> > dump(debug_file.c_str());
 
 	//despread.connect(dump);

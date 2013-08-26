@@ -20,13 +20,11 @@
 
 #include "cuda/helper_cuda.h"
 
-#include "dsp/prota/popprotadespread.hpp"
-#include "dsp/popgenerate.hpp"
+#include "dsp/prota/popchanfilter.hpp"
 
 using namespace std;
 using namespace boost::posix_time;
 
-#define PN_SIZE 512
 #define FFT_SIZE 65536
 #define CHAN_SIZE 1040
 
@@ -35,26 +33,19 @@ using namespace boost::posix_time;
  * CUDA Function Prototypes
  *************************************************************************/
 extern "C" size_t gpu_channel_split(const complex<float> *h_data, complex<float> *out);
-extern "C" void init_deconvolve(complex<float> *pn, size_t len_pn, size_t len_fft, size_t len_chan);
+extern "C" void init_deconvolve(size_t len_fft, size_t len_chan);
 extern "C" void cleanup();
 
 namespace pop
 {
 
-	PopProtADespread::PopProtADespread(): PopSink<complex<float> >( "PopProtADespread", FFT_SIZE ),
-		PopSource<complex<float> >( "PopProtADespread" ), mp_demod_func(0)
+	PopChanFilter::PopChanFilter(): PopSink<complex<float> >( "PopChanFilter", FFT_SIZE ),
+		PopSource<complex<float> >( "PopChanFilter" ), mp_demod_func(0)
 	{
 	}
 
-	void PopProtADespread::init()
+	void PopChanFilter::init()
 	{
-	    // Generate GMSK reference waveform.... 
-	    mp_demod_func = (complex<float>*) malloc(PN_SIZE * sizeof(complex<float>));
-
-	    // Select code here.. 
-    	//popGenGMSK(__code_m512_zeros, mp_demod_func, PN_NUM_SYMBOLS, OVERSAMPLE_FACTOR);
-    	//popGenGMSK(__code_m512_zeros, mp_demod_func, PN_NUM_SYMBOLS, OVERSAMPLE_FACTOR);
-
     	// Init CUDA
 	 	int deviceCount = 0;
 	    cout << "initializing graphics card(s)...." << endl;
@@ -80,16 +71,16 @@ namespace pop
 	    cudaSetDevice(0);
 	    
 	    // allocate CUDA memory
-	    init_deconvolve( mp_demod_func, PN_SIZE, FFT_SIZE, CHAN_SIZE );
+	    init_deconvolve( FFT_SIZE, CHAN_SIZE );
 	}
 
 
 	/**
 	 * Process data.
 	 */
-	void PopProtADespread::process(const complex<float>* in, size_t len)
+	void PopChanFilter::process(const complex<float>* in, size_t len)
 	{
-		size_t chan_buf_len;
+		//size_t chan_buf_len;
 		ptime t1, t2;
 		time_duration td, tLast;
 		t1 = microsec_clock::local_time();
@@ -123,7 +114,7 @@ namespace pop
 	 /**
 	  * Standard class deconstructor.
 	  */
-	PopProtADespread::~PopProtADespread()
+	PopChanFilter::~PopChanFilter()
 	{
 		if( mp_demod_func )
 			free(mp_demod_func);

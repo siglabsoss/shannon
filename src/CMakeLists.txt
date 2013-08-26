@@ -9,13 +9,13 @@
 
 
 set(gpuacc_SRCS
-	dsp/prota/popprotadespread.cu)
+	dsp/prota/popchanfilter.cu)
 
 set(shannon_SOURCES
 	app/shannon.cpp
 	core/popassert.c
-	dsp/popgenerate.cpp
-	dsp/prota/popprotadespread.cpp
+	dsp/prota/popchanfilter.cpp
+	dsp/prota/popdeconvolve.cpp
 	net/popnetworkcomplex.cpp
 	sdr/popuhd.cpp)
 

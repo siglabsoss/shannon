@@ -61,7 +61,7 @@ add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile WORKING
 ########################################################################
 # Set the compiler and linker flags
 ########################################################################
-set(POP_ALL_FLAGS "-DDEBUG -Wall -Wno-switch")
+set(POP_ALL_FLAGS "-DDEBUG -Wall -Wno-switch -Wno-unused-function -Wno-unused-variable")
 set(POP_CXX_FLAGS "-std=c++98")
 set(POP_C_FLAGS "")
 set(POP_EXE_LINKER_FLAGS "")
@@ -76,6 +76,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${POP_EXE_LINKER_FLAGS}")
 ########################################################################
 include_directories(
 	${CMAKE_SOURCE_DIR}/inc
+	${CMAKE_SOURCE_DIR}/src
 	${CMAKE_SOURCE_DIR}/3rd
 	${Boost_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}
