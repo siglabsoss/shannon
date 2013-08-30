@@ -12,6 +12,7 @@ set(gpuacc_SRCS
 	dsp/prota/popprotadespread.cu)
 
 set(shannon_SOURCES
+	mdl/popradio.cpp
 	app/shannon.cpp
 	core/popassert.c
 	dsp/popgenerate.cpp

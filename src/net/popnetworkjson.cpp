@@ -9,12 +9,14 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <string>
 
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
 #include "net/popnetworkjson.hpp"
 #include "json/json.h"
+#include "popradio.h"
 
 using boost::asio::ip::udp;
 using namespace boost::asio;
@@ -94,6 +96,20 @@ namespace pop
 
         void PopNetworkJson::test()
         {
+
+        	PopRadio r;
+        	r.setBatCurrent(1);
+        	r.setBatVoltage(1);
+        	r.setLat(37.0);
+        	r.setLon(-122);
+        	r.setStatus(0);
+
+        	cout << r.seralize() << endl;
+
+
+
+
+        	return;
             cout << "Hello world" << endl;
             
             
