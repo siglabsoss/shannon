@@ -26,7 +26,7 @@ using namespace std;
 #define NETWORK_STREAM_DATA_TYPE float
 #define NETWORK_BUFFER_SIZE_BYTES (NETWORK_PACKET_SIZE * 100 * sizeof(NETWORK_STREAM_DATA_TYPE))   // in bytes
 
-#define OUTGOING_IP_ADDRESS "127.0.0.1"
+#define OUTGOING_IP_ADDRESS "192.168.1.41"
 //#define OUTGOING_IP_ADDRESS "173.167.119.220"
 
 namespace pop
@@ -145,6 +145,7 @@ namespace pop
             else if( data[0] == 127 )
             {
                 return 0;
+                //FIXME: not implemented
             }   
         }
         
@@ -167,16 +168,84 @@ namespace pop
             } 
             else if( data[0] == 127 )
             {
-                if( max_length < 5)
+                if( max_length < 9)
                     return 0;
-                return 5;
+                return 9;
             } 
         }
+
+    // only supports messages up to 65536 characters long
+    // takes a first param of byte_count and generates the correct "websocket style" header
+    // *header_len is set to the number of bytes used in header[]
+    void PopNetworkJson::build_message_header(const size_t byte_count, char header[3], size_t* header_len)
+    {
+    	size_t len = byte_count;
+    	if( len < 126 )
+    	{
+    		header[0] = len & 0xff;
+    		*header_len = 1;
+    	}
+    	else if( len < 65536 )
+    	{
+    		header[0] = 126;
+    		header[1] = (len>>8) & 0xff;
+    		header[2] = len & 0xff;
+    		*header_len = 3;
+    	}
+    }
         
 	void PopNetworkJson::process(const float* data, size_t len)
 	{
             cout << "called process" << endl;
-		socket_.send_to(boost::asio::buffer(data, NETWORK_PACKET_SIZE * sizeof(float)),outgoing_endpoint_);
+
+            static int debug = 0;
+
+
+            PopRadio r;
+            r.setBatCurrent(1.0010101);
+            r.setBatVoltage(1.12345);
+            r.setLat((debug++));
+            r.setLon(-122);
+            r.setTemp(98);
+            r.setStatus(0);
+            r.setSerial(0);
+
+
+
+            std::string str = r.seralize();
+            unsigned int json_len = str.size();
+
+            const char* json_c_str = str.c_str();
+
+            char message[1024];
+            unsigned int message_bytes = 0;
+
+            char header[3];
+            size_t header_len;
+            build_message_header(json_len, header, &header_len);
+
+
+            for(int i = 0; i < header_len; i++)
+                       {
+                           printf("%0x\r\n", header[i]);
+                       }
+
+
+            memcpy(message, header, header_len);
+            message_bytes += header_len;
+
+
+            memcpy(message+message_bytes, json_c_str, std::min((unsigned)1024,json_len) );
+            message_bytes += std::min((unsigned)1024,json_len);
+
+            printf("build header with length %ld for %d bytes\r\n", header_len, json_len);
+
+
+
+
+//            		socket_.send_to(boost::asio::buffer(data, NETWORK_PACKET_SIZE * sizeof(float)),outgoing_endpoint_);
+      		socket_.send_to(boost::asio::buffer(message, message_bytes),outgoing_endpoint_);
+
                 
 	}
 

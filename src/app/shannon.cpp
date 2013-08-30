@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
         
         cout << "hi" << endl;
         
-        PopNetworkJson net(4444, 5555);
+        PopNetworkJson net(4444, 4444);
         falice.connect(net);
         falice.start();
         

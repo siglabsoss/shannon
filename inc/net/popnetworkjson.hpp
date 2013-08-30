@@ -32,11 +32,12 @@ namespace pop
 		void handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred);
 		void start_receive();
 		void init();
-                void thread_run();
-                void test();
-                size_t get_length(uint8_t* data, size_t max_length);
-                size_t get_length_from_header(uint8_t* data, size_t max_length);
-                void handle_json(uint8_t* bytes, size_t len);
+		void thread_run();
+		void test();
+		size_t get_length(uint8_t* data, size_t max_length);
+		size_t get_length_from_header(uint8_t* data, size_t max_length);
+		void build_message_header(const size_t byte_count, char header[3], size_t* header_len);
+		void handle_json(uint8_t* bytes, size_t len);
 
 		boost::asio::ip::udp::socket socket_;
 		int incoming_port_;
