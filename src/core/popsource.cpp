@@ -32,42 +32,47 @@ void PopSource<char>::pushJSON(const char* key, float value)
 
 void PopSource<char>::pushJSON(const char* key, double value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
 void PopSource<char>::pushJSON(const char* key, uint8_t value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
 void PopSource<char>::pushJSON(const char* key, uint16_t value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
 void PopSource<char>::pushJSON(const char* key, uint32_t value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
 void PopSource<char>::pushJSON(const char* key, uint64_t value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
 void PopSource<char>::pushJSON(const char* key, int8_t value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
-void PopSource<char>::sendJSON()
-{
-
-}
 void PopSource<char>::pushJSON(const char* key, int16_t value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
 void PopSource<char>::pushJSON(const char* key, int32_t value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
 void PopSource<char>::pushJSON(const char* key, int64_t value)
 {
+	m_jsonString << " \"" << key << "\": " + value + ",";
 }
 
 
