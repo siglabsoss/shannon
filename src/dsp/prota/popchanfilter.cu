@@ -19,9 +19,6 @@
 
 using namespace std;
 
-#define IFFT_PADDING_FACTOR 2
-
-
 
 __device__ float magnitude2( cuComplex& in )
 {
@@ -44,16 +41,29 @@ __device__ cuComplex operator+(const cuComplex& a, const cuComplex& b)
 	return r;
 }
 
-__global__ void rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len)
+__global__ void rolling_scalar_multiply(cuComplex *in, cuComplex *cfc, cuComplex *out, int len)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	int I = blockDim.x * gridDim.x;
 	
-	int F = (I / len);
-	int f = (i / len) - (F / 2); // frequency
+	int fsearchbin = (I / len);
+	int fidx = (i / len) - (fsearchbin / 2); // frequency modulation index
 	int b = i % len; // fft bin
+	int cidx = (b + fidx + len) % len;
 
-	out[i] = in[b] * cfc[(i+f)%len];
+	out[i] = in[b] * cfc[cidx];
+}
+
+__device__ unsigned IFloatFlip(unsigned f)
+{
+	unsigned mask = ((f >> 31) - 1) | 0x80000000;
+	return f ^ mask;
+}
+
+__device__ unsigned FloatFlip(unsigned f)
+{
+	unsigned mask = -signed(f >> 31) | 0x80000000;
+	return f ^ mask;
 }
 
 __global__ void peak_detection(cuComplex *in, float *peak, int len)
@@ -76,7 +86,8 @@ __global__ void peak_detection(cuComplex *in, float *peak, int len)
 
 	// transform into sortable integer
 	// https://devtalk.nvidia.com/default/topic/406770/cuda-programming-and-performance/atomicmax-for-float/
-	si = *((unsigned*)&mag) ^ (-signed(*((unsigned*)&mag)>>31) | 0x80000000);
+	//si = *((unsigned*)&mag) ^ (-signed(*((unsigned*)&mag)>>31) | 0x80000000);
+	si = FloatFlip((unsigned&)mag);
 
 	// check to see if this is the highest recorded value
 	atomicMax((unsigned*)peak, si);
@@ -92,9 +103,8 @@ extern "C"
 	cufftHandle plan1;
 	cufftHandle plan2;
 	size_t g_len_chan; ///< length of time series in samples
-	size_t g_len_chan_padded; ///< length of interpolated time series
 	size_t g_len_fft; ///< length of fft in samples
-	size_t g_start_chan = 16059;
+	size_t g_start_chan = 16128;
 
 
 	size_t gpu_channel_split(const complex<float> *h_data, complex<float> *out)
@@ -108,9 +118,6 @@ extern "C"
 
 		// shift zero-frequency component to center of spectrum
 		unsigned small_bin_start = (g_start_chan + (g_len_fft/2)) % g_len_fft;
-
-		// calculate zero array size
-		unsigned small_bin_padding = g_len_chan * (IFFT_PADDING_FACTOR-1);
 
 		// calculate small bin side-band size
 		unsigned small_bin_sideband = g_len_chan / 2;
@@ -130,7 +137,7 @@ extern "C"
 			       small_bin_sideband * sizeof(cuComplex),
 			       cudaMemcpyDeviceToDevice);
 		// chop spectrum up into 50 spreading channels high side-band
-		cudaMemcpy(d_datac + small_bin_sideband + small_bin_padding,
+		cudaMemcpy(d_datac + small_bin_sideband,
 			       d_datab + small_bin_start,
 			       small_bin_sideband * sizeof(cuComplex),
 			       cudaMemcpyDeviceToDevice);
@@ -153,7 +160,6 @@ extern "C"
 	void init_deconvolve(size_t len_fft, size_t len_chan)
 	{
 		g_len_chan = len_chan;
-		g_len_chan_padded = len_chan * IFFT_PADDING_FACTOR;
 		g_len_fft = len_fft;
 
 		// allocate CUDA memory
@@ -180,6 +186,7 @@ extern "C"
 	//TODO: check that this is comprehensive
 	void cleanup() {
 	  cufftDestroy(plan1);
+	  cufftDestroy(plan2);
 	  checkCudaErrors(cudaFree(d_dataa));
 	  checkCudaErrors(cudaFree(d_datab));
 	  checkCudaErrors(cudaFree(d_datac));
@@ -190,7 +197,7 @@ extern "C"
 	void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins)
 	{
 		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
-		rolling_dot_product<<<fbins * 2, len / 2>>>(in, cfc, out, len);
+		rolling_scalar_multiply<<<fbins * 2, len / 2>>>(in, cfc, out, len);
 		cudaThreadSynchronize();
 	}
 

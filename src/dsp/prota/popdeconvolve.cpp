@@ -25,7 +25,7 @@ namespace pop
 {
 
 #define SPREADING_LENGTH 512
-#define SPREADING_BINS 160
+#define SPREADING_BINS 80
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
@@ -38,7 +38,8 @@ PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<float> >( "PopProtADe
 
 PopProtADeconvolve::~PopProtADeconvolve()
 {
-	cufftDestroy(plan1);
+	cufftDestroy(plan_fft);
+	cufftDestroy(plan_deconvolve);
 	checkCudaErrors(cudaFree(d_sts));
 	checkCudaErrors(cudaFree(d_sfs));
 	checkCudaErrors(cudaFree(d_cfc));
@@ -102,6 +103,7 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 	complex<float>* y;  ///< matched waveform
 	complex<float>* yp; ///< interpolated matched waveform
 	complex<float>* yc; ///< interpolated waveform conjugate
+	complex<float>* yf; ///< fourier components
 	float  t[3] = {-1, 0, 1}; ///< gaussian points
 	float  h[3]; ///< gaussian filter
 	float  alpha; ///< gaussian alpha
@@ -113,6 +115,7 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 	y = (complex<float>*) malloc( ncs * sizeof(complex<float>) );
 	yp = (complex<float>*) malloc( osl * sizeof(complex<float>) );
 	yc = (complex<float>*) malloc( osl * sizeof(complex<float>) );
+	yf = (complex<float>*) malloc( osl * sizeof(complex<float>) * 2 );
 
 	p[0] = 0; ///< starting phase
 
@@ -177,13 +180,20 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 	// pad and discrete fourier transform
 	for( m = 0; m < 2 * osl; m++ )
 	{
-		cfc[m] = complex<float>(0.0, 0.0);
+		yf[m] = complex<float>(0.0, 0.0);
 		for( n = 0; n < osl; n++ )
 		{
 			q = (float)osl / 2.0 + (float)n; ///< padded index
 			a = -2.0 * M_PI * (float)m * q / (2.0 * (float)osl);
-			cfc[m] += yc[n] * complex<float>( cos(a), sin(a) );
+			yf[m] += yc[n] * complex<float>( cos(a), sin(a) );
 		}
+	}
+
+	// don't know why we need this step but this makes the output match matlab
+	for( m = 0; m < 2 * osl; m++ )
+	{
+		cfc[m].real(-yf[m].imag());
+		cfc[m].imag(yf[m].real());
 	}
 
 	// free all dynamically allocated memory
@@ -192,12 +202,13 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 	free( y );
 	free( yp );
 	free( yc );
+	free( yf );
 }
-
+complex<float>* h_cfc;
 
 void PopProtADeconvolve::init()
 {
-	complex<float>* h_cfc;
+	
 
 	// Init CUDA
  	int deviceCount = 0;
@@ -217,7 +228,9 @@ void PopProtADeconvolve::init()
     cudaSetDevice(0);
 
     // setup FFT plans
-    cufftPlan1d(&plan1, SPREADING_LENGTH * 2, CUFFT_C2C, 1); // pad
+    cufftPlan1d(&plan_fft, SPREADING_LENGTH * 2, CUFFT_C2C, 1); // pad
+    int rank_size = SPREADING_LENGTH * 2;
+    cufftPlanMany(&plan_deconvolve, 1, &rank_size, 0, 1, 0, 0, 1, 0, CUFFT_C2C, SPREADING_BINS);
 
     // allocate device memory
     checkCudaErrors(cudaMalloc(&d_sts, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
@@ -237,9 +250,15 @@ void PopProtADeconvolve::init()
     h_cfc = (complex<float>*)malloc(2 * SPREADING_LENGTH * sizeof(complex<float>));
 	gpu_gen_pn_match_filter_coef(pn, h_cfc, SPREADING_LENGTH, SPREADING_LENGTH /*oversampled*/, 0.5);
 	checkCudaErrors(cudaMemcpy(d_cfc, h_cfc, 2 * SPREADING_LENGTH * sizeof(cuComplex), cudaMemcpyHostToDevice));
-	free(h_cfc);
+	//free(h_cfc);
 }
 
+
+unsigned IFloatFlip(unsigned f)
+{
+	unsigned mask = ((f >> 31) - 1) | 0x80000000;
+	return f ^ mask;
+}
 
 
 void PopProtADeconvolve::process(const complex<float>* in, size_t len)
@@ -252,14 +271,14 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len)
 	if( len != SPREADING_LENGTH )
 		throw PopException("size does not match filter");
 
-	//complex<float>* h_cts = get_buffer(len * SPREADING_BINS * 2);
+	complex<float>* h_cts = get_buffer(len * SPREADING_BINS * 2);
 
 	// copy new host data into device memory
 	cudaMemcpy(d_sts, in - SPREADING_LENGTH, SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyHostToDevice);
 	cudaThreadSynchronize();
 
 	// perform FFT on spectrum
-	cufftExecC2C(plan1, (cufftComplex*)d_sts, (cufftComplex*)d_sfs, CUFFT_FORWARD);
+	cufftExecC2C(plan_fft, d_sts, d_sfs, CUFFT_FORWARD);
 	cudaThreadSynchronize();
 
 
@@ -269,11 +288,15 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len)
 
 
 	// multiple ifft
-	for( n = 0; n < SPREADING_BINS; n++ )
-	{
-		cufftExecC2C(plan1, (cufftComplex*)d_cfs + (n * SPREADING_LENGTH * 2), (cufftComplex*)d_cts + (n * SPREADING_LENGTH * 2), CUFFT_INVERSE);
-		cudaThreadSynchronize();
-	}
+	//for( n = 0; n < SPREADING_BINS; n++ )
+	//{
+	//	cufftExecC2C(plan_fft, (cufftComplex*)d_cfs + (n * SPREADING_LENGTH * 2), (cufftComplex*)d_cts + (n * SPREADING_LENGTH * 2), CUFFT_INVERSE);
+	//	cudaThreadSynchronize();
+	//}
+	cufftExecC2C(plan_deconvolve, d_cfs, d_cts, CUFFT_INVERSE);
+	cudaThreadSynchronize();
+	cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyDeviceToHost);
+	cudaThreadSynchronize();
 
 	// peak detection
 	checkCudaErrors(cudaMemset(d_peak, 0, sizeof(float)));
@@ -285,18 +308,22 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len)
 
 	// cast back to float from "sortable integer"
 	unsigned a, b, c;
-	a = *((unsigned*)h_peak);
-	b = ((a >> 31) - 1) | 0x80000000;
-	c = a ^ b;
+	//a = *((unsigned*)h_peak);
+	//b = ((a >> 31) - 1) | 0x80000000;
+	//c = a ^ b;
 	float d;
-	d = *((float*)&c);
+	//d = *((float*)&c);
+	(unsigned&)d = IFloatFlip((unsigned&)h_peak);
 
 
-	if( d > 1e12 )
+
+
+	if( d > 10.5e9 )
 		cout << "peak: " << d << endl;
 
 
-	//PopSource<complex<float> >::process();
+	//PopSource<complex<float> >::process(h_cfc, 1024);
+	PopSource<complex<float> >::process();
 }
 
 } // namespace pop

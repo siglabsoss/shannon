@@ -37,7 +37,8 @@ namespace pop
 	                                      size_t  ncs, size_t osl, float bt);
 
 	private:
-		cufftHandle plan1;
+		cufftHandle plan_fft;
+		cufftHandle plan_deconvolve;
 		cuComplex* d_sts; // sampled time series
 		cuComplex* d_sfs; // sampled fourier series
 		cuComplex* d_cfs; // convoluted frequency swept series

@@ -131,7 +131,13 @@ int main(int argc, char *argv[])
 	deconvolve.start_thread();
 
 	chanfilter.connect(deconvolve);
-	chanfilter.connect(popnetwork);
+	//chanfilter.connect(popnetwork);
+
+	//PopDumpToFile<complex<float> > dump;
+
+	//deconvolve.connect(dump);
+
+	//chanfilter.connect(dump);
 
 	//PopDecimate<complex<float> > decimate(2);
 

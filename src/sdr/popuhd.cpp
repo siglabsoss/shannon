@@ -91,6 +91,10 @@ namespace pop
         usrp->set_rx_freq(POP_PROTA_BLOCK_A_UPLK);
         usrp->set_rx_rate(POP_PROTA_BLOCK_A_WIDTH);
 
+        double actual_rate = usrp->get_rx_rate();
+
+        std::cout << "actual RX sample rate: " << actual_rate << "Hz" << std::endl;
+
 #ifndef OPTION_DISABLE_GPS
         usrp->set_time_source("external");
 
