@@ -11,6 +11,7 @@
 #define __POP_SINK_HPP_
 
 #include <boost/thread.hpp>
+#include <boost/signals2/mutex.hpp>
 
 #include "core/popobject.hpp"
 #include "core/popqueue.hpp"
@@ -79,7 +80,11 @@ public:
     void start_thread()
     {
         if( 0 == m_pThread )
+        {
+            m_mutex.lock();
             m_pThread = new boost::thread(boost::bind(&PopSink::run, this));
+            m_mutex.lock();
+        }
     }
 
     /**
@@ -98,6 +103,8 @@ private:
         buffer_read_pointer<IN_TYPE> buf;
 
         init();
+
+        m_mutex.unlock();
 
         while(1)
         {
@@ -142,6 +149,9 @@ private:
 
     /// thread
     boost::thread *m_pThread;
+
+    // initialize mutex
+    boost::mutex m_mutex;
 
     // friend classes
     template <typename> friend class PopSource;
