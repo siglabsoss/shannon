@@ -68,7 +68,7 @@ namespace pop
 	    }
 
 	    // choose which device to use for this thread
-	    cudaSetDevice(0);
+	    cudaSetDevice(1);
 	    
 	    // allocate CUDA memory
 	    init_deconvolve( FFT_SIZE, CHAN_SIZE );

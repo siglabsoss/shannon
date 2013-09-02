@@ -80,32 +80,7 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
-#if 0
-	// test code
-	PopPiSource pisource;
-	PopTest1 test;
-	PopOdd strange;
-	PopPoop quark;
-	//PopSourceMsg msg;
 
-
-	pisource.connect(test);
-
-	//msg.add("MSG_TRACKER", 34.12325f);
-
-	//pisource.start();
-	//strange.start();
-	//strange.start();
-	//strange.connect(quark);
-	//strange.start();
-
-	PopAlice alice;
-	PopBob bob;
-
-	alice.connect(bob);
-
-	alice.start();
-#endif
 
 #if 1
 	// Initialize Graphics Card
@@ -139,62 +114,7 @@ int main(int argc, char *argv[])
 
 	//chanfilter.connect(dump);
 
-	//PopDecimate<complex<float> > decimate(2);
 
-	//chanfilter.connect(decimate);
-
-	//decimate.connect(popnetwork);
-
-	//PopMagnitude popmag;
-
-	//PopWeightSideBand popwsb;
-	//popwsb.start_thread();
-
-	//PopWeightSideBandDebug popwsbd;
-	//popwsbd.start_thread();
-	//PopGmskDemod popgmsk;
-	//popgmsk.start_thread();
-
-
-	//PopWeightSideBand popwsb;
-	//popwsb.start_thread();
-
-	//chanfilter.connect(popwsb);
-	//chanfilter.connect(popgmsk);
-
-	
-	//PopDigitalDeconvolve popdd;
-	//popdd.start_thread();
-	//popwsb.connect(popdd);
-
-	//chanfilter.connect(popnetwork);
-
-	//popdd.connect(popnetwork);
-	//PopDumpToFile<complex<float> > dump(debug_file.c_str());
-
-	//chanfilter.connect(dump);
-	//chanfilter.connect(popwsb);
-	//chanfilter.connect(popwsbd);
-
-	//popwsbd.connect(popnetwork);
-
-	//PopDigitalDeconvolve popdd;
-	//popdd.start_thread();
-
-	//popwsb.connect(popdd);
-	//chanfilter.connect(dump);
-
-	//diff.connect(popnetwork);
-	
-	//popmag.connect(popnetwork);
-		
-	//popuhd.connect(decimate);
-	//decimate.connect(popnetwork);
-
-	//popmag.connect(popnetwork);
-	//popmag.connect(popdec);
-
-	//popdec.connect(popnetwork);
 
 	popuhd.start();
 

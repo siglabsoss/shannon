@@ -78,8 +78,7 @@ __global__ void peak_detection(cuComplex *in, float *peak, int len)
 	unsigned si; // sortable integer
 
 	// don't look for peaks in padding
-	if( b < (len / 4) ) return;
-	if( b >= (3 * len / 4) ) return;
+	if( (b > (len / 4)) && (b <= (3 * len /4)) ) return;
 
 	// take the magnitude of the detection
 	mag = magnitude2(in[i]);
@@ -197,14 +196,14 @@ extern "C"
 	void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins)
 	{
 		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
-		rolling_scalar_multiply<<<fbins * 2, len / 2>>>(in, cfc, out, len);
+		rolling_scalar_multiply<<<fbins * 16, len / 16>>>(in, cfc, out, len);
 		cudaThreadSynchronize();
 	}
 
 	void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins)
 	{
 		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
-		peak_detection<<<fbins * 2, len / 2>>>(in, peak, len);
+		peak_detection<<<fbins * 16, len / 16>>>(in, peak, len);
 		cudaThreadSynchronize();
 	}
 
