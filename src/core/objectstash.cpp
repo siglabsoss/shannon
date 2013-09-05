@@ -3,6 +3,11 @@
 #include <cstring> // 'mem' functions
 using namespace std;
 
+// these macros are shortcuts to the crazy long types that the map uses
+#define _MAPTYPE boost::unordered_map<unsigned long, PopRadio*>
+#define _ITERATOR _MAPTYPE::iterator
+#define _VALUETYPE _MAPTYPE::value_type
+
 namespace pop
 {
 
@@ -14,6 +19,49 @@ int ObjectStash::add(void* element) {
   return(next - 1); // Index number
 }
 
+PopRadio* ObjectStash::findOrCreate(unsigned long key) {
+	_ITERATOR i = storage2.find(key);
+
+	PopRadio* r;
+
+	// if not found
+	if( i == storage2.end() )
+	{
+//		printf("not found, creating\n");
+
+		r = new PopRadio();
+		r->setSerial(key);
+
+
+		// simple way to insert
+		//		storage2[key] = r;
+
+		// fucking complicated way to insert:
+		std::pair<_ITERATOR, bool> result = storage2.insert( _VALUETYPE(key, r) );
+
+		// split out tuple
+//		_ITERATOR insertLocation = result.first;
+		bool insertSuccess = result.second;
+
+		// if we ever get failures here, I bet there's a concurrency issue
+		if( !insertSuccess )
+			printf("insert failed, possibly because key exists, however we just checked that!");
+
+//		printf("Inserted at %x with success %d\r\n", insertLocation, (int)insertSuccess);
+	}
+	else
+	{
+		// if object was found
+
+		// I couldn't find docs anywhere, but it appears that boost::iterator types dereference to a std::pair<key,value>
+		// set r to the found object
+		r = i->second;
+	}
+
+	return r;
+}
+
+
 // No ownership:
 ObjectStash::~ObjectStash() {
   for(int i = 0; i < next; i++)
@@ -22,14 +70,9 @@ ObjectStash::~ObjectStash() {
   delete []storage;
 }
 
-// Operator overloading replacement for fetch
-void* ObjectStash::operator[](int index) const {
-	PopAssertMessage(index >= 0,
-    "ObjectStash::operator[] index negative");
-  if(index >= next)
-    return 0; // To indicate the end
-  // Produce pointer to desired element:
-  return storage[index];
+// Operator overloading syntax sugar for findOrCreate
+PopRadio* ObjectStash::operator[](unsigned long key) {
+  return findOrCreate(key);
 }
 
 void* ObjectStash::remove(int index) {
