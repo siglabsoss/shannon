@@ -11,15 +11,18 @@ using namespace std;
 namespace pop
 {
 
-int ObjectStash::add(void* element) {
-  const int inflateSize = 10;
-  if(next >= quantity)
-    inflate(inflateSize);
-  storage[next++] = element;
-  return(next - 1); // Index number
+
+bool ObjectStash::empty() const
+{
+	return storage2.empty();
+}
+unsigned long ObjectStash::size() const
+{
+	return storage2.size();
 }
 
-PopRadio* ObjectStash::findOrCreate(unsigned long key) {
+PopRadio* ObjectStash::findOrCreate(unsigned long key)
+{
 	_ITERATOR i = storage2.find(key);
 
 	PopRadio* r;
@@ -61,35 +64,55 @@ PopRadio* ObjectStash::findOrCreate(unsigned long key) {
 	return r;
 }
 
+// returns null if not found
+PopRadio* ObjectStash::find(unsigned long key)
+{
+	_ITERATOR i = storage2.find(key);
+
+	// if not found
+	if( i == storage2.end() )
+		return NULL;
+
+	return i->second;
+}
+
+
+
 
 // No ownership:
 ObjectStash::~ObjectStash() {
-  for(int i = 0; i < next; i++)
-	  PopAssertMessage(storage[i] == 0,
-      "ObjectStash not cleaned up");
-  delete []storage;
+//  for(int i = 0; i < next; i++)
+//	  PopAssertMessage(storage[i] == 0,
+//      "ObjectStash not cleaned up");
+//  delete []storage;
 }
 
 // Operator overloading syntax sugar for findOrCreate
-PopRadio* ObjectStash::operator[](unsigned long key) {
+PopRadio* ObjectStash::operator[](unsigned long key)
+{
   return findOrCreate(key);
 }
 
-void* ObjectStash::remove(int index) {
-  void* v = operator[](index);
-  // "Remove" the pointer:
-  if(v != 0) storage[index] = 0;
-  return v;
+// removes object at key from map and calls delete
+// returns success?  (true if object was found, false if object wasn't in there)
+bool ObjectStash::remove(unsigned long key)
+{
+
+  _ITERATOR found = storage2.find(key);
+
+  // key wasn't in the map
+  if( found == storage2.end() )
+  		return false;
+
+  // remove from map
+  storage2.erase(found);
+
+  // delete from memory
+  PopRadio* r = found->second;
+  delete r;
+
+  return true;
 }
 
-void ObjectStash::inflate(int increase) {
-  const int psz = sizeof(void*);
-  void** st = new void*[quantity + increase];
-  memset(st, 0, (quantity + increase) * psz);
-  memcpy(st, storage, quantity * psz);
-  quantity += increase;
-  delete []storage; // Old storage
-  storage = st; // Point to new memory
-} ///:~
 
 } //namespace

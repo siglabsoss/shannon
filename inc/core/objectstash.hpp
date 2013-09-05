@@ -10,24 +10,24 @@ namespace pop
 
 class ObjectStash
 {
+
+public:
+	ObjectStash() : storage(0) {}
+	~ObjectStash();
+
+	PopRadio* operator[](unsigned long key); // same as findOrCreate
+	bool remove(unsigned long key);
+	unsigned long size() const;
+	bool empty() const;
+
+	PopRadio* findOrCreate(unsigned long key);
+	PopRadio* find(unsigned long key);
+
 private:
-	int quantity; // Number of storage spaces
-	int next; // Next empty space
 	// Pointer storage:
 	void** storage;
 	boost::unordered_map<unsigned long, PopRadio*> storage2;
 	void inflate(int increase);
-public:
-	ObjectStash() : quantity(0), next(0), storage(0) {}
-	~ObjectStash();
-	int add(void* element);
-	PopRadio* operator[](unsigned long key); // Fetch
-	// Remove the reference from this PStash:
-	void* remove(int index);
-	// Number of elements in Stash:
-	int count() const { return next; }
-
-	PopRadio* findOrCreate(unsigned long key);
 };
 
 
