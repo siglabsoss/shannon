@@ -75,6 +75,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${POP_EXE_LINKER_FLAGS}")
 # Setup the include and linker paths
 ########################################################################
 include_directories(
+	${CMAKE_SOURCE_DIR}/src/mdl
 	${CMAKE_SOURCE_DIR}/inc
 	${CMAKE_SOURCE_DIR}/src
 	${CMAKE_SOURCE_DIR}/3rd

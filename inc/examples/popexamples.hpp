@@ -69,6 +69,7 @@ public:
     void process(const PopMsg* data, size_t size)
     {
         printf("received %lu PopBob(s)\r\n", size);
+        printf("Data was %c\r\n", data->origin[0]);
     }
 
 };
@@ -110,8 +111,34 @@ public:
     void start()
     {
         PopMsg *msg = (PopMsg*)malloc(sizeof(PopMsg) + 10);
+        msg->origin[0] = 's';
 
         process(msg, 1);
+    }
+};
+
+class PopAliceFloat : public PopSource<float>
+{
+public:
+    PopAliceFloat() : PopSource<float>("PopAliceFloat") { }
+
+    void send_message(const char* desc, void*, size_t bytes)
+    {
+
+    }
+    void start()
+    {
+//        PopMsg *msg = (PopMsg*)malloc(sizeof(PopMsg) + 10);
+//        msg->origin[0] = 's';
+        
+        float f = 42.1;
+        while(1)
+        {
+            
+            process(&f,sizeof(float));
+                        boost::posix_time::milliseconds workTime(3000);
+            boost::this_thread::sleep(workTime);
+        }
     }
 };
 

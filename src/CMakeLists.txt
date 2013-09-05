@@ -12,11 +12,14 @@ set(gpuacc_SRCS
 	dsp/prota/popchanfilter.cu)
 
 set(shannon_SOURCES
+	mdl/popradio.cpp
 	app/shannon.cpp
 	core/popassert.c
 	dsp/prota/popchanfilter.cpp
 	dsp/prota/popdeconvolve.cpp
 	net/popnetworkcomplex.cpp
+	net/popnetworkjson.cpp
+	net/popnetwork.cpp
 	sdr/popuhd.cpp)
 
 cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
