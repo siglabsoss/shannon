@@ -14,6 +14,7 @@ set(gpuacc_SRCS
 set(all_SOURCES
 	mdl/popradio.cpp
 	core/popassert.c
+	core/objectstash.cpp
 	dsp/prota/popchanfilter.cpp
 	dsp/prota/popdeconvolve.cpp
 	net/popnetworkcomplex.cpp
