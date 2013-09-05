@@ -459,8 +459,4 @@ private:
     }
 };
 
-class PopRadio : public PopSource<>
-{
-
-};
 }
