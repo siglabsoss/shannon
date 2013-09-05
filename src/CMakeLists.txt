@@ -11,9 +11,8 @@
 set(gpuacc_SRCS
 	dsp/prota/popchanfilter.cu)
 
-set(shannon_SOURCES
+set(all_SOURCES
 	mdl/popradio.cpp
-	app/shannon.cpp
 	core/popassert.c
 	dsp/prota/popchanfilter.cpp
 	dsp/prota/popdeconvolve.cpp
@@ -24,9 +23,27 @@ set(shannon_SOURCES
 
 cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
 
-add_executable(shannon ${shannon_SOURCES})
 
-target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
-CUDA_ADD_CUFFT_TO_TARGET( shannon )
 
-add_custom_target(run COMMAND shannon DEPENDS shannon WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+# list of the different files that contain main()
+set(executable_list shannon ben)
+
+# iterate and build each executuable
+foreach(executable ${executable_list}) 
+    #message("Building " ${executable} "...")
+    
+    add_executable(${executable} ${all_SOURCES} app/${executable}.cpp)
+    
+    target_link_libraries(${executable} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
+	CUDA_ADD_CUFFT_TO_TARGET( ${executable} )
+	
+	# if ${executable} is shannon, this creates 'make runshannon'
+	add_custom_target(run${executable} COMMAND ${executable} DEPENDS ${executable} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+ 
+endforeach(executable)
+
+# add target for 'make run' which points at 'make runshannon'
+add_custom_target(run COMMAND make runshannon)
+
+
+
