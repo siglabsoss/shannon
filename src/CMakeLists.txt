@@ -26,7 +26,7 @@ cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
 
 
 # list of the different files that contain main()
-set(executable_list shannon ben)
+set(executable_list shannon ben test)
 
 # iterate and build each executuable
 foreach(executable ${executable_list}) 
@@ -34,7 +34,7 @@ foreach(executable ${executable_list})
     
     add_executable(${executable} ${all_SOURCES} app/${executable}.cpp)
     
-    target_link_libraries(${executable} ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
+    target_link_libraries(${executable} ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
 	CUDA_ADD_CUFFT_TO_TARGET( ${executable} )
 	
 	# if ${executable} is shannon, this creates 'make runshannon'
