@@ -17,8 +17,9 @@
 #include "net/popnetworkcomplex.hpp"
 #include "sdr/popuhd.hpp"
 #include "examples/popexamples.hpp"
-#include "dsp/prota/popprotadespread.hpp"
+#include "dsp/prota/popchanfilter.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
+#include "dsp/prota/popdeconvolve.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
@@ -60,10 +61,10 @@ int main(int argc, char *argv[])
 	    ("help", "help message")
 	    ("server", po::value<string>(&server_name)->default_value("papa.popwi.com"), "Remote Manager Location")
 	    ("file", po::value<string>(&server_name)->default_value("shannon.xml"), "Setup File")
-	    ("incoming-address", po::value<string>(&incoming_address)->default_value("173.167.119.220"), "Incoming UDP address")
+	    ("incoming-address", po::value<string>(&incoming_address)->default_value("127.0.0.1"), "Incoming UDP address")
 	    ("incoming-port", po::value<unsigned>(&incoming_port)->default_value(5004), "Incoming UDP port")
-	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("173.167.119.220"), "Outgoing UDP address")
-	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(35005), "Outgoing UDP port")
+	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("127.0.0.1"), "Outgoing UDP address")
+	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(5005), "Outgoing UDP port")
 	    ("debug-file", po::value<string>(&debug_file)->default_value("dat/dump.raw"), "filename used for raw data dump")
 	;
 
@@ -79,37 +80,12 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
-#if 0
-	// test code
-	PopPiSource pisource;
-	PopTest1 test;
-	PopOdd strange;
-	PopPoop quark;
-	//PopSourceMsg msg;
 
-
-	pisource.connect(test);
-
-	//msg.add("MSG_TRACKER", 34.12325f);
-
-	//pisource.start();
-	//strange.start();
-	//strange.start();
-	//strange.connect(quark);
-	//strange.start();
-
-	PopAlice alice;
-	PopBob bob;
-
-	alice.connect(bob);
-
-	alice.start();
-#endif
 
 #if 1
 	// Initialize Graphics Card
-	PopProtADespread despread;
-	despread.start_thread();
+	PopChanFilter chanfilter;
+	chanfilter.start_thread();
 
 	// Initialize Protocol A bin
 	//PopProtATdmaBin bin;
@@ -124,64 +100,21 @@ int main(int argc, char *argv[])
 	PopNetworkComplex popnetwork(incoming_address.c_str(), incoming_port,
 		                         outgoing_address.c_str(), outgoing_port);
 
-	popuhd.connect(despread);
+	popuhd.connect(chanfilter);
 
-	PopDecimate<complex<float> > decimate(2);
+	PopProtADeconvolve deconvolve;
+	deconvolve.start_thread();
 
-	despread.connect(decimate);
+	chanfilter.connect(deconvolve);
+	//chanfilter.connect(popnetwork);
 
-	//decimate.connect(popnetwork);
+	//PopDumpToFile<complex<float> > dump;
 
-	PopMagnitude popmag;
+	//deconvolve.connect(dump);
 
-	//PopWeightSideBand popwsb;
-	//popwsb.start_thread();
-
-	//PopWeightSideBandDebug popwsbd;
-	//popwsbd.start_thread();
-	PopGmskDemod popgmsk;
-	popgmsk.start_thread();
+	//chanfilter.connect(dump);
 
 
-	PopWeightSideBand popwsb;
-	popwsb.start_thread();
-
-	despread.connect(popwsb);
-	despread.connect(popgmsk);
-
-	
-	PopDigitalDeconvolve popdd;
-	popdd.start_thread();
-	popwsb.connect(popdd);
-
-	//despread.connect(popnetwork);
-
-	popdd.connect(popnetwork);
-	//PopDumpToFile<complex<float> > dump(debug_file.c_str());
-
-	//despread.connect(dump);
-	//despread.connect(popwsb);
-	//despread.connect(popwsbd);
-
-	//popwsbd.connect(popnetwork);
-
-	//PopDigitalDeconvolve popdd;
-	//popdd.start_thread();
-
-	//popwsb.connect(popdd);
-	//despread.connect(dump);
-
-	//diff.connect(popnetwork);
-	
-	//popmag.connect(popnetwork);
-		
-	//popuhd.connect(decimate);
-	//decimate.connect(popnetwork);
-
-	//popmag.connect(popnetwork);
-	//popmag.connect(popdec);
-
-	//popdec.connect(popnetwork);
 
 	popuhd.start();
 

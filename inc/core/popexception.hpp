@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 
 
 namespace pop

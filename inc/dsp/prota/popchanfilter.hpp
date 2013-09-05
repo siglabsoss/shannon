@@ -22,11 +22,11 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopProtADespread : public PopSink<std::complex<float> >, public PopSource<std::complex<float> >
+	class PopChanFilter : public PopSink<std::complex<float> >, public PopSource<std::complex<float> >
 	{
 	public:
-		PopProtADespread();
-		~PopProtADespread();
+		PopChanFilter();
+		~PopChanFilter();
 
 	private:
 		void process(const std::complex<float>* in, size_t len);

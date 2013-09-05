@@ -308,14 +308,14 @@ private:
     void init() { }
     void process(const std::complex<float>* in, size_t size)
     {
-        signed n, m, p, idx, idx2;
-        std::complex<float>* buf;
+        //signed n, m, p, idx, idx2;
+        //std::complex<float>* buf;
 
         // TODO: get timestamp from attached PopSource
 
         //buf = (std::complex<float>*)malloc( 1040 * 3 * sizeof(std::complex<float>) );
 
-        buf = get_buffer(1040);
+        //buf = get_buffer(1040);
 
         // perform a sinc interpolation
         /*for( n = 0; n < (signed)size; n++ )
@@ -336,7 +336,7 @@ private:
             }
         }*/
 
-        PopSource<std::complex<float> >::process();
+        //PopSource<std::complex<float> >::process();
     }
 };
 
@@ -408,7 +408,7 @@ private:
 
         buf = get_buffer(size*8);
 
-        for( n = 0; n < size; n++ )
+        for( n = 0; n < (signed)size; n++ )
         {
             s = 0;
             for( m = 0; m < 400; m++ )

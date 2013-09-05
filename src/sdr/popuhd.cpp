@@ -90,6 +90,19 @@ namespace pop
 
         usrp->set_rx_freq(POP_PROTA_BLOCK_A_UPLK);
         usrp->set_rx_rate(POP_PROTA_BLOCK_A_WIDTH);
+        usrp->set_rx_gain(25);
+
+        vector<string> vstr;
+        vector<string>::iterator vstrit;
+
+        vstr = usrp->get_mboard_sensor_names();
+
+        for( vstrit = vstr.begin(); vstrit != vstr.end(); vstrit++ )        	
+        	cout << "sensor names: " << *vstrit << endl;
+
+        double actual_rate = usrp->get_rx_rate();
+
+        std::cout << "actual RX sample rate: " << actual_rate << "Hz" << std::endl;
 
 #ifndef OPTION_DISABLE_GPS
         usrp->set_time_source("external");

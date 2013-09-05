@@ -14,6 +14,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <iostream>
+
 #include <boost/thread.hpp>
 #include <boost/timer.hpp>
 #include <boost/math/common_factor.hpp>
@@ -46,7 +48,7 @@ protected:
      */
     PopSource(const char* name = "PopSource") :
         PopObject(name), m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0),
-        m_bytesAllocated(0), m_lastReqSize(0)
+        m_bytesAllocated(0), m_lastReqSize(0), m_jsonNewString(1)
     {
     }
 
@@ -323,6 +325,16 @@ private:
 
     /// Last requested buffer size
     size_t m_lastReqSize;
+
+    // --------------------------------
+    // JSON member variables
+    // --------------------------------
+
+    /// Has been called before
+    int m_jsonNewString;
+
+    /// current JSON string
+    std::ostringstream m_jsonString;
 
     /// Attached Classes
     std::vector<PopSink<OUT_TYPE>* > m_rgSources;
