@@ -81,6 +81,7 @@ inline static void _PopAssert(int expression, const char* str,
 
 
 #define PopAssert(x) _PopAssert(x, #x, __func__, __FILE__, __LINE__)
+#define PopAssertMessage(x, message) _PopAssert(x, #x " (" message ")", __func__, __FILE__, __LINE__)
 #define PopCheckError(x) _PopCheckError(x, #x, __func__, __FILE__, __LINE__)
 
 
