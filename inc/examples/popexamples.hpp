@@ -168,6 +168,19 @@ public:
     }
 };
 
+class PopPrintCharStream : public PopSink<char>
+{
+public:
+	PopPrintCharStream() : PopSink<char>("PopPrintCharStream") { }
+    void init() { }
+    void process(const char* data, size_t size)
+    {
+    	std::cout << data << std::endl;
+    }
+
+};
+
+
 class PopRandomMoveGPS : public PopSource<char>
 {
 public:

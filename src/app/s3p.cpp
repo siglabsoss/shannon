@@ -90,6 +90,8 @@ int main(int argc, char *argv[])
 
 	buildNFakePopRadios(stash, testRadioCount);
 
+	// This source prints to stdout
+	PopPrintCharStream printer;
 
 	// This source generates GPS changes for devices
 	PopRandomMoveGPS randomMove;
@@ -99,6 +101,9 @@ int main(int argc, char *argv[])
 
 	// tell it which serial numbers to nudge around the map
 	randomMove.testRadioCount = testRadioCount;
+
+	// connect a source which prints
+	randomMove.connect(printer);
 
 	// start it up
 	randomMove.start();
