@@ -64,7 +64,7 @@ protected:
     /**
      * Processes new source data and calls any connected sinks.
      */
-    void process(OUT_TYPE* data, size_t num_new_pts)
+    void process(const OUT_TYPE* data, size_t num_new_pts)
     {
         ptime t1, t2;
         time_duration td;
@@ -338,6 +338,23 @@ private:
 
     /// Attached Classes
     std::vector<PopSink<OUT_TYPE>* > m_rgSources;
+
+    // --------------------------------
+    // JSON methods
+    // --------------------------------
+protected:
+    void sendJSON();
+    void commaAppender();
+    void pushJSON(const char* key, float value);
+    void pushJSON(const char* key, double value);
+    void pushJSON(const char* key, uint8_t value);
+    void pushJSON(const char* key, uint16_t value);
+    void pushJSON(const char* key, uint32_t value);
+    void pushJSON(const char* key, uint64_t value);
+    void pushJSON(const char* key, int8_t value);
+    void pushJSON(const char* key, int16_t value);
+    void pushJSON(const char* key, int32_t value);
+    void pushJSON(const char* key, int64_t value);
 };
 
 

@@ -14,6 +14,7 @@ set(gpuacc_SRCS
 set(all_SOURCES
 	mdl/popradio.cpp
 	core/popassert.c
+	core/popsource.cpp
 	core/objectstash.cpp
 	dsp/prota/popchanfilter.cpp
 	dsp/prota/popdeconvolve.cpp
@@ -27,7 +28,7 @@ cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
 
 
 # list of the different files that contain main()
-set(executable_list shannon ben test)
+set(executable_list shannon s3p ben test)
 
 # iterate and build each executuable
 foreach(executable ${executable_list}) 

@@ -7,72 +7,139 @@
 *
 ******************************************************************************/
 
-#include <cstdint>
+//#include <cstdint>
 
 #include <core/popsource.hpp>
 
-using namepspace std;
+using namespace std;
 
 namespace pop
 {
 
+long ostringstream_length(std::ostringstream &s)
+{
+	// save current position
+	long cur = s.tellp();
 
+	// seek to end
+	s.seekp(0, ios::end);
+
+	// grab length
+	long length = s.tellp();
+
+	// seek back to where we were
+	s.seekp(cur);
+
+	// profit
+	return length;
+}
+
+template <>
 void PopSource<char>::sendJSON()
 {
 	ostringstream ss;
 
-	ss << "{ " << m_jsonString << " }"
-	process(m_jsonString.str(), m_jsonString.size()+1);
+
+	ss << "{ " << m_jsonString.str() << " }";
+
+	cout << ss.str() << endl;
+
+
+//
+
+	long length = ostringstream_length(ss);
+
+//	cout << "lentwo " << length << endl;
+
+	process(ss.str().c_str(), length+1);
+//	process(m_jsonString.str(), m_jsonString.size()+1);
+
+	// emtpy m_jsonString according to http://stackoverflow.com/questions/624260/how-to-reuse-an-ostringstream
+	m_jsonString.clear();
+//	m_jsonString.seekp(0); // for outputs: seek put ptr to start
+	m_jsonString.str("");
 }
 
+
+
+
+template <>
+void PopSource<char>::commaAppender()
+{
+	long length = ostringstream_length(m_jsonString);
+
+	if( length > 0 )
+		m_jsonString << ",";
+}
+
+template <>
 void PopSource<char>::pushJSON(const char* key, float value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
+template <>
 void PopSource<char>::pushJSON(const char* key, double value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
+template <>
 void PopSource<char>::pushJSON(const char* key, uint8_t value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
+template <>
 void PopSource<char>::pushJSON(const char* key, uint16_t value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
+template <>
 
 void PopSource<char>::pushJSON(const char* key, uint32_t value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
+template <>
 void PopSource<char>::pushJSON(const char* key, uint64_t value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
+template <>
 void PopSource<char>::pushJSON(const char* key, int8_t value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
+template <>
 void PopSource<char>::pushJSON(const char* key, int16_t value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
+template <>
 void PopSource<char>::pushJSON(const char* key, int32_t value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
+template <>
 void PopSource<char>::pushJSON(const char* key, int64_t value)
 {
-	m_jsonString << " \"" << key << "\": " + value + ",";
+	commaAppender();
+	m_jsonString << " \"" << key << "\": " << value;
 }
 
 

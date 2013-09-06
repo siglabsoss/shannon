@@ -17,6 +17,7 @@
 using namespace boost::posix_time;
 
 #include "core/popblock.hpp"
+#include "dsp/utils.hpp"
 
 namespace pop
 {
@@ -166,6 +167,80 @@ public:
         }
     }
 };
+
+class PopRandomMoveGPS : public PopSource<char>
+{
+public:
+	PopRandomMoveGPS() : PopSource<char>("PopRandomMoveGPS"), b(0), testRadioCount(0), stash(NULL) { }
+public:
+    int b;
+    int testRadioCount;
+    ObjectStash* stash;
+    void start()
+    {
+        unsigned n;
+        uint8_t* a;
+
+        while(1)
+        {
+
+        	int radioSerial = round(RAND_BETWEEN(0, testRadioCount));
+//        	std::cout << radioSerial << std::endl;
+
+        	bool diceA = RAND_BETWEEN(0,1)<0.5; // Lets get LUCKY!
+        	bool diceB = RAND_BETWEEN(0,1)<0.5;
+
+        	PopRadio *r = (*stash)[radioSerial];
+
+//        	std::cout << RAND_BETWEEN(-0.01,0.01) << std::endl;
+
+        	pushJSON("serial", radioSerial);
+
+        	if(diceA)
+        	{
+        		double nudge = RAND_BETWEEN(-0.01,0.01);
+        		r->setLat((r->getLat() + nudge));
+
+        		pushJSON("lat", r->getLat());
+        	}
+
+        	if(diceB)
+        	{
+        		double nudge = RAND_BETWEEN(-0.01,0.01);
+        		r->setLon((r->getLon() + nudge));
+
+        		pushJSON("lat", r->getLon());
+        	}
+
+
+        	sendJSON();
+
+//            a = get_buffer(12);
+//            for( n = 0; n < 12; n++ )
+//                a[n] = n;
+//            printf("%d\r\n", b);
+//            b += 12;
+
+
+//            process();
+            boost::posix_time::milliseconds workTime(50);
+            boost::this_thread::sleep(workTime);
+        }
+    }
+};
+
+void buildNFakePopRadios(ObjectStash &s, unsigned int n)
+{
+	double lat = 37;
+	double lon = -122;
+
+	for(unsigned int i = 0; i < n; i++)
+	{
+		PopRadio* r = s[i];
+		r->setLat(lat + i/n);
+		r->setLon(lon + i/n);
+	}
+}
 
 class PopDummySink : public PopSink<>
 {
