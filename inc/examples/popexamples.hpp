@@ -198,12 +198,12 @@ public:
         {
 
         	int radioSerial = round(RAND_BETWEEN(0, testRadioCount));
-//        	std::cout << radioSerial << std::endl;
+
 
         	bool diceA = RAND_BETWEEN(0,1)<0.5; // Lets get LUCKY!
         	bool diceB = RAND_BETWEEN(0,1)<0.5;
 
-        	PopRadio *r = (*stash)[radioSerial];
+        	PopRadio *r = (*stash)[radioSerial]; // find or create
 
 //        	std::cout << RAND_BETWEEN(-0.01,0.01) << std::endl;
 
@@ -222,7 +222,7 @@ public:
         		double nudge = RAND_BETWEEN(-0.01,0.01);
         		r->setLon((r->getLon() + nudge));
 
-        		pushJSON("lat", r->getLon());
+        		pushJSON("lon", r->getLon());
         	}
 
 
@@ -249,7 +249,7 @@ void buildNFakePopRadios(ObjectStash &s, unsigned int n)
 
 	for(unsigned int i = 0; i < n; i++)
 	{
-		PopRadio* r = s[i];
+		PopRadio* r = s[i]; // find or create
 		r->setLat(lat + i/n);
 		r->setLon(lon + i/n);
 	}

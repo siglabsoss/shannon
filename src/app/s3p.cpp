@@ -80,13 +80,15 @@ int main(int argc, char *argv[])
 	}
 
 
-	// Build Stash of PopRadio objects
 
+
+
+	// Build Stash of PopRadio objects
 	ObjectStash stash;
 
 	// Populate with N Radio
 
-	int testRadioCount = 10;
+	int testRadioCount = 100000;
 
 	buildNFakePopRadios(stash, testRadioCount);
 
@@ -109,45 +111,6 @@ int main(int argc, char *argv[])
 	randomMove.start();
 
 
-
-
-	// test code
-	//	PopPiSource pisource;
-	//	PopTest1 test;
-	//        pisource.connect(test);
-
-	//PopSourceMsg msg;
-
-
-
-
-	//msg.add("MSG_TRACKER", 34.12325f);
-
-	//pisource.start();
-	//strange.start();
-	//strange.start();
-	//strange.connect(quark);
-	//strange.start();
-
-
-//
-//	PopAlice alice;
-//	PopAliceFloat falice;
-//	PopBob bob;
-//
-//
-//	cout << "hi" << endl;
-//
-//	PopNetworkJson net(4444, 4444);
-//	falice.connect(net);
-//	falice.start();
-//
-//	cout << "done with network" << endl;
-
-
-        
-//        net.start_receive();
-        
 
 
 	char c;

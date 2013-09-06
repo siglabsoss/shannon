@@ -48,7 +48,7 @@ protected:
      */
     PopSource(const char* name = "PopSource") :
         PopObject(name), m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0),
-        m_bytesAllocated(0), m_lastReqSize(0), m_jsonNewString(1)
+        m_bytesAllocated(0), m_lastReqSize(0)
     {
     }
 
@@ -329,9 +329,6 @@ private:
     // --------------------------------
     // JSON member variables
     // --------------------------------
-
-    /// Has been called before
-    int m_jsonNewString;
 
     /// current JSON string
     std::ostringstream m_jsonString;
