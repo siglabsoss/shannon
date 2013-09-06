@@ -12,7 +12,7 @@ class ObjectStash
 {
 
 public:
-	ObjectStash() : storage(0) {}
+//	ObjectStash();
 	~ObjectStash();
 
 	PopRadio* operator[](unsigned long key); // same as findOrCreate
@@ -24,10 +24,7 @@ public:
 	PopRadio* find(unsigned long key);
 
 private:
-	// Pointer storage:
-	void** storage;
-	boost::unordered_map<unsigned long, PopRadio*> storage2;
-	void inflate(int increase);
+	boost::unordered_map<unsigned long, PopRadio*> storage;
 };
 
 

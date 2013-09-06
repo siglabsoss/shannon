@@ -1,12 +1,21 @@
+// This file does memory management for a large number of PopRadio objects
+// The core is the boost unordered_map (which is supposed to have better random access performance than map).
+// The map contains pointers to PopObjects and calls new and delete at all the right times.
+// The best way to use this is to just use the [] operator which short for findOrCreate().  See unit tests for examples
+// This file could easily upgraded to use <T>emplates
+
 #include "core/objectstash.hpp"
-#include <iostream>
-#include <cstring> // 'mem' functions
+#include <boost/foreach.hpp>
+
+
 using namespace std;
+
 
 // these macros are shortcuts to the crazy long types that the map uses
 #define _MAPTYPE boost::unordered_map<unsigned long, PopRadio*>
 #define _ITERATOR _MAPTYPE::iterator
 #define _VALUETYPE _MAPTYPE::value_type
+
 
 namespace pop
 {
@@ -14,21 +23,21 @@ namespace pop
 
 bool ObjectStash::empty() const
 {
-	return storage2.empty();
+	return storage.empty();
 }
 unsigned long ObjectStash::size() const
 {
-	return storage2.size();
+	return storage.size();
 }
 
 PopRadio* ObjectStash::findOrCreate(unsigned long key)
 {
-	_ITERATOR i = storage2.find(key);
+	_ITERATOR i = storage.find(key);
 
 	PopRadio* r;
 
 	// if not found
-	if( i == storage2.end() )
+	if( i == storage.end() )
 	{
 //		printf("not found, creating\n");
 
@@ -40,7 +49,7 @@ PopRadio* ObjectStash::findOrCreate(unsigned long key)
 		//		storage2[key] = r;
 
 		// fucking complicated way to insert:
-		std::pair<_ITERATOR, bool> result = storage2.insert( _VALUETYPE(key, r) );
+		std::pair<_ITERATOR, bool> result = storage.insert( _VALUETYPE(key, r) );
 
 		// split out tuple
 //		_ITERATOR insertLocation = result.first;
@@ -67,10 +76,10 @@ PopRadio* ObjectStash::findOrCreate(unsigned long key)
 // returns null if not found
 PopRadio* ObjectStash::find(unsigned long key)
 {
-	_ITERATOR i = storage2.find(key);
+	_ITERATOR i = storage.find(key);
 
 	// if not found
-	if( i == storage2.end() )
+	if( i == storage.end() )
 		return NULL;
 
 	return i->second;
@@ -79,12 +88,27 @@ PopRadio* ObjectStash::find(unsigned long key)
 
 
 
-// No ownership:
-ObjectStash::~ObjectStash() {
-//  for(int i = 0; i < next; i++)
-//	  PopAssertMessage(storage[i] == 0,
-//      "ObjectStash not cleaned up");
-//  delete []storage;
+// the destructor deletes and empties the map
+ObjectStash::~ObjectStash()
+{
+
+//	std::cout << "You were too lazy to clean up " << storage.size() << " items!!" << endl;
+
+	// loop through storage and call delete
+	// note that we don't modify the storage because this will mess up the loop
+	BOOST_FOREACH( _VALUETYPE i, storage )
+	{
+//	    std::cout << "key is " << i.first << " value is " << i.second << std::endl;
+		delete i.second;
+	}
+
+	// for an example of accessing an iterator inside loop:
+	// http://stackoverflow.com/a/1858516/836450
+
+
+	 // at this point storage hasn't changed, but now it just contains bad pointers
+	 // so clear all the entries
+	 storage.clear();
 }
 
 // Operator overloading syntax sugar for findOrCreate
@@ -98,14 +122,14 @@ PopRadio* ObjectStash::operator[](unsigned long key)
 bool ObjectStash::remove(unsigned long key)
 {
 
-  _ITERATOR found = storage2.find(key);
+  _ITERATOR found = storage.find(key);
 
   // key wasn't in the map
-  if( found == storage2.end() )
+  if( found == storage.end() )
   		return false;
 
   // remove from map
-  storage2.erase(found);
+  storage.erase(found);
 
   // delete from memory
   PopRadio* r = found->second;

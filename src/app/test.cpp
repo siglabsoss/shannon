@@ -39,46 +39,6 @@ BOOST_AUTO_TEST_CASE( basic )
 }
 
 
-// test taken from http://www.cs.ust.hk/~dekai/library/ECKEL_Bruce/TICPP-2nd-ed-Vol-one/TICPP-2nd-ed-Vol-one-html/Chapter13.html
-//BOOST_AUTO_TEST_CASE( baisc_add_check )
-//{
-//	// this is broken for now
-//	return;
-//
-////	 s = ObjectStash();
-//
-//	 ObjectStash intStash;
-//	  // 'new' works with built-in types, too. Note
-//	  // the "pseudo-constructor" syntax:
-//	  for(int i = 0; i < 25; i++)
-//	    intStash.add(new int(i));
-//	  for(int j = 0; j < intStash.count(); j++)
-//	    cout << "intStash[" << j << "] = "
-//	         << *(int*)intStash[j] << endl;
-//	  // Clean up:
-//	  for(int k = 0; k < intStash.count(); k++)
-//	    delete intStash.remove(k);
-//
-//	  ObjectStash stringStash;
-//
-//	  stringStash.add(new string("what"));
-//	  stringStash.add(new string("is"));
-//	  stringStash.add(new string("the"));
-//	  stringStash.add(new string("deal"));
-//	  stringStash.add(new string("with"));
-//	  stringStash.add(new string("airplane"));
-//	  stringStash.add(new string("food!?"));
-//
-//	  // Print out the strings:
-//	  for(int u = 0; stringStash[u]; u++)
-//	    cout << "stringStash[" << u << "] = "
-//	         << *(string*)stringStash[u] << endl;
-//	  // Clean up:
-//	  for(int v = 0; v < stringStash.count(); v++)
-//	    delete (string*)stringStash.remove(v);
-//
-//}
-
 BOOST_AUTO_TEST_CASE( findOrCreate_sameness_uniqueness )
 {
 	ObjectStash s;
@@ -147,6 +107,24 @@ BOOST_AUTO_TEST_CASE( find_returns_null )
 	// remove it again (should return false)
 	success = s.remove(1);
 	BOOST_CHECK(!success);
+}
+
+BOOST_AUTO_TEST_CASE( stash_destructor )
+{
+	// dynamically create stash
+	ObjectStash* s = new ObjectStash();
+
+	// create an object, verify it went in
+	s->findOrCreate(1);
+	BOOST_CHECK_EQUAL(1, s->size());
+
+	// call destructor, which will automatically delete all leftover PopRadio objects and empty storage
+	delete s;
+
+	// this test relies on UNDEFINED BEHAVIOUR by calling methods on deleted memory
+	// but it works if you dare      [\/] [',,,,'] [\/]
+//	BOOST_CHECK_EQUAL(0, s->size());
+
 }
 
 
