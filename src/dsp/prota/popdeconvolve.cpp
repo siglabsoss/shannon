@@ -294,4 +294,27 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len)
 	PopSource<complex<float> >::process();
 }
 
+BOOST_AUTO_TEST_CASE( blahtest )
+{
+	complex<float>* cfc;
+	ptime t1, t2;
+	time_duration td, tLast;
+
+	cfc = (complex<float>*)malloc(512*2*sizeof(complex<float>)); ///< pad
+
+	t1 = microsec_clock::local_time();
+	pop::PopProtADeconvolve::gpu_gen_pn_match_filter_coef( pop::m4k_001, cfc, 512, 512, 0.5 );
+	t2 = microsec_clock::local_time();
+
+	BOOST_CHECK( cfc );
+
+	td = t2 - t1;
+
+	cout << "gen_pn_match_filter_coef() time = " << td.total_microseconds() << "us" << endl;
+
+	free(cfc);
+}
+
+
 } // namespace pop
+

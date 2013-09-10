@@ -23,12 +23,22 @@ set(all_SOURCES
 	net/popnetwork.cpp
 	sdr/popuhd.cpp)
 
-cuda_add_library(${LIB_NAME} ${gpuacc_SRCS} )
+cuda_add_library(${LIB_NAME} ${gpuacc_SRCS})
 
 
 
 # list of the different files that contain main()
-set(executable_list shannon s3p ben test)
+set(executable_list shannon s3p ben)
+
+
+# TEST SHIT Y'ALL
+add_executable(test app/test.cpp)
+target_link_libraries(test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUNIT_TEST")
+CUDA_ADD_CUFFT_TO_TARGET( test )
+
+
+
 
 # iterate and build each executuable
 foreach(executable ${executable_list}) 
@@ -41,6 +51,7 @@ foreach(executable ${executable_list})
 	
 	# if ${executable} is shannon, this creates 'make runshannon'
 	add_custom_target(run${executable} COMMAND ${executable} DEPENDS ${executable} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
  
 endforeach(executable)
 
