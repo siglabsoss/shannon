@@ -11,6 +11,8 @@
 #include <iostream>
 
 #include <boost/timer.hpp>
+#include <mdl/popradio.h>
+#include <core/objectstash.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/math/special_functions/sinc.hpp>
 
