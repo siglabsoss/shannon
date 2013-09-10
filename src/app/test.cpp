@@ -15,6 +15,7 @@
 //Include any Pop stuff we are testing
 #include <core/objectstash.hpp>
 #include <core/popassert.h>
+#include <core/config.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -23,6 +24,7 @@ using namespace std;
 
 
 using namespace pop;
+using namespace rbx;
 
 
 BOOST_AUTO_TEST_SUITE( object_stash_suite )
@@ -129,3 +131,23 @@ BOOST_AUTO_TEST_CASE( stash_destructor )
 
 
 BOOST_AUTO_TEST_SUITE_END()
+
+
+
+
+// -------------------------------------------------------------
+BOOST_AUTO_TEST_SUITE( config_class )
+
+BOOST_AUTO_TEST_CASE( init )
+{
+
+	rbx::Config::loadFile( "resources.cfg" );
+
+	int sndsize = Config::get<int>("Global","UdpBufferSize");
+
+
+}
+
+
+BOOST_AUTO_TEST_SUITE_END()
+
