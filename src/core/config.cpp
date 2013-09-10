@@ -25,28 +25,37 @@ void Config::loadFile( std::string const& filename )
 {
   init();
 
-//  file_iterator<> first( filename.c_str() ), last;
-//
-//  if (!first)
-//    cout << "Unable to open the config file:" << filename;
-//
-//
-//  last = first.make_end();
+  file_iterator<> first( filename.c_str() ), last;
+
+  if (!first)
+    cout << "Unable to open the config file: " << filename << " (or empty) "<< endl;
+
+
+  last = first.make_end();
+
+
+
+  json::value json = json::parse(first, last);
+
 //  ConfigGrammar< file_iterator<>, qi::rule<file_iterator<> > > parser;
 //
 //  ConfigTree config;
-//  bool parseSucceeded = false;
-//  try
-//    {
+  bool parseSucceeded = false;
+  try
+    {
+	  instance->mJsonStorage = json::parse(first, last);
+
+//	  cout << json::to_string(instance->mJsonStorage["key"]) << endl;
+
 //      parseSucceeded = qi::phrase_parse(first, last, parser, parser.getCommentRule(), config);
-//    }
-//  catch (qi::expectation_failure<file_iterator<> > const& x)
-//    {
-//      std::ostringstream error;
-//      error << "expected: " << x.what_;
+    }
+  catch (std::exception const& x)
+    {
+      std::ostringstream error;
+      error << "expected: " << x.what();
 //      error << ", but got: \"" << std::string(x.first, x.last) << '"' << std::endl;
-//      cout << "Parsing " << error;
-//    }
+      cout << "Parsing " << error;
+    }
 //
 //  if( parseSucceeded )
 //    {
@@ -71,21 +80,43 @@ namespace rbx // template specializations need to be in the cpp file but in the 
     return instance->mVariables[group][var];
   }
   */
+//
+//
+//
+//  template<>
+//  void Config::set<int>( std::string const& group, std::string const& var, int const& val )
+//  {
+////    init();
+////    //instance->mVariables[group][var].front() = val;
+////    instance->mVariables[group][var] = val;
+//  }
 
-#ifdef WITH_QT
   template<>
-  QString Config::get<QString>( std::string const& group, std::string const& var )
+  std::string Config::get<std::string>( std::string const& key )
   {
-    init();
-    std::string str = get<std::string>(group, var);
-    return QString(str.c_str());
+	  init();
+	  return json::to_string(instance->mJsonStorage[key]);
   }
 
-#endif
+  template<>
+  double Config::get<double>( std::string const& key )
+  {
+	  init();
+	  return json::to_number(instance->mJsonStorage[key]);
+  }
+
+  template<>
+  bool Config::get<bool>( std::string const& key )
+  {
+	  init();
+	  return json::to_bool(instance->mJsonStorage[key]);
+  }
+
+
 }
 
-Config::Config( std::string const& group )
-{
-  init();
-  mGroup = group;
-}
+//Config::Config( std::string const& group )
+//{
+//  init();
+//  mGroup = group;
+//}
