@@ -16,7 +16,8 @@
 #include <boost/shared_ptr.hpp>
 #include "net/popnetworkjson.hpp"
 #include "json/json.h"
-#include "popradio.h"
+#include "dsp/utils.hpp"
+
 
 using boost::asio::ip::udp;
 using namespace boost::asio;
@@ -193,10 +194,82 @@ namespace pop
     		*header_len = 3;
     	}
     }
+
+    void PopNetworkJson::setup_radio(PopRadio *r)
+    {
+    	r->setBatCurrent(1.0010101);
+    	r->setBatVoltage(1.12345);
+    	r->setLat(37);
+    	r->setLon(-122);
+    	r->setTemp(98);
+    	r->setStatus(0);
+    	r->setSerial(0);
+
+    }
+
+    void PopNetworkJson::debug_pipe()
+    {
+    	int number_radios = 5;
+    	int i;
+
+//    	setup random
+    	srand(time(0));
+
+    	PopRadio* array = new PopRadio[number_radios];
+
+    	for(i = 0; i < number_radios; i++)
+    	{
+    		PopNetworkJson::setup_radio(&array[i]);
+
+    		array[i].setLat(RAND_BETWEEN(37.0,38.0));
+    		array[i].setLon(RAND_BETWEEN(-122.4,-123));
+    		array[i].setSerial(i);
+
+
+//    		printf("lat: %f\n", array[i].getLon());
+    	}
+
+    	char message[1024];
+
+//    	send over wire
+    	for(i = 0; i < number_radios; i++)
+    	{
+
+    		std::string str = array[i].seralize();
+    		unsigned int json_len = str.size();
+    		const char* json_c_str = str.c_str();
+
+    		char message[1024];
+    		unsigned int message_bytes = 0;
+
+    		char header[3];
+    		size_t header_len;
+    		build_message_header(json_len, header, &header_len);
+
+
+    		memcpy(message, header, header_len);
+    		message_bytes += header_len;
+
+
+    		memcpy(message+message_bytes, json_c_str, std::min((unsigned)1024,json_len) );
+    		message_bytes += std::min((unsigned)1024,json_len);
+
+//    		printf("build header with length %ld for %d bytes\r\n", header_len, json_len);
+
+    		socket_.send_to(boost::asio::buffer(message, message_bytes),outgoing_endpoint_);
+    	}
+
+
+
+    	delete[] array;
+
+    }
         
 	void PopNetworkJson::process(const float* data, size_t len)
 	{
             cout << "called process" << endl;
+
+            debug_pipe();
 
             static int debug = 0;
 

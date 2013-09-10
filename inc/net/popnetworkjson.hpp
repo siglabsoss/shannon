@@ -15,6 +15,7 @@
 
 #include "core/popsink.hpp"
 #include "core/popsource.hpp"
+#include "popradio.h"
 
 #define POPNETWORK_SOCKET_MAXLEN (1024)
 
@@ -38,6 +39,8 @@ namespace pop
 		size_t get_length_from_header(uint8_t* data, size_t max_length);
 		void build_message_header(const size_t byte_count, char header[3], size_t* header_len);
 		void handle_json(uint8_t* bytes, size_t len);
+		static void setup_radio(PopRadio *r);
+		void debug_pipe();
 
 		boost::asio::ip::udp::socket socket_;
 		int incoming_port_;
