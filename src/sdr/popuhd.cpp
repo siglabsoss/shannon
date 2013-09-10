@@ -90,6 +90,7 @@ namespace pop
 
         usrp->set_rx_freq(POP_PROTA_BLOCK_A_UPLK);
         usrp->set_rx_rate(POP_PROTA_BLOCK_A_WIDTH);
+        usrp->set_rx_antenna("RX2");
         usrp->set_rx_gain(25);
 
         vector<string> vstr;
