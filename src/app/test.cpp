@@ -16,6 +16,11 @@
 #include <core/objectstash.hpp>
 #include <core/popassert.h>
 
+// include raw cpp files
+#include <dsp/prota/popdeconvolve.cpp>
+#include <core/objectstash.cpp>
+#include <mdl/popradio.cpp>
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -24,6 +29,7 @@ using namespace std;
 
 using namespace pop;
 
+#ifdef UNIT_TEST
 
 BOOST_AUTO_TEST_SUITE( object_stash_suite )
 
@@ -129,3 +135,5 @@ BOOST_AUTO_TEST_CASE( stash_destructor )
 
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif // UNIT_TEST

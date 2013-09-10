@@ -25,7 +25,7 @@ namespace pop
 {
 
 #define SPREADING_LENGTH 4096
-#define SPREADING_BINS 320
+#define SPREADING_BINS 400
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
@@ -286,7 +286,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len)
 	d = sqrt(d);
 
 
-	if( d > 2e4 )
+	if( d > 3.7e4 )
 		cout << "peak: " << d << endl;
 
 
@@ -294,4 +294,30 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len)
 	PopSource<complex<float> >::process();
 }
 
+#ifdef UNIT_TEST
+
+BOOST_AUTO_TEST_CASE( blahtest )
+{
+	complex<float>* cfc;
+	ptime t1, t2;
+	time_duration td, tLast;
+
+	cfc = (complex<float>*)malloc(512*2*sizeof(complex<float>)); ///< pad
+
+	t1 = microsec_clock::local_time();
+	pop::PopProtADeconvolve::gpu_gen_pn_match_filter_coef( pop::m4k_001, cfc, 512, 512, 0.5 );
+	t2 = microsec_clock::local_time();
+
+	BOOST_CHECK( cfc );
+
+	td = t2 - t1;
+
+	cout << "gen_pn_match_filter_coef() time = " << td.total_microseconds() << "us" << endl;
+
+	free(cfc);
+}
+
+#endif // UNIT_TEST
+
 } // namespace pop
+

@@ -33,7 +33,7 @@ namespace pop
 		void process(const std::complex<float>* in, size_t len);
 		void init();
 
-		void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<float>* cfc,
+		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<float>* cfc,
 	                                      size_t  ncs, size_t osl, float bt);
 
 	private:
@@ -45,6 +45,8 @@ namespace pop
 		cuComplex* d_cts; // convoluted time series
 		cuComplex* d_cfc; // convolution filter coefficients
 		float* d_peak; // detector output
+
+		friend class blahtest;
 	};
 }
 
