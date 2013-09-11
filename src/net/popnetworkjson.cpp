@@ -147,7 +147,9 @@ namespace pop
             {
                 return 0;
                 //FIXME: not implemented
-            }   
+            }
+
+            return 0;
         }
         
         // returns how many bytes the length added to the message
@@ -172,7 +174,9 @@ namespace pop
                 if( max_length < 9)
                     return 0;
                 return 9;
-            } 
+            }
+
+            return 0;
         }
 
     // only supports messages up to 65536 characters long
@@ -298,7 +302,7 @@ namespace pop
             build_message_header(json_len, header, &header_len);
 
 
-            for(int i = 0; i < header_len; i++)
+            for(size_t i = 0; i < header_len; i++)
                        {
                            printf("%0x\r\n", header[i]);
                        }
