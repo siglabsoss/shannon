@@ -352,6 +352,28 @@ protected:
     void pushJSON(const char* key, int16_t value);
     void pushJSON(const char* key, int32_t value);
     void pushJSON(const char* key, int64_t value);
+
+public:
+    // only supports messages up to 65536 characters long
+    // takes a first param of byte_count and generates the correct "websocket style" header
+    // *header_len is set to the number of bytes used in header[]
+    static void build_message_header(const size_t byte_count, char header[3], size_t* header_len)
+    {
+    	size_t len = byte_count;
+    	if( len < 126 )
+    	{
+    		header[0] = len & 0xff;
+    		*header_len = 1;
+    	}
+    	else if( len < 65536 )
+    	{
+    		header[0] = 126;
+    		header[1] = (len>>8) & 0xff;
+    		header[2] = len & 0xff;
+    		*header_len = 3;
+    	}
+    }
+
 };
 
 

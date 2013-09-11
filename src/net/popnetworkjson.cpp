@@ -24,7 +24,7 @@ using namespace boost::asio;
 using namespace std;
 
 #define NETWORK_PACKET_SIZE 368 // in samples
-#define NETWORK_STREAM_DATA_TYPE float
+#define NETWORK_STREAM_DATA_TYPE char
 #define NETWORK_BUFFER_SIZE_BYTES (NETWORK_PACKET_SIZE * 100 * sizeof(NETWORK_STREAM_DATA_TYPE))   // in bytes
 
 #define OUTGOING_IP_ADDRESS "192.168.1.41"
@@ -39,7 +39,7 @@ namespace pop
 	: PopSink<float>("PopNetworkJson", 4), PopSource<float>("PopNetworkJson"), socket_(io_service, udp::endpoint(udp::v4(), incoming_port)),
 	incoming_port_(incoming_port), outgoing_port_(outgoing_port), mp_buf(0),
 	m_buf_read_idx(0), m_buf_write_idx(0),
-	m_buf_size(NETWORK_BUFFER_SIZE_BYTES / sizeof(NETWORK_STREAM_DATA_TYPE)), m_pThread(0)
+	m_buf_size(NETWORK_BUFFER_SIZE_BYTES / sizeof(NETWORK_STREAM_DATA_TYPE)), m_pThread(0), m_packets_received(0)
 	{
 //		recv_buffer_.resize(12000);
 
@@ -147,7 +147,9 @@ namespace pop
             {
                 return 0;
                 //FIXME: not implemented
-            }   
+            }
+
+            return 0;
         }
         
         // returns how many bytes the length added to the message
@@ -172,28 +174,12 @@ namespace pop
                 if( max_length < 9)
                     return 0;
                 return 9;
-            } 
+            }
+
+            return 0;
         }
 
-    // only supports messages up to 65536 characters long
-    // takes a first param of byte_count and generates the correct "websocket style" header
-    // *header_len is set to the number of bytes used in header[]
-    void PopNetworkJson::build_message_header(const size_t byte_count, char header[3], size_t* header_len)
-    {
-    	size_t len = byte_count;
-    	if( len < 126 )
-    	{
-    		header[0] = len & 0xff;
-    		*header_len = 1;
-    	}
-    	else if( len < 65536 )
-    	{
-    		header[0] = 126;
-    		header[1] = (len>>8) & 0xff;
-    		header[2] = len & 0xff;
-    		*header_len = 3;
-    	}
-    }
+
 
     void PopNetworkJson::setup_radio(PopRadio *r)
     {
@@ -209,59 +195,59 @@ namespace pop
 
     void PopNetworkJson::debug_pipe()
     {
-    	int number_radios = 5;
-    	int i;
-
-//    	setup random
-    	srand(time(0));
-
-    	PopRadio* array = new PopRadio[number_radios];
-
-    	for(i = 0; i < number_radios; i++)
-    	{
-    		PopNetworkJson::setup_radio(&array[i]);
-
-    		array[i].setLat(RAND_BETWEEN(37.0,38.0));
-    		array[i].setLon(RAND_BETWEEN(-122.4,-123));
-    		array[i].setSerial(i);
-
-
-//    		printf("lat: %f\n", array[i].getLon());
-    	}
-
-    	char message[1024];
-
-//    	send over wire
-    	for(i = 0; i < number_radios; i++)
-    	{
-
-    		std::string str = array[i].seralize();
-    		unsigned int json_len = str.size();
-    		const char* json_c_str = str.c_str();
-
-    		char message[1024];
-    		unsigned int message_bytes = 0;
-
-    		char header[3];
-    		size_t header_len;
-    		build_message_header(json_len, header, &header_len);
-
-
-    		memcpy(message, header, header_len);
-    		message_bytes += header_len;
-
-
-    		memcpy(message+message_bytes, json_c_str, std::min((unsigned)1024,json_len) );
-    		message_bytes += std::min((unsigned)1024,json_len);
-
-//    		printf("build header with length %ld for %d bytes\r\n", header_len, json_len);
-
-    		socket_.send_to(boost::asio::buffer(message, message_bytes),outgoing_endpoint_);
-    	}
-
-
-
-    	delete[] array;
+//    	int number_radios = 5;
+//    	int i;
+//
+////    	setup random
+//    	srand(time(0));
+//
+//    	PopRadio* array = new PopRadio[number_radios];
+//
+//    	for(i = 0; i < number_radios; i++)
+//    	{
+//    		PopNetworkJson::setup_radio(&array[i]);
+//
+//    		array[i].setLat(RAND_BETWEEN(37.0,38.0));
+//    		array[i].setLon(RAND_BETWEEN(-122.4,-123));
+//    		array[i].setSerial(i);
+//
+//
+////    		printf("lat: %f\n", array[i].getLon());
+//    	}
+//
+//    	char message[1024];
+//
+////    	send over wire
+//    	for(i = 0; i < number_radios; i++)
+//    	{
+//
+//    		std::string str = array[i].seralize();
+//    		unsigned int json_len = str.size();
+//    		const char* json_c_str = str.c_str();
+//
+//    		char message[1024];
+//    		unsigned int message_bytes = 0;
+//
+//    		char header[3];
+//    		size_t header_len;
+//    		build_message_header(json_len, header, &header_len);
+//
+//
+//    		memcpy(message, header, header_len);
+//    		message_bytes += header_len;
+//
+//
+//    		memcpy(message+message_bytes, json_c_str, std::min((unsigned)1024,json_len) );
+//    		message_bytes += std::min((unsigned)1024,json_len);
+//
+////    		printf("build header with length %ld for %d bytes\r\n", header_len, json_len);
+//
+//    		socket_.send_to(boost::asio::buffer(message, message_bytes),outgoing_endpoint_);
+//    	}
+//
+//
+//
+//    	delete[] array;
 
     }
         
@@ -295,10 +281,10 @@ namespace pop
 
             char header[3];
             size_t header_len;
-            build_message_header(json_len, header, &header_len);
+            PopSource::build_message_header(json_len, header, &header_len);
 
 
-            for(int i = 0; i < header_len; i++)
+            for(size_t i = 0; i < header_len; i++)
                        {
                            printf("%0x\r\n", header[i]);
                        }
@@ -315,9 +301,8 @@ namespace pop
 
 
 
-
-//            		socket_.send_to(boost::asio::buffer(data, NETWORK_PACKET_SIZE * sizeof(float)),outgoing_endpoint_);
-      		socket_.send_to(boost::asio::buffer(message, message_bytes),outgoing_endpoint_);
+            if( m_packets_received != 0 )
+            	socket_.send_to(boost::asio::buffer(message, message_bytes),incoming_endpoint_);
 
                 
 	}
@@ -325,8 +310,10 @@ namespace pop
 	void PopNetworkJson::handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred)
 	{
             
-            cout << "received UDP packet" << endl;
+            cout << "received UDP packet number " << m_packets_received << endl;
             
+            m_packets_received++;
+
 //            float* buffer = PopSource<float>::get_buffer(bytes_transferred/sizeof(float));
 
                

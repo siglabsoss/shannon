@@ -174,11 +174,21 @@ class PopPrintCharStream : public PopSink<char>
 {
 public:
 	PopPrintCharStream() : PopSink<char>("PopPrintCharStream") { }
-    void init() { }
-    void process(const char* data, size_t size)
-    {
-    	std::cout << data << std::endl;
-    }
+	void init() { }
+	void process(const char* data, size_t size)
+	{
+		if( false )
+		{
+			std::cout << data << std::endl; // print chars
+		}
+		else
+		{
+			for(size_t i = 0; i < size; i++)
+			{
+				printf("%0x\r\n", data[i]); // print bytes
+			}
+		}
+	}
 
 };
 

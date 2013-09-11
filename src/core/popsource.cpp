@@ -42,9 +42,19 @@ void PopSource<char>::sendJSON()
 
 	ss << "{ " << m_jsonString.str() << " }";
 
-	long length = ostringstream_length(ss);
+	long jsonLength = ostringstream_length(ss);
 
-	process(ss.str().c_str(), length+1);
+	char header[3];
+
+	size_t headerLength;
+
+	PopSource::build_message_header(jsonLength, header, &headerLength);
+
+	// send header
+	process(header, headerLength);
+
+	// send json message, followed by null
+	process(ss.str().c_str(), jsonLength+1);
 
 	// emtpy m_jsonString according to http://stackoverflow.com/questions/624260/how-to-reuse-an-ostringstream
 	m_jsonString.clear();

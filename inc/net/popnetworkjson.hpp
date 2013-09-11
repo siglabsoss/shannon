@@ -60,6 +60,8 @@ namespace pop
                 
                 boost::thread *m_pThread; ///< thead for boost's io_service.run();
                 
+        int m_packets_received;
+
                 
 	};
 } // namespace pop
