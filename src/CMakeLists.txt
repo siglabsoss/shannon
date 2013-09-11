@@ -16,6 +16,7 @@ set(all_SOURCES
 	core/popassert.c
 	core/popsource.cpp
 	core/objectstash.cpp
+	core/config.cpp
 	dsp/prota/popchanfilter.cpp
 	dsp/prota/popdeconvolve.cpp
 	net/popnetworkcomplex.cpp
