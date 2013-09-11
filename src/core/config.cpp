@@ -71,3 +71,52 @@ bool Config::get<bool>( std::string const& key )
 	return json::to_bool(instance->mJsonStorage[key]);
 }
 }
+
+
+
+
+
+
+
+
+
+
+#ifdef UNIT_TEST
+
+BOOST_AUTO_TEST_SUITE( config_class )
+
+BOOST_AUTO_TEST_CASE( init )
+{
+	ofstream myJsonFile;
+	myJsonFile.open ("init_test.json.txt");
+	myJsonFile << "{\"key\":\"value\",\"date\":234234}" << endl;
+	myJsonFile.close();
+
+
+
+	rbx::Config::loadFile( "init_test.json.txt" );
+
+
+	std::string d = "date";
+	double date = Config::get<double>(d);
+
+	BOOST_CHECK_EQUAL( date, 234234 );
+
+	double date2 = Config::get<double>("date");
+
+	// redudnant? checking if can use std::string and c-string to fetch keys
+	BOOST_CHECK_EQUAL( date, date2 );
+
+	BOOST_CHECK_EQUAL( "value", Config::get<string>("key") );
+
+
+	BOOST_CHECK_THROW (Config::get<string>("key doesn't exist so it should throw"), std::exception);
+
+
+
+}
+
+
+BOOST_AUTO_TEST_SUITE_END()
+
+#endif

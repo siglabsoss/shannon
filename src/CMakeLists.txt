@@ -35,9 +35,9 @@ set(executable_list shannon s3p ben)
 # TEST SHIT Y'ALL
 add_executable(test app/test.cpp)
 target_link_libraries(test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
-set_target_properties(test PROPERTIES CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUNIT_TEST")
+set_target_properties(test PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -DUNIT_TEST")
 CUDA_ADD_CUFFT_TO_TARGET( test )
-
+add_custom_target(runtest COMMAND test DEPENDS test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 
 
