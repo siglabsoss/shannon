@@ -21,12 +21,12 @@
 
 namespace pop
 {
-	class PopNetworkJson : public PopSink<float>, public PopSource<float>
+	class PopNetworkJson : public PopSink<char>, public PopSource<char>
 	{
 	public:
 		PopNetworkJson(int incoming_port = 5004, int outgoing_port = 35005);
 		~PopNetworkJson();
-		void process(const float* data, std::size_t size);
+		void process(const char* data, std::size_t size);
 
 	private:
                 // forward declare stuff
@@ -61,6 +61,9 @@ namespace pop
                 boost::thread *m_pThread; ///< thead for boost's io_service.run();
                 
         int m_packets_received;
+
+        // remember if we've sent a null when opening this connection
+        bool m_sent_first_null;
 
                 
 	};

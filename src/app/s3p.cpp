@@ -88,12 +88,16 @@ int main(int argc, char *argv[])
 
 	// Populate with N Radio
 
-	int testRadioCount = 100000;
+	int testRadioCount = 10;
 
 	buildNFakePopRadios(stash, testRadioCount);
 
-	// This source prints to stdout
+	// This sink prints to stdout
 	PopPrintCharStream printer;
+
+	// This sink send out to the network
+	PopNetworkJson net(4000, 4444);
+
 
 	// This source generates GPS changes for devices
 	PopRandomMoveGPS randomMove;
@@ -105,7 +109,7 @@ int main(int argc, char *argv[])
 	randomMove.testRadioCount = testRadioCount;
 
 	// connect a source which prints
-	randomMove.connect(printer);
+	randomMove.connect(net);
 
 	// start it up
 	randomMove.start();

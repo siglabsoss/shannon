@@ -36,10 +36,10 @@ namespace pop
 	boost::asio::io_service PopNetworkJson::io_service;
 
 	PopNetworkJson::PopNetworkJson(int incoming_port, int outgoing_port)
-	: PopSink<float>("PopNetworkJson", 4), PopSource<float>("PopNetworkJson"), socket_(io_service, udp::endpoint(udp::v4(), incoming_port)),
+	: PopSink<char>("PopNetworkJson", 8), PopSource<char>("PopNetworkJson"), socket_(io_service, udp::endpoint(udp::v4(), incoming_port)),
 	incoming_port_(incoming_port), outgoing_port_(outgoing_port), mp_buf(0),
 	m_buf_read_idx(0), m_buf_write_idx(0),
-	m_buf_size(NETWORK_BUFFER_SIZE_BYTES / sizeof(NETWORK_STREAM_DATA_TYPE)), m_pThread(0), m_packets_received(0)
+	m_buf_size(NETWORK_BUFFER_SIZE_BYTES / sizeof(NETWORK_STREAM_DATA_TYPE)), m_pThread(0), m_packets_received(0), m_sent_first_null(false)
 	{
 //		recv_buffer_.resize(12000);
 
@@ -53,17 +53,17 @@ namespace pop
              
 
 
-		cout << "initialized outgoing UDP socket" << endl;
-
-		/* We set the outgoing address on the first incoming packet
-		   and set the outgoing port here. */
-		outgoing_endpoint_.address(ip::address::from_string(OUTGOING_IP_ADDRESS));
-		outgoing_endpoint_.port(outgoing_port);
-
-		if( NETWORK_BUFFER_SIZE_BYTES % sizeof(NETWORK_STREAM_DATA_TYPE) )
-			throw runtime_error("[POPNETWORK] - network stream datatype not divisible by packet length\r\n");
-
-		mp_buf = (uint8_t*)malloc(NETWORK_BUFFER_SIZE_BYTES);
+//		cout << "initialized outgoing UDP socket" << endl;
+//
+//		/* We set the outgoing address on the first incoming packet
+//		   and set the outgoing port here. */
+//		outgoing_endpoint_.address(ip::address::from_string(OUTGOING_IP_ADDRESS));
+//		outgoing_endpoint_.port(outgoing_port);
+//
+//		if( NETWORK_BUFFER_SIZE_BYTES % sizeof(NETWORK_STREAM_DATA_TYPE) )
+//			throw runtime_error("[POPNETWORK] - network stream datatype not divisible by packet length\r\n");
+//
+//		mp_buf = (uint8_t*)malloc(NETWORK_BUFFER_SIZE_BYTES);
                 
 
 	}
@@ -251,9 +251,9 @@ namespace pop
 
     }
         
-	void PopNetworkJson::process(const float* data, size_t len)
+	void PopNetworkJson::process(const char* data, size_t len)
 	{
-            cout << "called process" << endl;
+//            cout << "called process" << endl;
 
             debug_pipe();
 
@@ -283,12 +283,12 @@ namespace pop
             size_t header_len;
             PopSource::build_message_header(json_len, header, &header_len);
 
-
+#ifdef DEBUG_POPNETWORK_JSON
             for(size_t i = 0; i < header_len; i++)
                        {
                            printf("%0x\r\n", header[i]);
                        }
-
+#endif
 
             memcpy(message, header, header_len);
             message_bytes += header_len;
@@ -297,12 +297,24 @@ namespace pop
             memcpy(message+message_bytes, json_c_str, std::min((unsigned)1024,json_len) );
             message_bytes += std::min((unsigned)1024,json_len);
 
-            printf("build header with length %ld for %d bytes\r\n", header_len, json_len);
+//            printf("build header with length %ld for %d bytes\r\n", header_len, json_len);
 
 
 
             if( m_packets_received != 0 )
-            	socket_.send_to(boost::asio::buffer(message, message_bytes),incoming_endpoint_);
+            {
+
+            	 // the JHeader format we use at PopWi requires the first byte on a network to be null
+            	if(!m_sent_first_null)
+            	{
+            		char null = 0;
+            		socket_.send_to(boost::asio::buffer(&null, 0),incoming_endpoint_);
+            		m_sent_first_null = true;
+            	}
+
+            	cout << "sending " << len << " bytes on incoming socket";
+            	socket_.send_to(boost::asio::buffer(data, len),incoming_endpoint_);
+            }
 
                 
 	}
@@ -314,39 +326,46 @@ namespace pop
             
             m_packets_received++;
 
-//            float* buffer = PopSource<float>::get_buffer(bytes_transferred/sizeof(float));
+            // ask for bytes_transferred bytes from our circular buffer, this returns a pointer to the beginning
+//            char* buffer = PopSource<char>::get_buffer(bytes_transferred/sizeof(char));
 
-               
-            // print raw bytes
+            // memcopy in our bytes
+//            memcpy(buffer, recv_buffer_, bytes_transferred);
             
-           
-            
-            size_t message_length = this->get_length((uint8_t*)recv_buffer_, bytes_transferred);
-            size_t header_length = this->get_length_from_header((uint8_t*)recv_buffer_, bytes_transferred);
-            
-            if( bytes_transferred < message_length + header_length )
-            {
-                printf("Invalid or truncated message\r\n");
-            }
-            else
-            {
-                handle_json((uint8_t*)recv_buffer_+header_length, message_length);
-            }
-            
-#ifdef DEBUG_POPNETWORK_JSON
-            for(int i = 0; i < bytes_transferred; i++)
-            {
-                printf("%0x\r\n", recv_buffer_[i]);
-            }
-            printf("Got length of: %ld with %ld extra bytes for header\r\n", message_length, header_length);
-            printf("Got %ld bytes\r\n", bytes_transferred);
-#endif
-            
-            PopSource<float>::process();
+            // call process to give bytes to the sink connected to us
+            PopSource<char>::process(recv_buffer_, bytes_transferred);
 
             // get next packet
             start_receive();
             
+
+
+
+
+
+
+
+
+//            size_t message_length = this->get_length((uint8_t*)recv_buffer_, bytes_transferred);
+//            size_t header_length = this->get_length_from_header((uint8_t*)recv_buffer_, bytes_transferred);
+//
+//            if( bytes_transferred < message_length + header_length )
+//            {
+//                printf("Invalid or truncated message\r\n");
+//            }
+//            else
+//            {
+//                handle_json((uint8_t*)recv_buffer_+header_length, message_length);
+//            }
+//
+//#ifdef DEBUG_POPNETWORK_JSON
+//            for(int i = 0; i < bytes_transferred; i++)
+//            {
+//                printf("%0x\r\n", recv_buffer_[i]);
+//            }
+//            printf("Got length of: %ld with %ld extra bytes for header\r\n", message_length, header_length);
+//            printf("Got %ld bytes\r\n", bytes_transferred);
+//#endif
 	}
         
         void PopNetworkJson::handle_json(uint8_t* bytes, size_t len)

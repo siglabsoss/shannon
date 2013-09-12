@@ -172,6 +172,7 @@ protected:
     /**
      * Get next buffer. This is an efficient way of writing directly into
      * the objects data structure to avoid having to make a copy of the data.
+     * @param sizeBuf Requested buffer size in number of samples.
      */
     OUT_TYPE* get_buffer(size_t sizeBuf)
     {
