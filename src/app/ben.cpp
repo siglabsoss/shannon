@@ -100,24 +100,24 @@ int main(int argc, char *argv[])
 	//strange.start();
 
 	PopAlice alice;
-        PopAliceFloat falice;
+//	PopAliceFloat falice;
 	PopBob bob;
-        
-        // source .connect( sync )
-//	alice.connect(bob);
-//	alice.start();
-        
-        cout << "hi" << endl;
-        
-        PopNetworkJson net(4444, 4444);
-        falice.connect(net);
-        falice.start();
-        
-        cout << "done with network" << endl;
-                
-        
-        
-//        net.start_receive();
+
+//	source .connect( sync )
+	alice.connect(bob);
+	alice.start();
+
+//	cout << "hi" << endl;
+
+//	PopNetworkJson net(4444, 4444);
+//	falice.connect(alice);
+//	falice.start();
+
+//	cout << "done with network" << endl;
+
+
+
+	//        net.start_receive();
         
 #endif
 

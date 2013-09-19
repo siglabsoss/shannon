@@ -72,7 +72,10 @@ public:
     void process(const PopMsg* data, size_t size)
     {
         printf("received %lu PopBob(s)\r\n", size);
-        printf("Data was %c\r\n", data->origin[0]);
+        for( size_t i = 0; i < size; i++ )
+        {
+        	printf("Data was '%s'\r\n", (data+i)->origin);
+        }
     }
 
 };
@@ -113,10 +116,26 @@ public:
     }
     void start()
     {
-        PopMsg *msg = (PopMsg*)malloc(sizeof(PopMsg) + 10);
-        msg->origin[0] = 's';
+    	int chunk = 50;
 
-        process(msg, 1);
+    	while(1)
+    	{
+    		PopMsg b[chunk];
+
+    		for( int i = 0; i < chunk; i++ )
+    		{
+    			char buff[20];
+    			sprintf(buff, "Bob #%d", i);
+    			strcpy(b[i].origin, buff);
+    		}
+
+//    		strcpy(b[0].origin, "Smiling Bob!");
+//
+//    		strcpy(b[1].origin, "Happy Bob is Happy!");
+
+    		process(b, chunk);
+
+    	}
     }
 };
 
