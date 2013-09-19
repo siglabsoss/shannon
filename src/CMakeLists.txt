@@ -13,6 +13,7 @@ set(gpuacc_SRCS
 
 set(all_SOURCES
 	mdl/popradio.cpp
+	mdl/poptimestamp.cpp
 	core/popassert.c
 	core/popsource.cpp
 	core/objectstash.cpp

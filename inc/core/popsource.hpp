@@ -93,7 +93,6 @@ protected:
         // If the data is from an external array then copy data into buffer.
         m_buf.fill_data(data, num_new_pts);
 
-
         // do it again for the timestamp buffer
         m_timestamp_buf.fill_data(timestamp_data, num_new_timestamp_pts);
 

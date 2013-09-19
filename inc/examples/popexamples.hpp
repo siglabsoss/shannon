@@ -67,15 +67,25 @@ struct PopMsg
 class PopBob : public PopSink<PopMsg>
 {
 public:
-    PopBob() : PopSink<PopMsg>("PopBob") { }
+    PopBob() : PopSink<PopMsg>("PopBob", 100) { }
     void init() { }
     void process(const PopMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
         printf("received %lu PopBob(s)\r\n", size);
-        for( size_t i = 0; i < size; i++ )
+//        for( size_t i = 0; i < size; i++ )
+//        {
+//        	printf("Data was '%s'\r\n", (data+i)->origin);
+//        }
+
+        printf("received %lu timestamps(s)\r\n", timestamp_size);
+        for( size_t i = 0; i < timestamp_size; i++ )
         {
-        	printf("Data was '%s'\r\n", (data+i)->origin);
+        	std::cout << "time was " << timestamp_data[0].get_full_secs() << std::endl;
+        	std::cout << "frac was " << timestamp_data[0].get_frac_secs() << std::endl;
         }
+
+
+
     }
 
 };
@@ -139,7 +149,7 @@ public:
     	int chunk = 50;
 
     	int j = 0;
-    	while(1)
+    	while(chunk--)
     	{
     		j++;
     		PopMsg b[chunk];
@@ -151,16 +161,19 @@ public:
     			strcpy(b[i].origin, buff);
     		}
 
-    		ptime time = microsec_clock::local_time();
+//    		ptime time = microsec_clock::local_time();
 
     		PopTimestamp t[4];
-    		t[0].tv_sec = bost_to_posix64(time);
-    		t[0].tv_nsec = bost_to_nanosecond(time);
+    		t[0] = PopTimestamp(3.3);
+    		t[0].offset = 0;
+    		t[1] = PopTimestamp(4.0);
+    		t[1].offset = chunk-1;
 
-    		std::cout << "time was" << t[0].tv_sec << std::endl;
-    		std::cout << "ticks was" << t[0].tv_nsec << std::endl;
+//
+//    		std::cout << "time was " << t[0].get_full_secs() << std::endl;
+//    		std::cout << "frac was " << t[0].get_frac_secs() << std::endl;
 
-    		process(b, chunk);
+    		process(b, chunk, t, 2);
 
 
 //    		if( j == 100 )
