@@ -99,13 +99,17 @@ int main(int argc, char *argv[])
 	//strange.connect(quark);
 	//strange.start();
 
-	PopAlice alice;
+	PopAlice *alice = new PopAlice;
 //	PopAliceFloat falice;
 	PopBob bob;
 
 //	source .connect( sync )
-	alice.connect(bob);
-	alice.start();
+	alice->connect(bob);
+	alice->start();
+
+	cout << "end" << endl;
+
+	delete alice;
 
 //	cout << "hi" << endl;
 

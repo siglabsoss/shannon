@@ -68,7 +68,7 @@ protected:
     }
 
     /**
-     * Legacy overload
+     * Legacy overload for calling process with no timestamp data
      */
     void process(const OUT_TYPE* data, size_t num_new_pts)
     {
@@ -123,8 +123,10 @@ protected:
 
         } inner;
 
-
+        // do the normal copy data
         inner.copy_if_external(data, num_new_pts, this, &PopSource::resize_buffer);
+
+        // do it again for the timestamp buffer
         inner.copy_if_external(timestamp_data, num_new_timestamp_pts, this, &PopSource::resize_timestamp_buffer);
 
 
@@ -140,7 +142,7 @@ protected:
             // If there's no specific length requested then send all available.
             if( 0 == req_samples_from_sink )
             {
-                (*it)->unblock(m_bufPtr + sink_idx_into_buffer, uncopied_pts);
+                (*it)->unblock(m_bufPtr + sink_idx_into_buffer, uncopied_pts, NULL, 0);
 
                 sink_idx_into_buffer += uncopied_pts;
                 sink_idx_into_buffer %= m_sizeBuf;
@@ -148,8 +150,7 @@ protected:
             // Otherwise send req_samples_from_sink samples at a time.
             else while ( uncopied_pts >= req_samples_from_sink )
                 {
-                    (*it)->unblock( m_bufPtr + sink_idx_into_buffer,
-                        req_samples_from_sink );
+                    (*it)->unblock( m_bufPtr + sink_idx_into_buffer, req_samples_from_sink, NULL, 0 );
 
                     sink_idx_into_buffer += req_samples_from_sink;
                     sink_idx_into_buffer %= m_sizeBuf;

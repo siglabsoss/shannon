@@ -15,6 +15,7 @@
 
 #include "core/popobject.hpp"
 #include "core/popqueue.hpp"
+#include "mdl/poptimestamp.hpp"
 
 namespace pop
 {
@@ -65,7 +66,7 @@ protected:
     /**
      * Needs to be implemented by child class to handle incoming data.
      */
-    virtual void process(const IN_TYPE* in, size_t size) = 0;
+    virtual void process(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size) = 0;
 
     /**
      * Needs to be implemented by child class to initialize anything
@@ -117,7 +118,7 @@ private:
     /**
      * Called by connecting block to unblock data.
      */
-    void unblock(const IN_TYPE* in, size_t size)
+    void unblock(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size)
     {
         // check to for a valid amount of input samples
         if( 0 != m_reqBufSize )
@@ -130,16 +131,16 @@ private:
         if( m_pThread )
             push( buffer_read_pointer<IN_TYPE>(in,size) );
         else
-            process( in, size );
+            process( in, size, timestamp_in, timestamp_size );
     }
 
     /**
      * Helper function when the amount of data received is apriori known.
      */
-    int unblock(IN_TYPE* const buf)
-    {
-        return unblock( buf, m_reqBufSize );
-    }
+//    int unblock(IN_TYPE* const buf)
+//    {
+//        return unblock( buf, m_reqBufSize );
+//    }
 
     /// In Buffer size in number of samples
     size_t m_reqBufSize;

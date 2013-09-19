@@ -69,7 +69,7 @@ class PopBob : public PopSink<PopMsg>
 public:
     PopBob() : PopSink<PopMsg>("PopBob") { }
     void init() { }
-    void process(const PopMsg* data, size_t size)
+    void process(const PopMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
         printf("received %lu PopBob(s)\r\n", size);
         for( size_t i = 0; i < size; i++ )
@@ -105,6 +105,26 @@ public:
 };
 
 
+int64_t bost_to_posix64(const boost::posix_time::ptime& pt)
+{
+  using namespace boost::posix_time;
+  static ptime epoch(boost::gregorian::date(1970, 1, 1));
+  time_duration diff(pt - epoch);
+  return (diff.ticks() / diff.ticks_per_second());
+}
+
+int64_t bost_to_nanosecond(const boost::posix_time::ptime& pt)
+{
+  using namespace boost::posix_time;
+  static ptime epoch(boost::gregorian::date(1970, 1, 1));
+  time_duration diff(pt - epoch);
+//  std::cout << "t: " << diff.ticks_per_second() << std::endl;
+  size_t conversion = 1000000000 / diff.ticks_per_second();
+    std::cout << "conversion: " << conversion << std::endl;
+  return (diff.ticks() % diff.ticks_per_second());
+}
+
+
 class PopAlice : public PopSource<PopMsg>
 {
 public:
@@ -118,8 +138,10 @@ public:
     {
     	int chunk = 50;
 
+    	int j = 0;
     	while(1)
     	{
+    		j++;
     		PopMsg b[chunk];
 
     		for( int i = 0; i < chunk; i++ )
@@ -129,12 +151,20 @@ public:
     			strcpy(b[i].origin, buff);
     		}
 
-//    		strcpy(b[0].origin, "Smiling Bob!");
-//
-//    		strcpy(b[1].origin, "Happy Bob is Happy!");
+    		ptime time = microsec_clock::local_time();
+
+    		PopTimestamp t[4];
+    		t[0].tv_sec = bost_to_posix64(time);
+    		t[0].tv_nsec = bost_to_nanosecond(time);
+
+    		std::cout << "time was" << t[0].tv_sec << std::endl;
+    		std::cout << "ticks was" << t[0].tv_nsec << std::endl;
 
     		process(b, chunk);
 
+
+//    		if( j == 100 )
+//    			return;
     	}
     }
 };
