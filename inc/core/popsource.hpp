@@ -23,6 +23,7 @@
 #include "core/popobject.hpp"
 #include "core/popsink.hpp"
 #include "core/popexception.hpp"
+#include "mdl/poptimestamp.hpp"
 
 using namespace boost::posix_time;
 
@@ -48,7 +49,12 @@ protected:
      */
     PopSource(const char* name = "PopSource") :
         PopObject(name), m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0),
-        m_bytesAllocated(0), m_lastReqSize(0)
+        m_bytesAllocated(0), m_lastReqSize(0),
+        m_timestampBufIdx(0),
+        m_timestampBufPtr(0),
+        m_timestampSizeBuf(0),
+        m_timestampBytesAllocated(0),
+        m_timestampLastReqSize(0)
     {
     }
 
@@ -58,17 +64,25 @@ protected:
     ~PopSource()
     {
         free_circular_buffer(m_bufPtr, m_bytesAllocated);
+        free_circular_buffer(m_timestampBufPtr, m_timestampBytesAllocated);
     }
 
+    /**
+     * Legacy overload
+     */
+    void process(const OUT_TYPE* data, size_t num_new_pts)
+    {
+    	process(data, num_new_pts, NULL, 0);
+    }
 
     /**
      * Processes new source data and calls any connected sinks.
      */
-    void process(const OUT_TYPE* data, size_t num_new_pts)
+    void process(const OUT_TYPE* data, size_t num_new_pts, const PopTimestamp* timestamp_data, size_t num_new_timestamp_pts)
     {
-        ptime t1, t2;
-        time_duration td;
-        t1 = microsec_clock::local_time();
+//        ptime t1, t2;
+//        time_duration td;
+//        t1 = microsec_clock::local_time();
 
         typename std::vector<PopSink<OUT_TYPE>* >::iterator it;
         size_t uncopied_pts;
@@ -80,25 +94,38 @@ protected:
 
         // if no data is passed then do nothing
         if( 0 == num_new_pts )
-            return;
+        	return;
 
-        // If the data is from an external array then copy data into buffer.
-        if( data != (m_bufPtr + m_bufIdx) )
+        // C++'s weird way to use inner functions
+        // This is the only simple way I can see to DRY
+        struct InnerFuncs
         {
-            // Automatically grow the buffer if there is not enough space.
-            if( num_new_pts * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
-                resize_buffer(num_new_pts);
+        	void copy_if_external(const OUT_TYPE* data, size_t& num_new_pts, PopSource* that)
+        	{
+        		// If the data is from an external array then copy data into buffer.
+        		if( data != (that->m_bufPtr + that->m_bufIdx) )
+        		{
+        			// Automatically grow the buffer if there is not enough space.
+        			if( num_new_pts * POPSOURCE_NUM_BUFFERS > that->m_sizeBuf )
+        				that->resize_buffer(num_new_pts);
 
-            // Copy data into buffer
-            // TODO: make this a SSE2 memcpy
-            memcpy(m_bufPtr + m_bufIdx, data, num_new_pts * sizeof(OUT_TYPE));
-        }
-        else
-        {
-            // check to see how much data has been received.
-            if( num_new_pts > m_lastReqSize )
-                throw PopException(msg_too_much_data);
-        }
+        			// Copy data into buffer
+        			// TODO: make this a SSE2 memcpy
+        			memcpy(that->m_bufPtr + that->m_bufIdx, data, num_new_pts * sizeof(OUT_TYPE));
+        		}
+        		else
+        		{
+        			// check to see how much data has been received.
+        			if( num_new_pts > that->m_lastReqSize )
+        				throw PopException(msg_too_much_data);
+        		}
+        	}
+
+        } inner;
+
+
+        inner.copy_if_external(data, num_new_pts, this);
+
 
         /* iterate through list of sources and determine how many times
            to call them. */
@@ -138,9 +165,8 @@ protected:
         m_bufIdx += num_new_pts;
         m_bufIdx %= m_sizeBuf;
 
-        t2 = microsec_clock::local_time();
-        td = t2 - t1;
-
+//        t2 = microsec_clock::local_time();
+//        td = t2 - t1;
         //std::cout << get_name() << " process " << num_new_pts << " points in time: " << td.total_microseconds() << "us" << std::endl;
     }
 
@@ -325,6 +351,24 @@ private:
 
     /// Last requested buffer size
     size_t m_lastReqSize;
+
+
+
+    /// Current Out Buffer index
+    size_t m_timestampBufIdx;
+
+    /// Out Buffer
+    OUT_TYPE* m_timestampBufPtr;
+
+    /// Out Buffer size in number of samples
+    size_t m_timestampSizeBuf;
+
+    /// Total amount of memory (in bytes) allocated for Out Buffer
+    size_t m_timestampBytesAllocated;
+
+    /// Last requested buffer size
+    size_t m_timestampLastReqSize;
+
 
     // --------------------------------
     // JSON member variables

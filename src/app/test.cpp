@@ -21,6 +21,7 @@
 #include <dsp/prota/popdeconvolve.cpp>
 #include <core/objectstash.cpp>
 #include <mdl/popradio.cpp>
+#include <mdl/poptimestamp.cpp>
 #include <core/config.cpp>
 
 #include <iostream>
@@ -139,6 +140,22 @@ BOOST_AUTO_TEST_CASE( stash_destructor )
 
 BOOST_AUTO_TEST_SUITE_END()
 
+
+BOOST_AUTO_TEST_SUITE( timestamp_suite )
+
+BOOST_AUTO_TEST_CASE( timestamp_basic )
+{
+	PopTimestamp t;
+
+	t.tv_sec = 100;
+	t.tv_nsec = 10349123;
+
+	cout << "seconds: " << t.tv_sec << " ns: " << t.tv_nsec << endl;
+
+}
+
+
+BOOST_AUTO_TEST_SUITE_END()
 
 
 #endif // UNIT_TEST
