@@ -23,6 +23,7 @@
 #include "core/popobject.hpp"
 #include "core/popsink.hpp"
 #include "core/popexception.hpp"
+#include "mdl/poptimestamp.hpp"
 
 using namespace boost::posix_time;
 
@@ -195,6 +196,7 @@ public:
 
 
 
+    // Joel's magical circular buffer
     template <typename BUFFER_TYPE>
     class PopSourceBuffer : public PopObject
     {
@@ -347,7 +349,11 @@ public:
 
 private:
 
+    // buffer for main data
     PopSourceBuffer<OUT_TYPE> m_buf;
+
+    // buffer for timestamp data
+    PopSourceBuffer<PopTimestamp> m_timestamp_buf;
 
     // --------------------------------
     // JSON member variables
