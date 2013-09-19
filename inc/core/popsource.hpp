@@ -100,14 +100,14 @@ protected:
         // This is the only simple way I can see to DRY
         struct InnerFuncs
         {
-        	void copy_if_external(const OUT_TYPE* data, size_t& num_new_pts, PopSource* that)
+        	void copy_if_external(const void* data, size_t& num_new_pts, PopSource* that, void (pop::PopSource<OUT_TYPE>::*resize_function)(size_t))
         	{
         		// If the data is from an external array then copy data into buffer.
         		if( data != (that->m_bufPtr + that->m_bufIdx) )
         		{
         			// Automatically grow the buffer if there is not enough space.
         			if( num_new_pts * POPSOURCE_NUM_BUFFERS > that->m_sizeBuf )
-        				that->resize_buffer(num_new_pts);
+        				(that->*resize_function)(num_new_pts);
 
         			// Copy data into buffer
         			// TODO: make this a SSE2 memcpy
@@ -124,7 +124,8 @@ protected:
         } inner;
 
 
-        inner.copy_if_external(data, num_new_pts, this);
+        inner.copy_if_external(data, num_new_pts, this, &PopSource::resize_buffer);
+        inner.copy_if_external(timestamp_data, num_new_timestamp_pts, this, &PopSource::resize_timestamp_buffer);
 
 
         /* iterate through list of sources and determine how many times
@@ -306,15 +307,15 @@ private:
         return actual_buf;
     }
 
-    void free_circular_buffer(OUT_TYPE* buf, size_t size)
+    void free_circular_buffer(void* buf, size_t size)
     {
         uint8_t* mirror_buf;
 
         if( buf )
         {
-            printf(RED "Freeing circular buffer for object %s", get_name());
+            printf(RED "Freeing circular buffer for object %s" RESETCOLOR "\n", get_name());
 
-            mirror_buf = ((uint8_t*)m_bufPtr) - size;
+            mirror_buf = ((uint8_t*)buf) - size;
             munmap( (void*)mirror_buf, size * 3);
         }
     }
@@ -335,6 +336,19 @@ private:
         m_bufPtr = (OUT_TYPE*)create_circular_buffer( m_bytesAllocated, sizeof(OUT_TYPE) );
 
         m_sizeBuf = m_bytesAllocated / sizeof(OUT_TYPE);
+    }
+
+    void resize_timestamp_buffer(size_t sizeBuf)
+    {
+    	// TODO: resize circular buffer instead of destroy
+
+    	free_circular_buffer(m_timestampBufPtr, m_timestampBytesAllocated);
+
+    	m_timestampBytesAllocated = sizeBuf * sizeof(PopTimestamp) * POPSOURCE_NUM_BUFFERS;
+
+    	m_timestampBufPtr = (PopTimestamp*)create_circular_buffer( m_bytesAllocated, sizeof(PopTimestamp) );
+
+    	m_timestampSizeBuf = m_timestampBytesAllocated / sizeof(PopTimestamp);
     }
 
     /// Current Out Buffer index
@@ -358,7 +372,7 @@ private:
     size_t m_timestampBufIdx;
 
     /// Out Buffer
-    OUT_TYPE* m_timestampBufPtr;
+    PopTimestamp* m_timestampBufPtr;
 
     /// Out Buffer size in number of samples
     size_t m_timestampSizeBuf;
