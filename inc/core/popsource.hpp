@@ -47,7 +47,7 @@ protected:
      * set to zero then no output buffer is allocated.
      */
     PopSource(const char* name = "PopSource") :
-        PopObject(name), m_buf()
+        PopObject(name), m_buf(name)
     {
     }
 
@@ -196,11 +196,11 @@ public:
 
 
     template <typename BUFFER_TYPE>
-    class PopSourceBuffer
+    class PopSourceBuffer : public PopObject
     {
     public:
 
-    	PopSourceBuffer() : m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_lastReqSize(0) {}
+    	PopSourceBuffer(const char* name) : PopObject(name), m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_lastReqSize(0) {}
 
     	/**
     	 * This code used to be inside process(), extracted here for DRY
@@ -258,7 +258,7 @@ public:
     		int ret;
 
     		printf(GREEN);
-    		printf(msg_create_new_circ_buf, "?"); // FIXME: how to get_name() here?
+    		printf(msg_create_new_circ_buf, get_name());
     		printf(msg_create_new_circ_buf_dbg_1, chunk_size, bytes_allocated);
 
     		// calculate how many pages required
@@ -304,7 +304,7 @@ public:
 
     		if( m_bufPtr )
     		{
-    			printf(RED "Freeing circular buffer for object %s" RESETCOLOR "\n", "?"); // FIXME: how to get_name() here?
+    			printf(RED "Freeing circular buffer for object %s" RESETCOLOR "\n", get_name());
 
     			mirror_buf = ((uint8_t*)m_bufPtr) - size;
     			munmap( (void*)mirror_buf, size * 3);
