@@ -47,8 +47,7 @@ protected:
      * set to zero then no output buffer is allocated.
      */
     PopSource(const char* name = "PopSource") :
-        PopObject(name), m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0),
-        m_bytesAllocated(0), m_lastReqSize(0)
+        PopObject(name), m_buf()
     {
     }
 
@@ -57,7 +56,7 @@ protected:
      */
     ~PopSource()
     {
-        free_circular_buffer(m_bufPtr, m_bytesAllocated);
+    	m_buf.free_circular_buffer(m_buf.m_bytesAllocated);
     }
 
 
@@ -83,22 +82,8 @@ protected:
             return;
 
         // If the data is from an external array then copy data into buffer.
-        if( data != (m_bufPtr + m_bufIdx) )
-        {
-            // Automatically grow the buffer if there is not enough space.
-            if( num_new_pts * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
-                resize_buffer(num_new_pts);
+        m_buf.fill_data(data, num_new_pts);
 
-            // Copy data into buffer
-            // TODO: make this a SSE2 memcpy
-            memcpy(m_bufPtr + m_bufIdx, data, num_new_pts * sizeof(OUT_TYPE));
-        }
-        else
-        {
-            // check to see how much data has been received.
-            if( num_new_pts > m_lastReqSize )
-                throw PopException(msg_too_much_data);
-        }
 
         /* iterate through list of sources and determine how many times
            to call them. */
@@ -107,24 +92,24 @@ protected:
             // get source buffer index and number of uncopied points
             size_t &sink_idx_into_buffer = (*it)->m_sourceBufIdx;
             req_samples_from_sink = (*it)->sink_size();
-            uncopied_pts = ((m_bufIdx+m_sizeBuf) - sink_idx_into_buffer) % m_sizeBuf + num_new_pts;
+            uncopied_pts = ((m_buf.m_bufIdx+m_buf.m_sizeBuf) - sink_idx_into_buffer) % m_buf.m_sizeBuf + num_new_pts;
 
             // If there's no specific length requested then send all available.
             if( 0 == req_samples_from_sink )
             {
-                (*it)->unblock(m_bufPtr + sink_idx_into_buffer, uncopied_pts);
+                (*it)->unblock(m_buf.m_bufPtr + sink_idx_into_buffer, uncopied_pts);
 
                 sink_idx_into_buffer += uncopied_pts;
-                sink_idx_into_buffer %= m_sizeBuf;
+                sink_idx_into_buffer %= m_buf.m_sizeBuf;
             }
             // Otherwise send req_samples_from_sink samples at a time.
             else while ( uncopied_pts >= req_samples_from_sink )
                 {
-                    (*it)->unblock( m_bufPtr + sink_idx_into_buffer,
+                    (*it)->unblock( m_buf.m_bufPtr + sink_idx_into_buffer,
                         req_samples_from_sink );
 
                     sink_idx_into_buffer += req_samples_from_sink;
-                    sink_idx_into_buffer %= m_sizeBuf;
+                    sink_idx_into_buffer %= m_buf.m_sizeBuf;
                     uncopied_pts -= req_samples_from_sink;
                 }
 
@@ -135,8 +120,8 @@ protected:
         }
 
         // advance buffer pointer
-        m_bufIdx += num_new_pts;
-        m_bufIdx %= m_sizeBuf;
+        m_buf.m_bufIdx += num_new_pts;
+        m_buf.m_bufIdx %= m_buf.m_sizeBuf;
 
         t2 = microsec_clock::local_time();
         td = t2 - t1;
@@ -150,7 +135,7 @@ protected:
      */
     void process(OUT_TYPE* out)
     {
-        process( out, m_lastReqSize );
+        process( out, m_buf.m_lastReqSize );
     }
 
     /**
@@ -158,7 +143,7 @@ protected:
      */
     void process(size_t num_new_pts)
     {
-        process( m_bufPtr + m_bufIdx, num_new_pts );
+        process( m_buf.m_bufPtr + m_buf.m_bufIdx, num_new_pts );
     }
 
     /**
@@ -166,7 +151,7 @@ protected:
      */
     void process()
     {
-        process( m_bufPtr + m_bufIdx, m_lastReqSize );
+        process( m_buf.m_bufPtr + m_buf.m_bufIdx, m_buf.m_lastReqSize );
     }
 
     /**
@@ -176,17 +161,17 @@ protected:
     OUT_TYPE* get_buffer(size_t sizeBuf)
     {
         // remember allocated size for process() helper function
-        m_lastReqSize = sizeBuf;
+    	m_buf.m_lastReqSize = sizeBuf;
 
         // automatically grow buffer if needed
-        if( sizeBuf * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
-            resize_buffer(sizeBuf);
+        if( sizeBuf * POPSOURCE_NUM_BUFFERS > m_buf.m_sizeBuf )
+        	m_buf.resize_buffer(sizeBuf);
 
         // only called if no size requested and no sinks are connected
-        if( 0 == m_bufPtr )
+        if( 0 == m_buf.m_bufPtr )
             throw PopException(msg_no_buffer_allocated, get_name());
 
-        return m_bufPtr + m_bufIdx;
+        return m_buf.m_bufPtr + m_buf.m_bufIdx;
     }
 
 
@@ -197,134 +182,172 @@ public:
     void connect(PopSink<OUT_TYPE> &sink)
     {
         // automatically grow buffer if needed
-        if( sink.sink_size() * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
-            resize_buffer(sink.sink_size());
+        if( sink.sink_size() * POPSOURCE_NUM_BUFFERS >m_buf.m_sizeBuf )
+        	m_buf.resize_buffer(sink.sink_size());
 
         // set read index
-        sink.m_sourceBufIdx = m_bufIdx;
+        sink.m_sourceBufIdx = m_buf.m_bufIdx;
 
         // store sink
         m_rgSources.push_back(&sink);
     }
 
 
+
+
+    template <typename BUFFER_TYPE>
+    class PopSourceBuffer
+    {
+    public:
+
+    	PopSourceBuffer() : m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_lastReqSize(0) {}
+
+    	/**
+    	 * This code used to be inside process(), extracted here for DRY
+    	 * Called from within process(); this optionally copies data into the buffer if it is from an external array
+    	 */
+    	void fill_data(const BUFFER_TYPE* data, size_t& num_new_pts)
+    	{
+    		// If the data is from an external array then copy data into buffer.
+    		if( data != (m_bufPtr + m_bufIdx) )
+    		{
+    			// Automatically grow the buffer if there is not enough space.
+    			if( num_new_pts * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
+    				resize_buffer(num_new_pts);
+
+    			// Copy data into buffer
+    			// TODO: make this a SSE2 memcpy
+    			memcpy(m_bufPtr + m_bufIdx, data, num_new_pts * sizeof(BUFFER_TYPE));
+    		}
+    		else
+    		{
+    			// check to see how much data has been received.
+    			if( num_new_pts > m_lastReqSize )
+    				throw PopException(msg_too_much_data);
+    		}
+    	}
+
+    	/**
+    	 * Guaranteed to give the next page size multiple for a requested buffer
+    	 * size. Buffer size will be expanded to fit both an integer number of page
+    	 * tables and an integer number of data chunks. This can also be stated as
+    	 * "The least common mulitple of PAGESIZE and CHUNK, greater than REQUEST"
+    	 * JDB: tested 7/25/2013
+    	 */
+    	size_t calc_page_size( size_t size, size_t chunk_size )
+    	{
+    		size_t lcm;
+
+    		// find the least common multiple greater than size
+    		lcm = boost::math::lcm<size_t>(sysconf(_SC_PAGESIZE), chunk_size);
+
+    		// ceil(size/lcm) * lcm
+    		size = ((size + lcm - 1) / lcm) * lcm;
+
+    		return size;
+    	}
+
+    	/**
+    	 * Create a circular buffer at least memSize bytes long.
+    	 */
+    	void* create_circular_buffer(size_t& bytes_allocated, size_t chunk_size)
+    	{
+    		void* temp_buf;
+    		void* actual_buf;
+    		void* mirror_buf;
+    		int ret;
+
+    		printf(GREEN);
+    		printf(msg_create_new_circ_buf, "?"); // FIXME: how to get_name() here?
+    		printf(msg_create_new_circ_buf_dbg_1, chunk_size, bytes_allocated);
+
+    		// calculate how many pages required
+    		bytes_allocated = calc_page_size( bytes_allocated, chunk_size );
+
+    		printf(msg_create_new_circ_buf_dbg_2, bytes_allocated);
+    		printf(RESETCOLOR "\r\n");
+
+    		/* Temporarily allocate thrice the memory to make sure we have a
+    	           contiguous cirular buffer address space. This is a bit wasteful
+    	           but it's currently the only way to ensure contiguous space. Remember
+    	           if you use this method to make sure to unmap the proper amount of
+    	           memory (i.e. bytes_allocated * 3) ! */
+    		temp_buf = mmap(0, bytes_allocated * 3, PROT_READ | PROT_WRITE,
+    				MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+
+    		// map actual buffer (second third of address space) into first third of memory map
+    		actual_buf = ((uint8_t*)temp_buf) + bytes_allocated;
+    		ret = remap_file_pages(actual_buf, bytes_allocated, 0, 0, 0);
+
+    		if( ret )
+    			throw PopException( "#1 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
+
+    		// map mirror buffer (third third of address space) into first third of memory map
+    		mirror_buf = ((uint8_t*)temp_buf) + (2 * bytes_allocated);
+    		ret = remap_file_pages(mirror_buf, bytes_allocated, 0, 0, 0);
+
+    		if( ret )
+    			throw PopException( "#2 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
+
+    		// shrink the memory map back down to it's necessary size
+    		// TODO: don't know if this works as expected. are my original higher remappings
+    		// maintained? Who knows! Would be nice to use 66% less memory. BTW, if you
+    		// put this line back in, make sure to change the munmap size!!
+    		//mremap(temp_buf, bytes_allocated * 3, bytes_allocated, MREMAP_FIXED, temp_buf);
+
+    		return actual_buf;
+    	}
+
+    	void free_circular_buffer(size_t size)
+    	{
+    		uint8_t* mirror_buf;
+
+    		if( m_bufPtr )
+    		{
+    			printf(RED "Freeing circular buffer for object %s" RESETCOLOR "\n", "?"); // FIXME: how to get_name() here?
+
+    			mirror_buf = ((uint8_t*)m_bufPtr) - size;
+    			munmap( (void*)mirror_buf, size * 3);
+    		}
+    	}
+
+    	/**
+    	 * Resize buffer. Make sure to call this before get_buffer to make sure
+    	 * there's enough space.
+    	 * @param sizeBuf Total buffer size in number of samples.
+    	 */
+    	void resize_buffer(size_t sizeBuf)
+    	{
+    		// TODO: resize circular buffer instead of destroy
+
+    		free_circular_buffer(m_bytesAllocated);
+
+    		m_bytesAllocated = sizeBuf * sizeof(OUT_TYPE) * POPSOURCE_NUM_BUFFERS;
+
+    		m_bufPtr = (OUT_TYPE*)create_circular_buffer( m_bytesAllocated, sizeof(OUT_TYPE) );
+
+    		m_sizeBuf = m_bytesAllocated / sizeof(OUT_TYPE);
+    	}
+
+    	/// Current Out Buffer index
+    	size_t m_bufIdx;
+
+    	/// Out Buffer
+    	BUFFER_TYPE* m_bufPtr;
+
+    	/// Out Buffer size in number of samples
+    	size_t m_sizeBuf;
+
+    	/// Total amount of memory (in bytes) allocated for Out Buffer
+    	size_t m_bytesAllocated;
+
+    	/// Last requested buffer size
+    	size_t m_lastReqSize;
+    };
+
 private:
-    /**
-     * Guaranteed to give the next page size multiple for a requested buffer
-     * size. Buffer size will be expanded to fit both an integer number of page
-     * tables and an integer number of data chunks. This can also be stated as
-     * "The least common mulitple of PAGESIZE and CHUNK, greater than REQUEST"
-     * JDB: tested 7/25/2013
-     */
-    size_t calc_page_size( size_t size, size_t chunk_size )
-    {
-        size_t lcm;
 
-        // find the least common multiple greater than size
-        lcm = boost::math::lcm<size_t>(sysconf(_SC_PAGESIZE), chunk_size);
-
-        // ceil(size/lcm) * lcm
-        size = ((size + lcm - 1) / lcm) * lcm;
-
-        return size;
-    }
-
-    /**
-     * Create a circular buffer at least memSize bytes long.
-     */
-    void* create_circular_buffer(size_t& bytes_allocated, size_t chunk_size)
-    {
-        void* temp_buf;
-        void* actual_buf;
-        void* mirror_buf;
-        int ret;
-
-        printf(GREEN);
-        printf(msg_create_new_circ_buf, get_name());
-        printf(msg_create_new_circ_buf_dbg_1, chunk_size, bytes_allocated);
-
-        // calculate how many pages required
-        bytes_allocated = calc_page_size( bytes_allocated, chunk_size );
-
-        printf(msg_create_new_circ_buf_dbg_2, bytes_allocated);
-        printf(RESETCOLOR "\r\n");
-
-        /* Temporarily allocate thrice the memory to make sure we have a
-           contiguous cirular buffer address space. This is a bit wasteful
-           but it's currently the only way to ensure contiguous space. Remember
-           if you use this method to make sure to unmap the proper amount of
-           memory (i.e. bytes_allocated * 3) ! */
-        temp_buf = mmap(0, bytes_allocated * 3, PROT_READ | PROT_WRITE,
-            MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-
-        // map actual buffer (second third of address space) into first third of memory map
-        actual_buf = ((uint8_t*)temp_buf) + bytes_allocated;
-        ret = remap_file_pages(actual_buf, bytes_allocated, 0, 0, 0);
-
-        if( ret )
-            throw PopException( "#1 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
-
-        // map mirror buffer (third third of address space) into first third of memory map
-        mirror_buf = ((uint8_t*)temp_buf) + (2 * bytes_allocated);
-        ret = remap_file_pages(mirror_buf, bytes_allocated, 0, 0, 0);
-
-        if( ret )
-            throw PopException( "#2 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
-
-        // shrink the memory map back down to it's necessary size
-        // TODO: don't know if this works as expected. are my original higher remappings
-        // maintained? Who knows! Would be nice to use 66% less memory. BTW, if you
-        // put this line back in, make sure to change the munmap size!!
-        //mremap(temp_buf, bytes_allocated * 3, bytes_allocated, MREMAP_FIXED, temp_buf);
-
-        return actual_buf;
-    }
-
-    void free_circular_buffer(OUT_TYPE* buf, size_t size)
-    {
-        uint8_t* mirror_buf;
-
-        if( buf )
-        {
-            printf(RED "Freeing circular buffer for object %s", get_name());
-
-            mirror_buf = ((uint8_t*)m_bufPtr) - size;
-            munmap( (void*)mirror_buf, size * 3);
-        }
-    }
-
-    /**
-     * Resize buffer. Make sure to call this before get_buffer to make sure
-     * there's enough space.
-     * @param sizeBuf Total buffer size in number of samples.
-     */
-    void resize_buffer(size_t sizeBuf)
-    {
-        // TODO: resize circular buffer instead of destroy
-
-        free_circular_buffer(m_bufPtr, m_bytesAllocated);
-
-        m_bytesAllocated = sizeBuf * sizeof(OUT_TYPE) * POPSOURCE_NUM_BUFFERS;
-
-        m_bufPtr = (OUT_TYPE*)create_circular_buffer( m_bytesAllocated, sizeof(OUT_TYPE) );
-
-        m_sizeBuf = m_bytesAllocated / sizeof(OUT_TYPE);
-    }
-
-    /// Current Out Buffer index
-    size_t m_bufIdx;
-
-    /// Out Buffer
-    OUT_TYPE* m_bufPtr;
-
-    /// Out Buffer size in number of samples
-    size_t m_sizeBuf;
-
-    /// Total amount of memory (in bytes) allocated for Out Buffer
-    size_t m_bytesAllocated;
-
-    /// Last requested buffer size
-    size_t m_lastReqSize;
+    PopSourceBuffer<OUT_TYPE> m_buf;
 
     // --------------------------------
     // JSON member variables
