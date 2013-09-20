@@ -28,8 +28,12 @@ struct buffer_read_pointer
 {
     const T* data;
     size_t len;
-    buffer_read_pointer(const T* d, size_t l) : data(d), len(l) {}
-    buffer_read_pointer() : data(0), len(0) {}
+
+    const PopTimestamp* timestamp_data;
+    size_t timestamp_len;
+
+    buffer_read_pointer(const T* d, size_t l, const PopTimestamp* td, size_t tl) : data(d), len(l), timestamp_data(td), timestamp_len(tl) {}
+    buffer_read_pointer() : data(0), len(0), timestamp_data(0), timestamp_len(0) {}
 };
 
 
@@ -51,7 +55,7 @@ protected:
      * zero indicates that the class can accept any number of input samples.
      */
     PopSink(const char* name, size_t nInBuf = 0) : PopObject(name), m_reqBufSize(nInBuf),
-        m_sourceBufIdx(0), m_pThread(0)
+        m_sourceBufIdx(0), m_timestampSourceBufIdx(0), m_pThread(0)
     {
     }
 
@@ -129,7 +133,7 @@ private:
             throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
 
         if( m_pThread )
-            push( buffer_read_pointer<IN_TYPE>(in,size) );
+            push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size) );
         else
             process( in, size, timestamp_in, timestamp_size );
     }
@@ -147,6 +151,9 @@ private:
 
     /// In Buffer index in respective PopSource
     size_t m_sourceBufIdx;
+
+    /// In timestamp Buffer index in respective PopSource
+    size_t m_timestampSourceBufIdx;
 
     /// thread
     boost::thread *m_pThread;

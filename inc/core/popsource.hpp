@@ -79,8 +79,8 @@ protected:
 //        t1 = microsec_clock::local_time();
 
         typename std::vector<PopSink<OUT_TYPE>* >::iterator it;
-        size_t uncopied_pts;
-        size_t req_samples_from_sink;
+        size_t uncopied_pts, timestamp_uncopied_pts;
+        size_t req_samples_from_sink, timestamp_req_samples_from_sink;
 
         // if no connected sinks then do nothing
         if( 0 == m_rgSources.size() )
@@ -96,6 +96,9 @@ protected:
         // do it again for the timestamp buffer
         m_timestamp_buf.fill_data(timestamp_data, num_new_timestamp_pts);
 
+        // change the index values for each timestamp we just copied in
+        correct_timestamp_indices(m_timestamp_buf, num_new_timestamp_pts);
+
 
         /* iterate through list of sources and determine how many times
            to call them. */
@@ -106,13 +109,26 @@ protected:
             req_samples_from_sink = (*it)->sink_size();
             uncopied_pts = ((m_buf.m_bufIdx+m_buf.m_sizeBuf) - sink_idx_into_buffer) % m_buf.m_sizeBuf + num_new_pts;
 
+            // get source buffer index and number of uncopied points
+            size_t &timestamp_sink_idx_into_buffer = (*it)->m_timestampSourceBufIdx;
+            timestamp_req_samples_from_sink = 0;
+            timestamp_uncopied_pts = ((m_timestamp_buf.m_bufIdx+m_timestamp_buf.m_sizeBuf) - timestamp_sink_idx_into_buffer) % m_timestamp_buf.m_sizeBuf + num_new_timestamp_pts;
+
+            //FIXME: this is preventing compiler warnings, delete it
+            size_t delme = timestamp_sink_idx_into_buffer + timestamp_req_samples_from_sink + timestamp_uncopied_pts;
+            delme++;
+
+
             // If there's no specific length requested then send all available.
             if( 0 == req_samples_from_sink )
             {
-                (*it)->unblock(m_buf.m_bufPtr + sink_idx_into_buffer, uncopied_pts, NULL, 0);
+                (*it)->unblock(m_buf.m_bufPtr + sink_idx_into_buffer, uncopied_pts, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_uncopied_pts);
 
                 sink_idx_into_buffer += uncopied_pts;
                 sink_idx_into_buffer %= m_buf.m_sizeBuf;
+
+//                timestamp_sink_idx_into_buffer += timestamp_uncopied_pts;
+//                timestamp_sink_idx_into_buffer %= m_timestamp_buf.m_sizeBuf;
             }
             // Otherwise send req_samples_from_sink samples at a time.
             else while ( uncopied_pts >= req_samples_from_sink )
@@ -133,6 +149,10 @@ protected:
         // advance buffer pointer
         m_buf.m_bufIdx += num_new_pts;
         m_buf.m_bufIdx %= m_buf.m_sizeBuf;
+
+        // advance timestamp buffer pointer
+        m_timestamp_buf.m_bufIdx += num_new_timestamp_pts;
+        m_timestamp_buf.m_bufIdx %= m_timestamp_buf.m_sizeBuf;
 
 //        t2 = microsec_clock::local_time();
 //        td = t2 - t1;
@@ -185,6 +205,9 @@ protected:
     }
 
 
+
+
+
 public:
     /**
      * Function to subscribe other sinks into this objects source.
@@ -203,6 +226,18 @@ public:
     }
 
 
+    void debug_print_timestamp_buffer()
+    {
+    	using namespace std;
+    	cout << "timestamp buffer:" << endl;
+    	cout << "  size: " << m_timestamp_buf.m_sizeBuf << endl;
+    	cout << "  index: " << m_timestamp_buf.m_bufIdx << endl;
+
+    	for( size_t i = 0; i < m_timestamp_buf.m_bufIdx; i++ )
+    	{
+
+    	}
+    }
 
 
     // Joel's magical circular buffer
@@ -355,6 +390,20 @@ public:
     	/// Last requested buffer size
     	size_t m_lastReqSize;
     };
+
+private:
+    void correct_timestamp_indices(PopSource::PopSourceBuffer<PopTimestamp> &buf, size_t new_stamps)
+    {
+    	// nothing to do
+    	if( buf.m_bufIdx == 0 )
+    		return;
+
+
+    	for(size_t i = 0; i < new_stamps; i++)
+    	{
+    		buf.m_bufPtr[i].offset += buf.m_bufIdx;
+    	}
+    }
 
 private:
 

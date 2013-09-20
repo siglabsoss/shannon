@@ -141,18 +141,158 @@ BOOST_AUTO_TEST_CASE( stash_destructor )
 BOOST_AUTO_TEST_SUITE_END()
 
 
+
+
+
+
+
+
 BOOST_AUTO_TEST_SUITE( timestamp_suite )
 
-BOOST_AUTO_TEST_CASE( timestamp_basic )
+struct PopTestMsg
 {
-	PopTimestamp t;
+    char origin[20];
+};
 
-	t.tv_sec = 100;
-	t.tv_nsec = 10349123;
 
-	cout << "seconds: " << t.tv_sec << " ns: " << t.tv_nsec << endl;
+class PopTestSinkOne : public PopSink<PopTestMsg>
+{
+public:
+	PopTestSinkOne() : PopSink<PopTestMsg>("PopTestSinkOne", 0) { }
+    void init() { }
+    void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+    {
+        printf("received %lu PopMsg(s)\r\n", size);
+//        for( size_t i = 0; i < size; i++ )
+//        {
+//        	printf("Data was '%s'\r\n", (data+i)->origin);
+//        }
 
+        printf("received %lu timestamps(s)\r\n", timestamp_size);
+        for( size_t i = 0; i < timestamp_size; i++ )
+        {
+        	cout << "offset [" << timestamp_data[i].offset << "]" << endl;
+        	std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
+        	std::cout << "frac was " << timestamp_data[i].get_frac_secs() << std::endl;
+        }
+
+    }
+
+};
+
+class PopTestSourceOne : public PopSource<PopTestMsg>
+{
+public:
+	PopTestSourceOne() : PopSource<PopTestMsg>("PopTestSourceOne") { }
+
+    void send_message(const char* desc, void*, size_t bytes)
+    {
+
+    }
+    void start()
+    {
+    	int chunk = 50;
+
+    	int j = 0;
+    	while(chunk--)
+    	{
+    		j++;
+    		PopTestMsg b[chunk];
+
+    		for( int i = 0; i < chunk; i++ )
+    		{
+    			char buff[20];
+    			sprintf(buff, "Bob #%d", i);
+    			strcpy(b[i].origin, buff);
+    		}
+
+
+    		PopTimestamp t[4];
+    		t[0] = PopTimestamp(3.3);
+    		t[0].offset = 0;
+    		t[1] = PopTimestamp(4.0);
+    		t[1].offset = chunk-1;
+
+
+    		process(b, chunk, t, 2);
+
+    	}
+    }
+
+    void send_both(size_t count, size_t stamps, double start_time = -1, double time_inc_divisor = -1)
+    {
+
+    	PopTestMsg b[count];
+    	PopTimestamp t[stamps];
+
+    	// build msgs
+    	for( size_t i = 0; i < count; i++ )
+    	{
+    		char buff[20];
+    		sprintf(buff, "Bob #%ld", i);
+    		strcpy(b[i].origin, buff);
+    	}
+
+
+
+    	// how much to divide the loop iterator by, and then add to time
+    	if( time_inc_divisor == -1 )
+    		time_inc_divisor = 100000.0;
+
+    	// what to use for a start time
+    	if( start_time != -1 )
+    	{
+    		t[0] = PopTimestamp(start_time);
+    	}
+    	else
+    	{
+    		// first timestamp is based on now
+    		t[0] = PopTimestamp::get_system_time();
+    		t[0].offset = 0;
+    	}
+
+
+    	for( size_t j = 1; j < stamps; j++ )
+    	{
+    		t[j] = PopTimestamp(t[0].get_real_secs()+ ((double)j/time_inc_divisor) );
+    		t[j].offset = j;
+    	}
+
+
+    	process(b, count, t, stamps);
+
+    }
+
+};
+
+
+
+BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
+{
+	PopTestSourceOne source;
+	PopTestSinkOne sink;
+
+	source.connect(sink);
+	source.send_both(5, 5, 0, 10);
+
+	source.debug_print_timestamp_buffer();
+
+	source.send_both(5, 5, 1, 10);
+
+	source.debug_print_timestamp_buffer();
 }
+
+
+//BOOST_AUTO_TEST_CASE( timestamp_basic )
+//{
+//	PopTimestamp t;
+//
+//	t.tv_sec = 100;
+//	t.tv_nsec = 10349123;
+//
+//	cout << "seconds: " << t.tv_sec << " ns: " << t.tv_nsec << endl;
+//
+//}
 
 
 BOOST_AUTO_TEST_SUITE_END()

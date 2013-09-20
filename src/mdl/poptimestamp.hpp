@@ -84,7 +84,7 @@ public:
 //	 * the precision of the fractional seconds may be lost.
 //	 * \return the real-valued seconds
 //	 */
-//	double get_real_secs(void) const;
+	double get_real_secs(void) const;
 //
 //	/*!
 //	 * Get the whole/integer part of the time in seconds.
