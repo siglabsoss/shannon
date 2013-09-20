@@ -93,7 +93,7 @@ protected:
         m_timestamp_buf.fill_data(timestamp_data, num_new_timestamp_pts);
 
         // change the index values for each timestamp we just copied in
-        correct_timestamp_indices(m_timestamp_buf, num_new_timestamp_pts);
+        correct_timestamp_indices(m_buf, m_timestamp_buf, num_new_timestamp_pts);
 
 
         /* iterate through list of sources and determine how many times
@@ -419,19 +419,20 @@ public:
 
     	/// Last requested buffer size
     	size_t m_lastReqSize;
-    };
+
+    }; //PopSourceBuffer
 
 private:
-    void correct_timestamp_indices(PopSource::PopSourceBuffer<PopTimestamp> &buf, size_t new_stamps)
+    void correct_timestamp_indices(PopSource::PopSourceBuffer<OUT_TYPE> &buf, PopSource::PopSourceBuffer<PopTimestamp> &tbuf, size_t new_stamps)
     {
     	// nothing to do
-    	if( buf.m_bufIdx == 0 )
+    	if( tbuf.m_bufIdx == 0 )
     		return;
 
 
     	for(size_t i = 0; i < new_stamps; i++)
     	{
-    		buf.m_bufPtr[i+buf.m_bufIdx].offset += buf.m_bufIdx;
+    		tbuf.m_bufPtr[i+tbuf.m_bufIdx].offset += buf.m_bufIdx;
     	}
     }
 
