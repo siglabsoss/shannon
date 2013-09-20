@@ -180,6 +180,7 @@ public:
 
 };
 
+
 class PopTestSourceOne : public PopSource<PopTestMsg>
 {
 public:
@@ -263,6 +264,48 @@ public:
 
     }
 
+    void send_manual_offset(size_t offset, double start_time = -1)
+    {
+    	// this whole function is copypasta
+    	size_t count = 1;
+    	size_t stamps = 1;
+
+    	PopTestMsg b[count];
+    	PopTimestamp t[stamps];
+
+    	// build msgs
+    	for( size_t i = 0; i < count; i++ )
+    	{
+    		char buff[20];
+    		sprintf(buff, "Bob #%ld", i);
+    		strcpy(b[i].origin, buff);
+    	}
+
+
+    	double time_inc_divisor = 100000.0;
+
+    	// what to use for a start time
+    	if( start_time != -1 )
+    	{
+    		t[0] = PopTimestamp(start_time);
+    	}
+    	else
+    	{
+    		// first timestamp is based on now
+    		t[0] = PopTimestamp::get_system_time();
+    		t[0].offset = offset;
+    	}
+
+
+    	for( size_t j = 1; j < stamps; j++ )
+    	{
+    		t[j] = PopTimestamp(t[0].get_real_secs()+ ((double)j/time_inc_divisor) );
+    	}
+
+    	process(b, count, t, stamps);
+
+    }
+
 };
 
 
@@ -277,10 +320,51 @@ BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
 
 	source.debug_print_timestamp_buffer();
 
+
+	source.send_manual_offset(0);
+	source.debug_print_timestamp_buffer();
+
+
 	source.send_both(5, 5, 1, 10);
 
 	source.debug_print_timestamp_buffer();
+
+	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
 }
+
+// test the timestamp_offsets_in_order()
+BOOST_AUTO_TEST_CASE( timestamp_timestamp_offsets_in_order )
+{
+	// note that we just have a source with no sink
+	PopTestSourceOne source;
+
+	// put in 5 samples with offset starting from 0
+	source.send_both(5, 5);
+	BOOST_CHECK( source.timestamp_offsets_in_order(5) );
+
+	// put in another with offset starting from 0
+	source.send_manual_offset(0);
+	BOOST_CHECK( source.timestamp_offsets_in_order(6) );
+
+	// put in another 5
+	source.send_both(5, 5);
+	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
+
+	// put in a bag egg
+	// the reason this is bad is because we added 1 sample, but gave an offset of 1 which points at the second sample (which we didn't insert)
+	source.send_manual_offset(1);
+//	source.debug_print_timestamp_buffer();
+
+	// put in another another 5 to make the 'bad egg' bad. This will cause an error because we give an offset of 0, which makes the previous out of bounds insertion clear
+	source.send_both(5, 5);
+	BOOST_CHECK(! source.timestamp_offsets_in_order(16) );
+
+	//	source.debug_print_timestamp_buffer();
+
+	// but things still look good if we only look back for 5 samples
+	BOOST_CHECK(source.timestamp_offsets_in_order(5) );
+}
+
 
 
 //BOOST_AUTO_TEST_CASE( timestamp_basic )

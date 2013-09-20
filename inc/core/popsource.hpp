@@ -106,6 +106,7 @@ protected:
             uncopied_pts = ((m_buf.m_bufIdx+m_buf.m_sizeBuf) - sink_idx_into_buffer) % m_buf.m_sizeBuf + num_new_pts;
 
             // get source buffer index and number of uncopied points
+            // 'sink_idx_into_buffer' is a reference to the current sinks 'sourceBufIdx'
             size_t &timestamp_sink_idx_into_buffer = (*it)->m_timestampSourceBufIdx;
             timestamp_req_samples_from_sink = 0;
             timestamp_uncopied_pts = ((m_timestamp_buf.m_bufIdx+m_timestamp_buf.m_sizeBuf) - timestamp_sink_idx_into_buffer) % m_timestamp_buf.m_sizeBuf + num_new_timestamp_pts;
@@ -123,8 +124,8 @@ protected:
                 sink_idx_into_buffer += uncopied_pts;
                 sink_idx_into_buffer %= m_buf.m_sizeBuf;
 
-//                timestamp_sink_idx_into_buffer += timestamp_uncopied_pts;
-//                timestamp_sink_idx_into_buffer %= m_timestamp_buf.m_sizeBuf;
+                timestamp_sink_idx_into_buffer += timestamp_uncopied_pts;
+                timestamp_sink_idx_into_buffer %= m_timestamp_buf.m_sizeBuf;
             }
             // Otherwise send req_samples_from_sink samples at a time.
             else while ( uncopied_pts >= req_samples_from_sink )
@@ -226,14 +227,47 @@ public:
     {
     	using namespace std;
     	cout << "timestamp buffer:" << endl;
+//    	cout << "  location: " << m_timestamp_buf.m_bufPtr << endl;
     	cout << "  size: " << m_timestamp_buf.m_sizeBuf << endl;
     	cout << "  index: " << m_timestamp_buf.m_bufIdx << endl;
 
+    	cout << "  ";
+
     	for( size_t i = 0; i < m_timestamp_buf.m_bufIdx; i++ )
     	{
-
+    		cout << m_timestamp_buf.m_bufPtr[i].offset << ",";
     	}
+
+    	cout << endl;
     }
+
+    // returns: Are all the offsets for the timestamps in this buffer in order (only checks the first N)?
+    bool timestamp_offsets_in_order(size_t count)
+    {
+    	bool in_order = true;
+
+    	size_t last_offset = (size_t)-1; // WARNING: this is a weird way to get the maximum value for size_t
+
+    	for(size_t i = 0; i < count; i++)
+    	{
+    		// the sample we want is the tail minus i, minus one.  (minus one because the tail always points to the next to be written object)
+    		size_t offset = m_timestamp_buf.m_bufPtr[m_timestamp_buf.m_bufIdx-i-1].offset;
+
+    		// skip the first check
+    		// we are running backwards through the last N samples
+    		// therefor if this offset is greater than or equal to the previous, set flag and break
+    		if(offset >= last_offset)
+    		{
+    			in_order = false;
+    			break;
+    		}
+
+    		last_offset = offset;
+    	}
+
+    	return in_order;
+    }
+
 
 
     // Joel's magical circular buffer
@@ -397,7 +431,7 @@ private:
 
     	for(size_t i = 0; i < new_stamps; i++)
     	{
-    		buf.m_bufPtr[i].offset += buf.m_bufIdx;
+    		buf.m_bufPtr[i+buf.m_bufIdx].offset += buf.m_bufIdx;
     	}
     }
 
