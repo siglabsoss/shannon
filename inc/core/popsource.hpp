@@ -82,10 +82,6 @@ protected:
         size_t uncopied_pts, timestamp_uncopied_pts;
         size_t req_samples_from_sink, timestamp_req_samples_from_sink;
 
-        // if no connected sinks then do nothing
-        if( 0 == m_rgSources.size() )
-            return;
-
         // if no data is passed then do nothing
         if( 0 == num_new_pts )
         	return;
