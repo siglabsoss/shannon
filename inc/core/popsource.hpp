@@ -108,12 +108,7 @@ protected:
             // get source buffer index and number of uncopied points
             // 'sink_idx_into_buffer' is a reference to the current sinks 'sourceBufIdx'
             size_t &timestamp_sink_idx_into_buffer = (*it)->m_timestampSourceBufIdx;
-            timestamp_req_samples_from_sink = 0;
             timestamp_uncopied_pts = ((m_timestamp_buf.m_bufIdx+m_timestamp_buf.m_sizeBuf) - timestamp_sink_idx_into_buffer) % m_timestamp_buf.m_sizeBuf + num_new_timestamp_pts;
-
-            //FIXME: this is preventing compiler warnings, delete it
-            size_t delme = timestamp_sink_idx_into_buffer + timestamp_req_samples_from_sink + timestamp_uncopied_pts;
-            delme++;
 
 
             // If there's no specific length requested then send all available.
@@ -129,13 +124,62 @@ protected:
             }
             // Otherwise send req_samples_from_sink samples at a time.
             else while ( uncopied_pts >= req_samples_from_sink )
-                {
-                    (*it)->unblock( m_buf.m_bufPtr + sink_idx_into_buffer, req_samples_from_sink, NULL, 0 );
+            {
 
-                    sink_idx_into_buffer += req_samples_from_sink;
-                    sink_idx_into_buffer %= m_buf.m_sizeBuf;
-                    uncopied_pts -= req_samples_from_sink;
-                }
+
+            	//                    std::cout << "there are " << timestamp_uncopied_pts << " uncopied stamps" << std::endl;
+            	//                    std::cout << "asking for " << req_samples_from_sink << " samples at a time" << std::endl;
+
+            	size_t start = (size_t)-1;
+            	size_t end = 0;
+
+            	// loop through all the timestamps that we have not sent to the source yet
+            	for( size_t i = 0; i < timestamp_uncopied_pts; i++ )
+            	{
+            		size_t offset = m_timestamp_buf.m_bufPtr[i+timestamp_sink_idx_into_buffer].offset;
+            		//                    	std::cout << "  looking at offset #" << offset << std::endl;
+
+            		// if the timestamp offest applies to data we are about to call unblock() with, record start and end
+            		if( offset >= sink_idx_into_buffer || offset <= (sink_idx_into_buffer+req_samples_from_sink) )
+            		{
+            			start = std::min(start,i);
+            			end = std::max(end,i);
+            		}
+            	}
+
+            	// at this point start/end point to the first and last time samples that are relevant
+            	// (this is awk because if (end - start) = 0, but this actually means 1 sample)
+            	size_t timestamp_samples = (end-start)+1;
+
+            	//                    std::cout << "    start: " << start << " end: " << end << std::endl;
+
+
+            	size_t zero_timestamps_are_valid = 0;
+
+
+            	// if start and end were never set, the loop above never matched conditions
+            	if( start == (size_t)-1 && end == 0 )
+            	{
+            		// copy in 0 timestamps
+            		timestamp_samples = 0;
+
+            		// in this special case, we want to call unblock with the 3rd param pointing at the most recent timestamp, and the 4th being a 0
+            		// the tail of the circular buffer is pointing at uninitialized space, so 'zero_timestamps_are_valid' bumps us back one, to the most recent valid timestamp
+            		zero_timestamps_are_valid = 1;
+            	}
+
+            	(*it)->unblock( m_buf.m_bufPtr + sink_idx_into_buffer, req_samples_from_sink, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer - zero_timestamps_are_valid, timestamp_samples );
+
+            	// modify and wrap sink pointer
+            	sink_idx_into_buffer += req_samples_from_sink;
+            	sink_idx_into_buffer %= m_buf.m_sizeBuf;
+            	uncopied_pts -= req_samples_from_sink;
+
+            	// modify and wrap sink timestamp pointer
+            	timestamp_sink_idx_into_buffer += timestamp_samples;
+            	timestamp_sink_idx_into_buffer %= m_timestamp_buf.m_sizeBuf;
+            	timestamp_uncopied_pts -= timestamp_samples;
+            }
 
             // check for overflow
             if( (*it)->queue_size() >= POPSOURCE_NUM_BUFFERS )
@@ -426,7 +470,7 @@ private:
     void correct_timestamp_indices(PopSource::PopSourceBuffer<OUT_TYPE> &buf, PopSource::PopSourceBuffer<PopTimestamp> &tbuf, size_t new_stamps)
     {
     	// nothing to do
-    	if( tbuf.m_bufIdx == 0 )
+    	if( buf.m_bufIdx == 0 )
     		return;
 
 

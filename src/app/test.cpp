@@ -155,6 +155,33 @@ struct PopTestMsg
 };
 
 
+// this sink is a template that allows for the specification of the BITE_SIZE (how many bytes it requests at a time)
+template <int BITE_SIZE>
+class PopTestSinkTwo : public PopSink<PopTestMsg>
+{
+public:
+	PopTestSinkTwo() : PopSink<PopTestMsg>("PopTestSinkTwo", BITE_SIZE) { }
+    void init() { }
+    void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+    {
+        printf("      received %lu PopMsg(s), ", size);
+        printf("%lu timestamps(s)\r\n", timestamp_size);
+
+        cout << "hacked offset: " << timestamp_data[0].offset << endl;
+
+//        return;
+        for( size_t i = 0; i < timestamp_size; i++ )
+        {
+        	cout << "offset [" << timestamp_data[i].offset << "]" << endl;
+        	std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
+        	std::cout << "frac was " << timestamp_data[i].get_frac_secs() << std::endl;
+        }
+
+    }
+
+};
+
+
 class PopTestSinkOne : public PopSink<PopTestMsg>
 {
 public:
@@ -310,26 +337,66 @@ public:
 
 
 
-BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
+//BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
+//{
+//	PopTestSourceOne source;
+//	PopTestSinkOne sink;
+//
+//	source.connect(sink);
+//	source.send_both(5, 5, 0, 10);
+//
+//	source.debug_print_timestamp_buffer();
+//
+//
+//	source.send_manual_offset(0);
+//	source.debug_print_timestamp_buffer();
+//
+//
+//	source.send_both(5, 5, 1, 10);
+//
+//	source.debug_print_timestamp_buffer();
+//
+//	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
+//}
+
+BOOST_AUTO_TEST_CASE( timestamp_staggering )
 {
 	PopTestSourceOne source;
-	PopTestSinkOne sink;
 
-	source.connect(sink);
-	source.send_both(5, 5, 0, 10);
+	// these sinks accept 2 and 3 samples at a time
+	PopTestSinkTwo<2> biteTwo;
+	PopTestSinkTwo<3> biteThree;
 
-	source.debug_print_timestamp_buffer();
+	// connect them to the same source
+	source.connect(biteTwo);
+//	source.connect(biteThree);
+
+	// the following commands build the following data picture:
+	// the numbers are samples and the bars are timestamp points
+	// also the timestamps are spaced such that each sample time is 0.1 seconds
+	//  0123456789
+	//  |  |  || |
+
+	source.send_both(3, 1, 0,   10);
+	source.send_both(3, 1, 0.3, 10);
+	source.send_both(2, 2, 0.6, 10);
+	source.send_both(1, 0, 0,   10);
+	source.send_both(1, 1, 0.9, 10);
+
+//	for( int i = 0; i < 1000; i++ )
+//	{
+//		source.send_both(3, 1, i+0,   10);
+//		source.send_both(3, 1, i+0.3, 10);
+//		source.send_both(2, 2, i+0.6, 10);
+//		source.send_both(1, 0, i+0,   10);
+//		source.send_both(1, 1, i+0.9, 10);
+//	}
+
+//	source.debug_print_timestamp_buffer();
 
 
-	source.send_manual_offset(0);
-	source.debug_print_timestamp_buffer();
 
 
-	source.send_both(5, 5, 1, 10);
-
-	source.debug_print_timestamp_buffer();
-
-	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
 }
 
 // test the timestamp_offsets_in_order()
