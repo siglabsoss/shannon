@@ -160,23 +160,16 @@ template <int BITE_SIZE>
 class PopTestSinkTwo : public PopSink<PopTestMsg>
 {
 public:
-	PopTestSinkTwo() : PopSink<PopTestMsg>("PopTestSinkTwo", BITE_SIZE) { }
+
+	void (*fp)(PopSink<PopTestMsg>*, const PopTestMsg*, size_t, const PopTimestamp*, size_t);
+
+	PopTestSinkTwo() : PopSink<PopTestMsg>("PopTestSinkTwo", BITE_SIZE), fp(0) { }
     void init() { }
+
+
     void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
-        printf("      received %lu PopMsg(s), ", size);
-        printf("%lu timestamps(s)\r\n", timestamp_size);
-
-        cout << "hacked offset: " << timestamp_data[0].offset << endl;
-
-//        return;
-        for( size_t i = 0; i < timestamp_size; i++ )
-        {
-        	cout << "offset [" << timestamp_data[i].offset << "]" << endl;
-        	std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
-        	std::cout << "frac was " << timestamp_data[i].get_frac_secs() << std::endl;
-        }
-
+        fp(this, data, size, timestamp_data, timestamp_size);
     }
 
 };
@@ -359,6 +352,57 @@ public:
 //	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
 //}
 
+
+void testTwo(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+{
+	static size_t index = 0;
+
+	// 5 rows b/c we being called every two samples with 10 total
+
+	// offset of first timestamp (forced), number timestamps, time,
+	double result[5][3] =
+	{
+	{ 0,  1, 0.0},
+	{ 1,  1, 0.3, },
+	{ -1, 0, 0.3, },
+	{ 0,  2, 0.6, },
+	{ 1,  1, 0.9, }
+	};
+
+	double *test = result[index];
+
+	BOOST_CHECK_EQUAL(test[0], that->calc_timestamp_offset(timestamp_data[0].offset) );
+	BOOST_CHECK_EQUAL(test[1], timestamp_size );
+	BOOST_CHECK_EQUAL(test[2], timestamp_data[0].get_frac_secs() );
+
+	// bump index for next time we are called
+	index++;
+}
+
+void testThree(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+{
+	static size_t index = 0;
+
+	// 3 rows b/c we being called every three samples with 10 total (last sample is never sent to us)
+
+	// offset of first timestamp (forced), number timestamps, time,
+	double result[3][3] =
+	{
+	{ 0,  1, 0.0},
+	{ 0,  1, 0.3, },
+	{ 0,  2, 0.6, },
+	};
+
+	double *test = result[index];
+
+	BOOST_CHECK_EQUAL(test[0], that->calc_timestamp_offset(timestamp_data[0].offset) );
+	BOOST_CHECK_EQUAL(test[1], timestamp_size );
+	BOOST_CHECK_EQUAL(test[2], timestamp_data[0].get_frac_secs() );
+
+	// bump index for next time we are called
+	index++;
+}
+
 BOOST_AUTO_TEST_CASE( timestamp_staggering )
 {
 	PopTestSourceOne source;
@@ -367,9 +411,14 @@ BOOST_AUTO_TEST_CASE( timestamp_staggering )
 	PopTestSinkTwo<2> biteTwo;
 	PopTestSinkTwo<3> biteThree;
 
+
+
+	biteTwo.fp = &testTwo;
+	biteThree.fp = &testThree;
+
 	// connect them to the same source
 	source.connect(biteTwo);
-//	source.connect(biteThree);
+	source.connect(biteThree);
 
 	// the following commands build the following data picture:
 	// the numbers are samples and the bars are timestamp points
