@@ -99,6 +99,18 @@ public:
         return m_reqBufSize;
     }
 
+    // returns an offset which can be added to a timestamp
+    unsigned int get_timestamp_offset()
+    {
+    	return m_sourceBufIdx;
+    }
+
+    // adds and returns an offset to the passed in timestamp
+    int calc_timestamp_offset(unsigned int timestamp)
+    {
+    	return timestamp - m_sourceBufIdx;
+    }
+
 private:
     /**
      * Thread loop.
