@@ -16,6 +16,7 @@
 #include <boost/thread.hpp>
 #include <boost/signals2.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/types/time_spec.hpp>
 
 #include "core/global.h"
 #include "core/popassert.h"
@@ -56,6 +57,7 @@ namespace pop
 		uhd::tx_streamer::sptr tx_stream;
 		uhd::rx_metadata_t md;
 		boost::thread *mp_thread;
+		uhd::time_spec_t m_timestamp_offset;
 	};
 }
 

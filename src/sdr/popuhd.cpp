@@ -57,7 +57,7 @@ namespace pop
 	/**
 	 * Constructor for Software Defined radio class.
 	 */
-	PopUhd::PopUhd() : PopSource<>("PopUhd"), mp_thread(0)
+	PopUhd::PopUhd() : PopSource<>("PopUhd"), mp_thread(0), m_timestamp_offset(0, 0.0)
 	{
 	}
 
@@ -70,6 +70,21 @@ namespace pop
 		// if thread is still running then shut it down
 		// TODO
 	}
+
+	// code pulled from '/home/joel/uhd/host/lib/types/time_spec.cpp
+	// because that file was compiled with incorrect flags and get_system_time() returns garbage
+	namespace pt = boost::posix_time;
+	uhd::time_spec_t get_microsec_system_time(void){
+	    pt::ptime time_now = pt::microsec_clock::universal_time();
+	    pt::time_duration time_dur = time_now - pt::from_time_t(0);
+	    return uhd::time_spec_t(
+	        time_t(time_dur.total_seconds()),
+	        long(time_dur.fractional_seconds()),
+	        double(pt::time_duration::ticks_per_second())
+	    );
+	}
+
+
 
 
 	/**
@@ -143,6 +158,25 @@ namespace pop
 
             //receive a single packet, TODO confirm num samps received
             samps_received = rx_stream->recv(buf, samps_per_buff, md, timeout);
+
+            // wait till the udh timestamp rolls over to the next second
+            if( md.time_spec.get_frac_secs() < .0009)
+            {
+            	// sample system time
+                uhd::time_spec_t now = get_microsec_system_time();
+
+                // round system time to nearest second
+                m_timestamp_offset = uhd::time_spec_t(round(now.get_real_secs()));
+
+//                cout << "rounted to base: '" << m_timestamp_offset.get_full_secs() << "' '" <<  m_timestamp_offset.get_frac_secs()<< "' from now of: '" << now.get_full_secs()  << "' '" << now.get_frac_secs() << "'" << endl;
+            }
+
+            // only offset if m_timestamp_offset is valid
+            if( m_timestamp_offset.get_full_secs() != 0 )
+            {
+            	md.time_spec += m_timestamp_offset;
+//            	cout << "calculated time: '" << md.time_spec.get_full_secs() << " + " <<  md.time_spec.get_frac_secs()<< "'" << endl;
+            }
 
             //use a small timeout for subsequent packets
             timeout = 0.1;
