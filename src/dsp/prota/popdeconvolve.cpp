@@ -234,7 +234,7 @@ unsigned IFloatFlip(unsigned f)
 }
 
 
-void PopProtADeconvolve::process(const complex<float>* in, size_t len)
+void PopProtADeconvolve::process(const complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 	unsigned n;
 	float h_peak[10];

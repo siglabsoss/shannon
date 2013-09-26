@@ -127,7 +127,7 @@ private:
         {
             wait_and_pop( buf );
 
-            process( buf.data, buf.len );
+            process( buf.data, buf.len, buf.timestamp_data, buf.timestamp_len );
         }
     }
 

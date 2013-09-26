@@ -30,7 +30,7 @@ namespace pop
 		~PopProtADeconvolve();
 
 	private:
-		void process(const std::complex<float>* in, size_t len);
+		void process(const std::complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<float>* cfc,
