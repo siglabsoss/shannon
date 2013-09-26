@@ -178,25 +178,32 @@ public:
 class PopTestSinkOne : public PopSink<PopTestMsg>
 {
 public:
-	PopTestSinkOne() : PopSink<PopTestMsg>("PopTestSinkOne", 0) { }
-    void init() { }
-    void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
-    {
-        printf("received %lu PopMsg(s)\r\n", size);
-//        for( size_t i = 0; i < size; i++ )
-//        {
-//        	printf("Data was '%s'\r\n", (data+i)->origin);
-//        }
 
-        printf("received %lu timestamps(s)\r\n", timestamp_size);
-        for( size_t i = 0; i < timestamp_size; i++ )
-        {
-        	cout << "offset [" << timestamp_data[i].offset << "]" << endl;
-        	std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
-        	std::cout << "frac was " << timestamp_data[i].get_frac_secs() << std::endl;
-        }
+	bool verbose;
 
-    }
+	PopTestSinkOne() : PopSink<PopTestMsg>("PopTestSinkOne", 0), verbose(0) { }
+	void init() { }
+	void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+	{
+		if(verbose) printf("received %lu PopMsg(s)\r\n", size);
+
+		//        for( size_t i = 0; i < size; i++ )
+		//        {
+		//        	printf("Data was '%s'\r\n", (data+i)->origin);
+		//        }
+
+		if(verbose) printf("received %lu timestamps(s)\r\n", timestamp_size);
+		for( size_t i = 0; i < timestamp_size; i++ )
+		{
+			if(verbose)
+			{
+				cout << "offset [" << timestamp_data[i].offset << "]" << endl;
+				std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
+				std::cout << "frac was " << timestamp_data[i].get_frac_secs() << std::endl;
+			}
+		}
+
+	}
 
 };
 
@@ -330,27 +337,27 @@ public:
 
 
 
-//BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
-//{
-//	PopTestSourceOne source;
-//	PopTestSinkOne sink;
-//
-//	source.connect(sink);
-//	source.send_both(5, 5, 0, 10);
-//
+BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
+{
+	PopTestSourceOne source;
+	PopTestSinkOne sink;
+
+	source.connect(sink);
+	source.send_both(5, 5, 0, 10);
+
 //	source.debug_print_timestamp_buffer();
-//
-//
-//	source.send_manual_offset(0);
+
+
+	source.send_manual_offset(0);
 //	source.debug_print_timestamp_buffer();
-//
-//
-//	source.send_both(5, 5, 1, 10);
-//
+
+
+	source.send_both(5, 5, 1, 10);
+
 //	source.debug_print_timestamp_buffer();
-//
-//	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
-//}
+
+	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
+}
 
 
 void testTwo(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
