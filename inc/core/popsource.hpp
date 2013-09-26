@@ -86,6 +86,11 @@ protected:
         if( 0 == num_new_pts )
         	return;
 
+        // make sure that timestamp buffer is always allocated
+        // this is because there is too much math below which assumes that m_sizeBuf is non 0
+        if( m_timestamp_buf.m_sizeBuf < (1 * sizeof(PopTimestamp) * POPSOURCE_NUM_BUFFERS) )
+        	m_timestamp_buf.resize_buffer(1);
+
         // If the data is from an external array then copy data into buffer.
         m_buf.fill_data(data, num_new_pts);
 
@@ -259,8 +264,9 @@ public:
         if( sink.sink_size() * POPSOURCE_NUM_BUFFERS >m_buf.m_sizeBuf )
         	m_buf.resize_buffer(sink.sink_size());
 
-        // set read index
+        // set read indices
         sink.m_sourceBufIdx = m_buf.m_bufIdx;
+        sink.m_timestampSourceBufIdx = m_timestamp_buf.m_bufIdx;
 
         // store sink
         m_rgSources.push_back(&sink);

@@ -489,6 +489,16 @@ BOOST_AUTO_TEST_CASE( timestamp_timestamp_offsets_in_order )
 }
 
 
+BOOST_AUTO_TEST_CASE( timestamp_divide_by_zero_with_no_time )
+{
+	PopTestSourceOne source;
+	PopTestSinkOne sink;
+	source.connect(sink);
+
+	// send 1 sample with 0 timestamps and check for divide by zero crash (actually it's mod by zero in this case)
+	source.send_both(1, 0);
+}
+
 
 //BOOST_AUTO_TEST_CASE( timestamp_basic )
 //{
