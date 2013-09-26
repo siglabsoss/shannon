@@ -231,6 +231,14 @@ protected:
     }
 
     /**
+     * Call this function when new data has been written into buffer, and new timestamps are avaiable as well
+     */
+    void process(size_t num_new_pts, const PopTimestamp* timestamp_data, size_t num_new_timestamp_pts)
+    {
+    	process(m_buf.m_bufPtr + m_buf.m_bufIdx, num_new_pts, timestamp_data, num_new_timestamp_pts);
+    }
+
+    /**
      * Get next buffer. This is an efficient way of writing directly into
      * the objects data structure to avoid having to make a copy of the data.
      */

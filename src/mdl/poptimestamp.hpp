@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <boost/operators.hpp>
+#include <uhd/types/time_spec.hpp>
 
 
 namespace pop
@@ -24,6 +25,11 @@ class PopTimestamp
 	 */
 	//	class UHD_API time_spec_t : boost::additive<time_spec_t>, boost::totally_ordered<time_spec_t>{
 public:
+
+	/*!
+	 * Copy constructor from time_spec_t type
+	 */
+	PopTimestamp(uhd::time_spec_t copy, size_t off) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(off) {}
 
 	/*!
 	 * Get the system time in time_spec_t format.
@@ -111,7 +117,7 @@ public:
 	double _frac_secs;
 
 	// which sample does this apply to
-	unsigned int offset;
+	double offset;
 
 	//	//! Implement equality_comparable interface
 	//	UHD_API bool operator==(const time_spec_t &, const time_spec_t &);

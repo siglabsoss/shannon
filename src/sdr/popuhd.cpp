@@ -159,7 +159,7 @@ namespace pop
             //receive a single packet, TODO confirm num samps received
             samps_received = rx_stream->recv(buf, samps_per_buff, md, timeout);
 
-            // wait till the udh timestamp rolls over to the next second
+            // wait till the uhd timestamp rolls over to the next second
             if( md.time_spec.get_frac_secs() < .0009)
             {
             	// sample system time
@@ -168,15 +168,12 @@ namespace pop
                 // round system time to nearest second
                 m_timestamp_offset = uhd::time_spec_t(round(now.get_real_secs()));
 
-//                cout << "rounted to base: '" << m_timestamp_offset.get_full_secs() << "' '" <<  m_timestamp_offset.get_frac_secs()<< "' from now of: '" << now.get_full_secs()  << "' '" << now.get_frac_secs() << "'" << endl;
+//                cout << "rounded to base: '" << m_timestamp_offset.get_full_secs() << "' '" <<  m_timestamp_offset.get_frac_secs()<< "' from now of: '" << now.get_full_secs()  << "' '" << now.get_frac_secs() << "'" << endl;
             }
 
-            // only offset if m_timestamp_offset is valid
-            if( m_timestamp_offset.get_full_secs() != 0 )
-            {
-            	md.time_spec += m_timestamp_offset;
-//            	cout << "calculated time: '" << md.time_spec.get_full_secs() << " + " <<  md.time_spec.get_frac_secs()<< "'" << endl;
-            }
+            // build a pop timestamp from uhd time + offset.
+            // the time always applies to sample 0
+            PopTimestamp pop_stamp = PopTimestamp(md.time_spec + m_timestamp_offset, 0);
 
             //use a small timeout for subsequent packets
             timeout = 0.1;
@@ -190,8 +187,12 @@ namespace pop
                 ) % md.error_code % uhd_error[md.error_code]));
             }
 
-            // process new data in source
-            process(samps_received);
+            // only process() if m_timestamp_offset is valid
+            if( m_timestamp_offset.get_full_secs() != 0 )
+            {
+            	// process new data in source
+            	process(samps_received, &pop_stamp, 1);
+            }
 		}
 
 		return POP_ERROR_UNKNOWN; // it should never actually get here
