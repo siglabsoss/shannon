@@ -12,6 +12,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
+#include <complex>
 
 #include "cuda/helper_cuda.h"
 
@@ -29,6 +30,76 @@ namespace pop
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
+extern "C" void thrust_peak_detection(cuComplex* in, float* peak, int* index, int len, int fbins);
+
+
+
+float cpu_magnitude2( cuComplex& in )
+{
+	return in.x * in.x + in.y * in.y;
+}
+
+void cpu_peak_detection_internal(cuComplex *in, float *peak, int len, int blockIdx, int blockDim, int threadIdx)
+{
+
+	int block = blockIdx;
+	int blockDimx = blockDim;
+	int threadIdxx = threadIdx;
+
+	int i = blockIdx * blockDim + threadIdx;
+//	int I = blockDim.x * gridDim.x;
+
+//	int F = (I / len);
+//	int f = (i / len) - (F / 2); // frequency
+	int b = i % len; // fft bin
+	float mag; // magnitude of peak
+	unsigned si; // sortable integer
+
+	// don't look for peaks in padding
+	if( (b > (len / 4)) && (b <= (3 * len /4)) ) return;
+
+	// take the magnitude of the detection
+	mag = cpu_magnitude2(in[i]);
+
+	if( mag > *peak )
+		*peak = mag;
+
+//	cout << "i: " << i << endl;
+
+//	// transform into sortable integer
+//	// https://devtalk.nvidia.com/default/topic/406770/cuda-programming-and-performance/atomicmax-for-float/
+//	//si = *((unsigned*)&mag) ^ (-signed(*((unsigned*)&mag)>>31) | 0x80000000);
+//	si = FloatFlip((unsigned&)mag);
+//
+//	// check to see if this is the highest recorded value
+//	atomicMax((unsigned*)peak, si);
+
+
+
+}
+
+
+void cpu_peak_detection(cuComplex* in, float* peak, int len, int fbins)
+{
+	// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
+//	peak_detection<<<fbins * 16, len / 16>>>(in, peak, len);
+
+	int blocks = fbins * 16;
+	int threads = len / 16;
+
+	cout << "<<<" << blocks << "," << threads << ">>> cpu style" << endl;
+
+	// i is blocks
+	// j is threads
+	for( int i = 0; i < blocks; i++ )
+	{
+		for( int j = 0; j < threads; j++ )
+		{
+			cpu_peak_detection_internal(in, peak, len, i, threads, j);
+		}
+	}
+}
+
 
 PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<float> >( "PopProtADeconvolve", SPREADING_LENGTH ),
 		PopSource<complex<float> >( "PopProtADeconvolve" )
@@ -233,13 +304,18 @@ unsigned IFloatFlip(unsigned f)
 	return f ^ mask;
 }
 
+float host_magnitude2( cuComplex& in )
+{
+	return in.x * in.x + in.y * in.y;
+}
+
 
 void PopProtADeconvolve::process(const complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 	unsigned n;
 	float h_peak[10];
 
-	//cout << "received " << len << " samples" << endl;
+	cout << "received " << len << " samples" << endl;
 
 	if( len != SPREADING_LENGTH )
 		throw PopException("size does not match filter");
@@ -285,37 +361,173 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 	d = sqrt(d);
 
-
-	if( d > 3.7e4 )
-		cout << "peak: " << d << endl;
+	cout << "old style peak is " << d << endl;
 
 
-	//PopSource<complex<float> >::process(h_cfc, 1024);
-	PopSource<complex<float> >::process();
+
+	float h_cpu_peak = 0;
+
+	float h_d;
+
+	cpu_peak_detection((cuComplex*)h_cts, &h_cpu_peak, SPREADING_LENGTH * 2, SPREADING_BINS);
+
+	h_d = sqrt(h_cpu_peak);
+
+	cout << "CPU style peak is " << h_d << endl;
+
+
+
+
+
+
+
+
+//	int lllen = SPREADING_LENGTH * 2;
+
+	// modify pointer head and length to shave of first 1/4 and last 1/4
+
+//	cuComplex* d_cts_shaved = d_cts + ( (SPREADING_LENGTH * 2) / 4);
+//	int d_cts_len_shaved =  ( (SPREADING_LENGTH * 2) * 3 ) / 4;
+
+
+	float h_thrust_peak;
+	int h_thrust_peak_index;
+
+	
+//	thrust_peak_detection(d_cts, &h_thrust_peak, &h_thrust_peak_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+
+
+
+//	cout << "in has len of " << len << " but we passed this to gpu_peak " << SPREADING_LENGTH  * 2 << endl;
+
+//	for(int i = 0; i < hacked_len; i++)
+//	{
+//
+//		cuComplex* c = (cuComplex*)&in[i];
+//
+//		cout << in[i] << " with mag " << host_magnitude2(*c) << endl;
+//	}
+
+//	exit(0);
+
 }
 
 #ifdef UNIT_TEST
 
 BOOST_AUTO_TEST_CASE( blahtest )
 {
-	complex<float>* cfc;
-	ptime t1, t2;
-	time_duration td, tLast;
-
-	cfc = (complex<float>*)malloc(512*2*sizeof(complex<float>)); ///< pad
-
-	t1 = microsec_clock::local_time();
-	pop::PopProtADeconvolve::gpu_gen_pn_match_filter_coef( pop::m4k_001, cfc, 512, 512, 0.5 );
-	t2 = microsec_clock::local_time();
-
-	BOOST_CHECK( cfc );
-
-	td = t2 - t1;
-
-	cout << "gen_pn_match_filter_coef() time = " << td.total_microseconds() << "us" << endl;
-
-	free(cfc);
+//	complex<float>* cfc;
+//	ptime t1, t2;
+//	time_duration td, tLast;
+//
+//	cfc = (complex<float>*)malloc(512*2*sizeof(complex<float>)); ///< pad
+//
+//	t1 = microsec_clock::local_time();
+//	pop::PopProtADeconvolve::gpu_gen_pn_match_filter_coef( pop::m4k_001, cfc, 512, 512, 0.5 );
+//	t2 = microsec_clock::local_time();
+//
+//	BOOST_CHECK( cfc );
+//
+//	td = t2 - t1;
+//
+//	cout << "gen_pn_match_filter_coef() time = " << td.total_microseconds() << "us" << endl;
+//
+//	free(cfc);
 }
+
+BOOST_AUTO_TEST_CASE( thrust_peak_detect )
+{
+//	int len = 4;
+//	complex<float> a[len];
+//
+//	a[0] = complex<float>(1,1);
+//	a[1] = complex<float>(-493.665,-468.588);
+//	a[2] = complex<float>(1143.63,489.068);
+//	a[3] = complex<float>(-112.182,-84.9344);
+//
+//	for(int i = 0; i < len; i++)
+//	{
+////		cout << a[i] << endl;
+//
+//
+//		cuComplex* c = (cuComplex*)&a[i];
+//
+//				cout << a[i] << " with mag " << host_magnitude2(*c) << endl;
+//
+//
+//	}
+//
+//	gpu_peak_detection(a, 0, len, 0);
+
+}
+
+
+
+#define RAND_BETWEEN(Min,Max)  (((double(rand()) / double(RAND_MAX)) * (Max - Min)) + Min)
+
+
+class PopTestRandComplexSource : public PopSource<complex<float> >
+{
+public:
+	PopTestRandComplexSource() : PopSource<complex<float> >("PopTestRandComplexSource") { }
+
+
+	    void send_both(size_t count, size_t stamps, double start_time = -1, double time_inc_divisor = -1)
+	    {
+
+	    	complex<float> *b = get_buffer(count);
+	    	PopTimestamp t[stamps];
+
+	    	float min, max;
+	    	min = -10000;
+	    	max = -1 * min;
+
+	    	// build msgs
+	    	for( size_t i = 0; i < count; i++ )
+	    	{
+	    		b[i].real( RAND_BETWEEN(min, max) );
+	    		b[i].imag( RAND_BETWEEN(min, max) );
+
+//	    		cout << "(" << b[i].real() << "," << b[i].imag() << ")" << endl;
+	    	}
+
+
+
+	    	process(count);
+
+	    }
+
+
+};
+
+
+BOOST_AUTO_TEST_CASE( cpu_peek_compare )
+{
+	PopProtADeconvolve* deconvolve = new PopProtADeconvolve();
+	deconvolve->start_thread();
+
+	PopTestRandComplexSource source;
+
+	source.connect(*deconvolve);
+
+	// always seed with this value for repeatable results
+	srand(1380748793 + 101);
+
+	source.send_both(SPREADING_LENGTH,0);
+
+	// sleep for N second
+	for( int i = 0; i < 10; i++ )
+	{
+		boost::posix_time::microseconds workTime(100000);
+		boost::this_thread::sleep(workTime);
+	}
+}
+
+
+
+
+
+
 
 #endif // UNIT_TEST
 
