@@ -39,7 +39,19 @@ float cpu_magnitude2( cuComplex& in )
 	return in.x * in.x + in.y * in.y;
 }
 
-void cpu_peak_detection_internal(cuComplex *in, float *peak, int len, int blockIdx, int blockDim, int threadIdx)
+void cpu_peak_detection_set_zero(cuComplex *in, float *peak, int len, int blockIdx, int blockDim, int threadIdx)
+{
+	int i = blockIdx * blockDim + threadIdx;
+	int b = i % len; // fft bin
+
+	// inverse of logic below
+	if( !((b > (len / 4)) && (b <= (3 * len /4))) ) return;
+
+	in[i].x = 0.0;
+	in[i].y = 0.0;
+}
+
+void cpu_peak_detection_internal(cuComplex *in, float *peak, int len, int blockIdx, int blockDim, int threadIdx, int forcedI = 0)
 {
 
 	int block = blockIdx;
@@ -47,6 +59,7 @@ void cpu_peak_detection_internal(cuComplex *in, float *peak, int len, int blockI
 	int threadIdxx = threadIdx;
 
 	int i = blockIdx * blockDim + threadIdx;
+//	i = forcedI;
 //	int I = blockDim.x * gridDim.x;
 
 //	int F = (I / len);
@@ -57,6 +70,8 @@ void cpu_peak_detection_internal(cuComplex *in, float *peak, int len, int blockI
 
 	// don't look for peaks in padding
 	if( (b > (len / 4)) && (b <= (3 * len /4)) ) return;
+
+//	cout << "(" << in[i].x << "," << in[i].y << ")" << endl;
 
 	// take the magnitude of the detection
 	mag = cpu_magnitude2(in[i]);
@@ -86,11 +101,26 @@ void cpu_peak_detection(cuComplex* in, float* peak, int len, int fbins)
 
 	int blocks = fbins * 16;
 	int threads = len / 16;
+	int totalLen = len * fbins;
 
 	cout << "<<<" << blocks << "," << threads << ">>> cpu style" << endl;
 
-	// i is blocks
-	// j is threads
+
+//	for( int i = 0; i < blocks; i++ )
+//	{
+//		for( int j = 0; j < threads; j++ )
+//		{
+//			cpu_peak_detection_set_zero(in, peak, len, i, threads, j);
+//		}
+//	}
+
+
+//	for( int i = 0; i < totalLen; i++ )
+//		cpu_peak_detection_internal(in, peak, len, 0, 0, 0, i);
+
+
+//	 i is blocks
+//	 j is threads
 	for( int i = 0; i < blocks; i++ )
 	{
 		for( int j = 0; j < threads; j++ )
@@ -350,6 +380,8 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 	cudaMemcpy(h_peak, d_peak, sizeof(float), cudaMemcpyDeviceToHost);
 	cudaThreadSynchronize();
 
+	cout << "Total number of points is " << SPREADING_BINS * SPREADING_LENGTH * 2 << " compared to " << SPREADING_LENGTH * 2 << " times " << SPREADING_BINS << endl;
+
 	// cast back to float from "sortable integer"
 	unsigned a, b, c;
 	//a = *((unsigned*)h_peak);
@@ -384,17 +416,19 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 //	int lllen = SPREADING_LENGTH * 2;
 
-	// modify pointer head and length to shave of first 1/4 and last 1/4
-
-//	cuComplex* d_cts_shaved = d_cts + ( (SPREADING_LENGTH * 2) / 4);
-//	int d_cts_len_shaved =  ( (SPREADING_LENGTH * 2) * 3 ) / 4;
 
 
 	float h_thrust_peak;
 	int h_thrust_peak_index;
 
 	
-//	thrust_peak_detection(d_cts, &h_thrust_peak, &h_thrust_peak_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+	thrust_peak_detection((cuComplex*)h_cts, &h_thrust_peak, &h_thrust_peak_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+
+	float h_thrust_d;
+
+	h_thrust_d = sqrt(h_thrust_peak);
+
+	cout << "THRUST style peak is " << h_thrust_d << endl;
 
 
 
@@ -511,12 +545,12 @@ BOOST_AUTO_TEST_CASE( cpu_peek_compare )
 	source.connect(*deconvolve);
 
 	// always seed with this value for repeatable results
-	srand(1380748793 + 101);
+	srand(1380748793);
 
 	source.send_both(SPREADING_LENGTH,0);
 
 	// sleep for N second
-	for( int i = 0; i < 10; i++ )
+	for( int i = 0; i < 100; i++ )
 	{
 		boost::posix_time::microseconds workTime(100000);
 		boost::this_thread::sleep(workTime);

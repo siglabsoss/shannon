@@ -306,74 +306,198 @@ extern "C"
 		}
 	};
 
+	struct indexed_magnitude_squared_functor : public thrust::binary_function<int,cuComplex,float>
+	{
+		int m_len;
+		__host__ __device__
+		indexed_magnitude_squared_functor(int l):m_len(l){};
+		__host__ __device__
+		float operator()(const int& index, const cuComplex& a) const {
+			int b = index % m_len; // fft bin
+
+			// if we in the region we want to cutoff, return 0.0 for the magnitude
+			if( !((b > (m_len / 4)) && (b <= (3 * m_len /4))) )
+			{
+//				cout << " drop " << endl;
+				return 0.0;
+			}
+
+//			cout << "at " << index << " not dropping " << endl;
+
+			return a.x * a.x + a.y * a.y;
+		}
+	};
+
+#define SPREADING_LENGTH 4096
+
+	struct indexed_magnitude_squared_functor_fixed : public thrust::binary_function<int,cuComplex,float>
+		{
+//			int m_len;
+			__host__ __device__
+			float operator()(const int& index, const cuComplex& a) const {
+
+				int m_len = SPREADING_LENGTH * 2;
+
+				int b = index % m_len; // fft bin
+
+				// if we in the region we want to cutoff, return 0.0 for the magnitude
+				if( (b > (m_len / 4)) && (b <= (3 * m_len /4)) )
+				{
+	//				cout << " drop " << endl;
+					return 0.0;
+				}
+
+	//			cout << "at " << index << " not dropping " << endl;
+
+				return a.x * a.x + a.y * a.y;
+			}
+		};
 
 	void thrust_peak_detection(cuComplex* in, float* peak, int* index, int len, int fbins)
 	{
+		int totalLen = len*fbins;
 
-		// allocate device_vector with len elements to hold the magnitude
-		thrust::device_vector<float> d_mag_vec(len);
+		thrust::host_vector<cuComplex> d_vec(in, in+totalLen);
 
-
-		// static cast pointer so we can use cuComplex types
-//		const cuComplex* cuIn = (cuComplex*)in;
-
-
-		//		thrust::device_vector<cuComplex> d_vecc(inCuComplex, inCuComplex+len);
-
-		// transfer data to the device
-//		thrust::device_vector< cuComplex > d_vec(cuIn, cuIn+len);
-
-
-		thrust::device_ptr<cuComplex> d_vec_begin = thrust::device_pointer_cast(in);
-
-
-
+		thrust::host_vector<float> d_mag(totalLen);
 //
-//		//
-//		cout << endl << endl;
+//		// transform between two vectors like this:
+//		// http://thrust.github.io/doc/group__transformations.html#ga68a3ba7d332887f1332ca3bc04453792
 //
-//		for(int i = 0; i < d_vec.size(); i++)
-//		{
-//			cuComplex copy = d_vec[i];
+		// this function is weird because it takes begin1, end1, begin2 but not end2.  so therefore end2 is calculated based on begin/end 1
+		// the next argument is the beginning of the output
 //
-//			std::cout << "d_vec[" << i << "] = " << copy.x << ", " << copy.y << std::endl;
-//		}
-//
-//		cout << endl << endl;
+		// the constructor for this functor sets the m_len member variable
+//		indexed_magnitude_squared_functor functor(len);
 
-		//
-		//
-		//		// compute magnitude from d_vec and store in d_mag_vec
-		thrust::transform(d_vec_begin, (d_vec_begin + len), d_mag_vec.begin(), magnitude_squared_functor());
-		//
-		//
-		//		 for(int i = 0; i < d_mag_vec.size(); i++)
-		//		        std::cout << "d_mag_vec[" << i << "] = " << d_mag_vec[i] << std::endl;
-		//
-		//		 cout << endl << endl << endl << endl << endl << endl;
+//		thrust::transform( thrust::make_counting_iterator(0),
+//		                   thrust::make_counting_iterator(totalLen),
+//		                   d_vec.begin(),
+//		                   d_mag.begin(),
+//		                   functor);
 
-		thrust::device_vector<float>::iterator d_max_element_itr = thrust::max_element(d_mag_vec.begin(), d_mag_vec.end());
+		thrust::transform( thrust::make_counting_iterator(0),
+				thrust::make_counting_iterator(totalLen),
+				d_vec.begin(),
+				d_mag.begin(),
+				indexed_magnitude_squared_functor_fixed());
 
-		unsigned int position = d_max_element_itr - d_mag_vec.begin();
+
+		cout << "ONEEEE" << endl;
+
+		thrust::host_vector<float>::iterator d_max_element_itr = thrust::max_element(d_mag.begin(), d_mag.end());
+
+		cout << "TWOOOO" << endl;
+
+		unsigned int position = d_max_element_itr - d_mag.begin();
 		float max_val = *d_max_element_itr;
+		*peak = max_val;
+
+		cout << "THREEE" << endl;
 
 		std::cout << "The maximum value is " << max_val << " at position " << position << std::endl;
 
+
+
+//
+//		for(int i = 0; i < d_mag.size(); i++)
+//			std::cout << "d_mag_vec[" << i << "] = " << d_mag_vec[i] << std::endl;
 		cout << endl << endl << endl << endl << endl << endl;
 
 
-		//		int index = max_magnitude_index(d_vec);
-		//
-		////		int index = max_index(test);
-		//
-		//
-		//
-		//		std::cout << std::endl << std::endl << std::endl << "Max index is:" << index << std::endl;
-		//		std::cout << "Value is: " << in[index] <<std::endl << endl << endl;
-
-		//		int crash = 0/0;
-
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//	void thrust_peak_detection2(cuComplex* in, float* peak, int* index, int len, int fbins)
+//	{
+//
+//		// allocate device_vector with len elements to hold the magnitude
+//		thrust::device_vector<float> d_mag_vec(len);
+//
+//
+//		// static cast pointer so we can use cuComplex types
+////		const cuComplex* cuIn = (cuComplex*)in;
+//
+//
+//		//		thrust::device_vector<cuComplex> d_vecc(inCuComplex, inCuComplex+len);
+//
+//		// transfer data to the device
+////		thrust::device_vector< cuComplex > d_vec(cuIn, cuIn+len);
+//
+//
+//		thrust::device_ptr<cuComplex> d_vec_begin = thrust::device_pointer_cast(in);
+//
+//
+//
+////
+////		//
+////		cout << endl << endl;
+////
+////		for(int i = 0; i < d_vec.size(); i++)
+////		{
+////			cuComplex copy = d_vec[i];
+////
+////			std::cout << "d_vec[" << i << "] = " << copy.x << ", " << copy.y << std::endl;
+////		}
+////
+////		cout << endl << endl;
+//
+//		//
+//		//
+//		//		// compute magnitude from d_vec and store in d_mag_vec
+//		thrust::transform(d_vec_begin, (d_vec_begin + len), d_mag_vec.begin(), magnitude_squared_functor());
+//		//
+//		//
+//		//		 for(int i = 0; i < d_mag_vec.size(); i++)
+//		//		        std::cout << "d_mag_vec[" << i << "] = " << d_mag_vec[i] << std::endl;
+//		//
+//		//		 cout << endl << endl << endl << endl << endl << endl;
+//
+//		thrust::device_vector<float>::iterator d_max_element_itr = thrust::max_element(d_mag_vec.begin(), d_mag_vec.end());
+//
+//		unsigned int position = d_max_element_itr - d_mag_vec.begin();
+//		float max_val = *d_max_element_itr;
+//
+//		std::cout << "The maximum value is " << max_val << " at position " << position << std::endl;
+//
+//		cout << endl << endl << endl << endl << endl << endl;
+//
+//
+//		//		int index = max_magnitude_index(d_vec);
+//		//
+//		////		int index = max_index(test);
+//		//
+//		//
+//		//
+//		//		std::cout << std::endl << std::endl << std::endl << "Max index is:" << index << std::endl;
+//		//		std::cout << "Value is: " << in[index] <<std::endl << endl << endl;
+//
+//		//		int crash = 0/0;
+//
+//	}
 
 
 
