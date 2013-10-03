@@ -12,12 +12,15 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
+#include <complex>
 
 #include "cuda/helper_cuda.h"
 
 #include <core/popexception.hpp>
 
 #include "popdeconvolve.hpp"
+
+//#define DEBUG_POPDECONVOLVE_TIME
 
 using namespace std;
 
@@ -29,6 +32,9 @@ namespace pop
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
+extern "C" void thrust_peak_detection(cuComplex* in, thrust::device_vector<float>* d_mag_vec, float* peak, int* index, int len, int fbins);
+extern "C" void init_popdeconvolve(thrust::device_vector<float>** d_mag_vec, size_t size);
+
 
 PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<float> >( "PopProtADeconvolve", SPREADING_LENGTH ),
 		PopSource<complex<float> >( "PopProtADeconvolve" )
@@ -211,6 +217,11 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMalloc(&d_cts, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_peak, sizeof(float)));
 
+    // allocate thrust memory
+    init_popdeconvolve(&d_mag_vec, SPREADING_LENGTH * SPREADING_BINS * 2);
+
+
+
     // initialize device memory
     checkCudaErrors(cudaMemset(d_sts, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_sfs, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
@@ -267,31 +278,56 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 	cudaThreadSynchronize();
 
 	// peak detection
-	checkCudaErrors(cudaMemset(d_peak, 0, sizeof(float)));
-	cudaThreadSynchronize();
-	gpu_peak_detection(d_cts, d_peak, SPREADING_LENGTH * 2, SPREADING_BINS);
-	cudaThreadSynchronize();
-	cudaMemcpy(h_peak, d_peak, sizeof(float), cudaMemcpyDeviceToHost);
-	cudaThreadSynchronize();
-
-	// cast back to float from "sortable integer"
-	unsigned a, b, c;
-	//a = *((unsigned*)h_peak);
-	//b = ((a >> 31) - 1) | 0x80000000;
-	//c = a ^ b;
-	float d;
-	//d = *((float*)&c);
-	(unsigned&)d = IFloatFlip((unsigned&)h_peak);
-
-	d = sqrt(d);
-
-
-	if( d > 3.7e4 )
-		cout << "peak: " << d << endl;
+//	checkCudaErrors(cudaMemset(d_peak, 0, sizeof(float)));
+//	cudaThreadSynchronize();
+//	gpu_peak_detection(d_cts, d_peak, SPREADING_LENGTH * 2, SPREADING_BINS);
+//	cudaThreadSynchronize();
+//	cudaMemcpy(h_peak, d_peak, sizeof(float), cudaMemcpyDeviceToHost);
+//	cudaThreadSynchronize();
+//
+//	// cast back to float from "sortable integer"
+//	unsigned a, b, c;
+//	//a = *((unsigned*)h_peak);
+//	//b = ((a >> 31) - 1) | 0x80000000;
+//	//c = a ^ b;
+//	float d;
+//	//d = *((float*)&c);
+//	(unsigned&)d = IFloatFlip((unsigned&)h_peak);
+//
+//	d = sqrt(d);
+//
+////	cout << "old style peak is " << d << endl;
 
 
-	//PopSource<complex<float> >::process(h_cfc, 1024);
-	PopSource<complex<float> >::process();
+	float h_thrust_peak;
+	int h_thrust_peak_index;
+
+#ifdef DEBUG_POPDECONVOLVE_TIME
+	ptime t1, t2;
+	time_duration td, tLast;
+	t1 = microsec_clock::local_time();
+#endif
+
+
+	thrust_peak_detection(d_cts, d_mag_vec, &h_thrust_peak, &h_thrust_peak_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+
+#ifdef DEBUG_POPDECONVOLVE_TIME
+	t2 = microsec_clock::local_time();
+	td = t2 - t1;
+	cout << "thrust did peak and index detection in " << td.total_microseconds() << "us." << endl;
+#endif
+
+
+
+
+	float h_thrust_d;
+
+	h_thrust_d = sqrt(h_thrust_peak);
+
+	if( h_thrust_d > 3.7e4 )
+		cout << "THRUST style peak is " << h_thrust_d << endl;
+
+
 }
 
 #ifdef UNIT_TEST
@@ -316,6 +352,74 @@ BOOST_AUTO_TEST_CASE( blahtest )
 
 	free(cfc);
 }
+
+
+
+#define RAND_BETWEEN(Min,Max)  (((double(rand()) / double(RAND_MAX)) * (Max - Min)) + Min)
+
+
+class PopTestRandComplexSource : public PopSource<complex<float> >
+{
+public:
+	PopTestRandComplexSource() : PopSource<complex<float> >("PopTestRandComplexSource") { }
+
+
+	    void send_both(size_t count, size_t stamps, double start_time = -1, double time_inc_divisor = -1)
+	    {
+
+	    	complex<float> *b = get_buffer(count);
+	    	PopTimestamp t[stamps];
+
+	    	float min, max;
+	    	min = -10000;
+	    	max = -1 * min;
+
+	    	// build msgs
+	    	for( size_t i = 0; i < count; i++ )
+	    	{
+	    		b[i].real( RAND_BETWEEN(min, max) );
+	    		b[i].imag( RAND_BETWEEN(min, max) );
+
+//	    		cout << "(" << b[i].real() << "," << b[i].imag() << ")" << endl;
+	    	}
+
+
+
+	    	process(count);
+
+	    }
+
+
+};
+
+
+BOOST_AUTO_TEST_CASE( cpu_peek_compare )
+{
+//	PopProtADeconvolve* deconvolve = new PopProtADeconvolve();
+//	deconvolve->start_thread();
+//
+//	PopTestRandComplexSource source;
+//
+//	source.connect(*deconvolve);
+//
+//	// always seed with this value for repeatable results
+//	srand(1380748793);
+//
+//	source.send_both(SPREADING_LENGTH,0);
+//
+//	// sleep for N second(s)
+//	for( int i = 0; i < 2; i++ )
+//	{
+//		boost::posix_time::microseconds workTime(1000000);
+//		boost::this_thread::sleep(workTime);
+//	}
+}
+
+
+
+
+
+
 
 #endif // UNIT_TEST
 

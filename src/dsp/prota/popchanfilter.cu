@@ -16,9 +16,20 @@
 #include "dsp/utils.hpp"
 
 #include <cufft.h>
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+#include <thrust/tuple.h>
+#include <thrust/reduce.h>
+#include <thrust/fill.h>
+#include <thrust/generate.h>
+#include <thrust/sort.h>
+#include <thrust/sequence.h>
+#include <thrust/copy.h>
+#include <cstdlib>
+#include <time.h>
 
 using namespace std;
-
+using namespace thrust;
 
 __device__ float magnitude2( cuComplex& in )
 {
@@ -206,5 +217,74 @@ extern "C"
 		peak_detection<<<fbins * 16, len / 16>>>(in, peak, len);
 		cudaThreadSynchronize();
 	}
+
+
+	// this is the functor which calculates magnitude's for samples in the keep zone
+	// and calculates 0.0 for samples outside of the zone
+	// note for some weird reason if this struct has a normal style constructor other basic CUDA functions are affected and refuse to run!??
+	struct indexed_magnitude_squared_functor_fixed : public thrust::binary_function<int,cuComplex,float>
+		{
+		public:
+			int m_len;
+
+			__host__ __device__
+			float operator()(const int& index, const cuComplex& a) const {
+
+				int b = index % m_len; // fft bin
+
+				// if we in the region we want to cutoff, return 0.0 for the magnitude
+				if( (b > (m_len / 4)) && (b <= (3 * m_len /4)) )
+				{
+					return 0.0;
+				}
+
+				return a.x * a.x + a.y * a.y;
+			}
+		};
+
+	void thrust_peak_detection(cuComplex* in, thrust::device_vector<float>* d_mag_vec, float* peak, int* index, int len, int fbins)
+	{
+		int totalLen = len*fbins;
+
+		// grab an iterator to the beginning of the data that was already cuda memcopied onto the gpu
+		thrust::device_ptr<cuComplex> d_vec_begin = thrust::device_pointer_cast(in);
+
+//		// transform between two vectors like this:
+//		// http://thrust.github.io/doc/group__transformations.html#ga68a3ba7d332887f1332ca3bc04453792
+
+		indexed_magnitude_squared_functor_fixed functor = indexed_magnitude_squared_functor_fixed();
+		functor.m_len = len;
+
+		// this function is weird because it takes begin1, end1, begin2 but not end2.  so therefore end2 is calculated based on begin/end 1
+		// the 4th argument is the beginning of the output, and the 5th is the functor
+
+		// takes about 42000us
+		thrust::transform(
+				thrust::make_counting_iterator(0),
+				thrust::make_counting_iterator(totalLen),
+				d_vec_begin,
+				d_mag_vec->begin(),
+				functor);
+
+
+		// find the maximum element using the gpu, and return a pointer to it (a device_vector::iterator)
+		// this takes about 36000us
+		thrust::device_vector<float>::iterator d_max_element_itr = thrust::max_element(d_mag_vec->begin(), d_mag_vec->end());
+
+		unsigned int position = d_max_element_itr - d_mag_vec->begin();
+		float max_val = *d_max_element_itr;
+		*peak = max_val;
+	}
+
+
+
+
+
+
+	void init_popdeconvolve(thrust::device_vector<float>** d_mag_vec, size_t size)
+	{
+		*d_mag_vec = new thrust::device_vector<float>(size);
+	}
+
 
 }
