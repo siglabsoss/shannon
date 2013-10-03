@@ -30,7 +30,8 @@ namespace pop
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
-extern "C" void thrust_peak_detection(cuComplex* in, float* peak, int* index, int len, int fbins);
+extern "C" void thrust_peak_detection(cuComplex* in, thrust::device_vector<float>* d_mag_vec, float* peak, int* index, int len, int fbins);
+extern "C" void init_popdeconvolve(thrust::device_vector<float>** d_mag_vec, size_t size);
 
 
 
@@ -312,6 +313,12 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMalloc(&d_cts, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_peak, sizeof(float)));
 
+    // allocate thrust memory
+    init_popdeconvolve(&d_mag_vec, SPREADING_LENGTH * SPREADING_BINS * 2);
+
+
+
+
     // initialize device memory
     checkCudaErrors(cudaMemset(d_sts, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_sfs, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
@@ -396,33 +403,23 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 	cout << "old style peak is " << d << endl;
 
 
-
-	float h_cpu_peak = 0;
-
-	float h_d;
-
-	cpu_peak_detection((cuComplex*)h_cts, &h_cpu_peak, SPREADING_LENGTH * 2, SPREADING_BINS);
-
-	h_d = sqrt(h_cpu_peak);
-
-	cout << "CPU style peak is " << h_d << endl;
-
-
-
-
-
-
-
-
-//	int lllen = SPREADING_LENGTH * 2;
-
-
-
 	float h_thrust_peak;
 	int h_thrust_peak_index;
 
-	
-	thrust_peak_detection((cuComplex*)h_cts, &h_thrust_peak, &h_thrust_peak_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+	ptime t1, t2;
+	time_duration td, tLast;
+	t1 = microsec_clock::local_time();
+
+
+	thrust_peak_detection(d_cts, d_mag_vec, &h_thrust_peak, &h_thrust_peak_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+
+	t2 = microsec_clock::local_time();
+	td = t2 - t1;
+
+	cout << "thrust did it's thang in " << td.total_microseconds() << "us." << endl;
+
+
+
 
 	float h_thrust_d;
 

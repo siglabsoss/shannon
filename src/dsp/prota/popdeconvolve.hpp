@@ -19,6 +19,8 @@
 
 #include <cufft.h>
 
+#include <thrust/device_vector.h>
+
 using namespace boost::posix_time;
 
 namespace pop
@@ -43,6 +45,7 @@ namespace pop
 		cuComplex* d_sfs; // sampled fourier series
 		cuComplex* d_cfs; // convoluted frequency swept series
 		cuComplex* d_cts; // convoluted time series
+		thrust::device_vector<float>* d_mag_vec; // convoluted time series magnitude
 		cuComplex* d_cfc; // convolution filter coefficients
 		float* d_peak; // detector output
 
