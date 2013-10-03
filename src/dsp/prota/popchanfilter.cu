@@ -328,14 +328,16 @@ extern "C"
 		}
 	};
 
-#define SPREADING_LENGTH 4096
-
+	// this is the functor which calculates magnitude's for samples in the keep zone
+	// and calculates 0.0 for samples outside of the zone
+	// note for some weird reason if this struct has a normal style constructor other basic CUDA functions are affected and refuse to run!??
 	struct indexed_magnitude_squared_functor_fixed : public thrust::binary_function<int,cuComplex,float>
 		{
+		public:
+			int m_len;
+
 			__host__ __device__
 			float operator()(const int& index, const cuComplex& a) const {
-
-				int m_len = SPREADING_LENGTH * 2;
 
 				int b = index % m_len; // fft bin
 
@@ -344,7 +346,6 @@ extern "C"
 				{
 					return 0.0;
 				}
-
 
 				return a.x * a.x + a.y * a.y;
 			}
@@ -359,7 +360,10 @@ extern "C"
 
 //		// transform between two vectors like this:
 //		// http://thrust.github.io/doc/group__transformations.html#ga68a3ba7d332887f1332ca3bc04453792
-//
+
+		indexed_magnitude_squared_functor_fixed functor = indexed_magnitude_squared_functor_fixed();
+		functor.m_len = len;
+
 		// this function is weird because it takes begin1, end1, begin2 but not end2.  so therefore end2 is calculated based on begin/end 1
 		// the 4th argument is the beginning of the output, and the 5th is the functor
 
@@ -369,7 +373,7 @@ extern "C"
 				thrust::make_counting_iterator(totalLen),
 				d_vec_begin,
 				d_mag_vec->begin(),
-				indexed_magnitude_squared_functor_fixed());
+				functor);
 
 
 		// find the maximum element using the gpu, and return a pointer to it (a device_vector::iterator)
