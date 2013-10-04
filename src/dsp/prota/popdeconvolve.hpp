@@ -47,6 +47,8 @@ namespace pop
 		cuComplex* d_cts; // convoluted time series
 		thrust::device_vector<float>* d_mag_vec; // convoluted time series magnitude
 		cuComplex* d_cfc; // convolution filter coefficients
+		int*       d_peaks; // array of indices of detected peaks
+		unsigned int*  	   d_peaks_len; // index of last detected peak
 		float* d_peak; // detector output
 
 		friend class blahtest;

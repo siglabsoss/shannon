@@ -7,15 +7,16 @@
 *
 ******************************************************************************/
 
-//#include <cuComplex.h>
-#include <complex>
+// Bad practice, but I can't get multiple cuda files to link http://stackoverflow.com/questions/13683575/cuda-5-0-separate-compilation-of-library-with-cmake
+#include <dsp/prota/popdeconvolve.cu>
+
+
 #include <iostream>
 #include <stdexcept>
 #include <cstdio>
 #include <cmath>
 #include "dsp/utils.hpp"
 
-#include <cufft.h>
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <thrust/tuple.h>
@@ -27,6 +28,10 @@
 #include <thrust/copy.h>
 #include <cstdlib>
 #include <time.h>
+
+#include <dsp/prota/popchanfilter.cuh>
+
+
 
 using namespace std;
 using namespace thrust;

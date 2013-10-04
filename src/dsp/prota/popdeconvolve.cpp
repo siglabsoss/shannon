@@ -29,9 +29,11 @@ namespace pop
 
 #define SPREADING_LENGTH 4096
 #define SPREADING_BINS 400
+#define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
+extern "C" void gpu_threshold_detection(cuComplex* d_in, int* d_out, unsigned int *d_outLen, int outLenMax, float threshold, int len, int fbins);
 extern "C" void thrust_peak_detection(cuComplex* in, thrust::device_vector<float>* d_mag_vec, float* peak, int* index, int len, int fbins);
 extern "C" void init_popdeconvolve(thrust::device_vector<float>** d_mag_vec, size_t size);
 
@@ -132,18 +134,18 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 	}
 
 	// sinc interpolate to sample frequency
-	for( m = 0; m < osl; m++ )
-	{
-		yp[m] = complex<double>(0.0, 0.0);
-		for( n = 0; n < ncs; n++ )
-		{
-			a = M_PI * ( (double)m / (double)osl * (double)ncs - (double)n );
-			if( 0 == a )
-				yp[m] += y[n];
-			else
-				yp[m] += sin(a) / a * y[n];
-		}
-	}
+//	for( m = 0; m < osl; m++ )
+//	{
+//		yp[m] = complex<double>(0.0, 0.0);
+//		for( n = 0; n < ncs; n++ )
+//		{
+//			a = M_PI * ( (double)m / (double)osl * (double)ncs - (double)n );
+//			if( 0 == a )
+//				yp[m] += y[n];
+//			else
+//				yp[m] += sin(a) / a * y[n];
+//		}
+//	}
 
 	// complex conjugate and flip
 	for( m = 0; m < osl; m++ )
@@ -215,6 +217,8 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMalloc(&d_cfc, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_cfs, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_cts, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
+    checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
+    checkCudaErrors(cudaMalloc(&d_peaks_len, sizeof(unsigned int)));
     checkCudaErrors(cudaMalloc(&d_peak, sizeof(float)));
 
     // allocate thrust memory
@@ -227,6 +231,7 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMemset(d_sfs, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_cfs, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
+    checkCudaErrors(cudaMemset(d_peaks, 0, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
 
     // generate convolution filter coefficients
     cout << "generating spreading codes..." << endl;
@@ -277,7 +282,28 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 	cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyDeviceToHost);
 	cudaThreadSynchronize();
 
-	// peak detection
+	float threshold = 3.7e7;
+
+	// threshold detection
+	gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, MAX_SIGNALS_PER_SPREAD, threshold, SPREADING_LENGTH * 2, SPREADING_BINS);
+	cudaThreadSynchronize();
+
+	int h_peaks[MAX_SIGNALS_PER_SPREAD];
+	unsigned int h_peaks_len;
+
+	cudaMemcpy(h_peaks, d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
+	for( int i = 0; i < MAX_SIGNALS_PER_SPREAD; i++ )
+	{
+		cout << "val at " << i << " is " << h_peaks[i] << endl;
+	}
+
+	cout << "found " << h_peaks_len << " peaks!" << endl;
+
+
+//
+//	// peak detection
 //	checkCudaErrors(cudaMemset(d_peak, 0, sizeof(float)));
 //	cudaThreadSynchronize();
 //	gpu_peak_detection(d_cts, d_peak, SPREADING_LENGTH * 2, SPREADING_BINS);
@@ -296,36 +322,36 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 //
 //	d = sqrt(d);
 //
-////	cout << "old style peak is " << d << endl;
-
-
-	float h_thrust_peak;
-	int h_thrust_peak_index;
-
-#ifdef DEBUG_POPDECONVOLVE_TIME
-	ptime t1, t2;
-	time_duration td, tLast;
-	t1 = microsec_clock::local_time();
-#endif
-
-
-	thrust_peak_detection(d_cts, d_mag_vec, &h_thrust_peak, &h_thrust_peak_index, SPREADING_LENGTH * 2, SPREADING_BINS);
-
-#ifdef DEBUG_POPDECONVOLVE_TIME
-	t2 = microsec_clock::local_time();
-	td = t2 - t1;
-	cout << "thrust did peak and index detection in " << td.total_microseconds() << "us." << endl;
-#endif
-
-
-
-
-	float h_thrust_d;
-
-	h_thrust_d = sqrt(h_thrust_peak);
-
-	if( h_thrust_d > 3.7e4 )
-		cout << "THRUST style peak is " << h_thrust_d << endl;
+//	cout << "old style peak is " << d << endl;
+//
+//
+//	float h_thrust_peak;
+//	int h_thrust_peak_index;
+//
+//#ifdef DEBUG_POPDECONVOLVE_TIME
+//	ptime t1, t2;
+//	time_duration td, tLast;
+//	t1 = microsec_clock::local_time();
+//#endif
+//
+//
+//	thrust_peak_detection(d_cts, d_mag_vec, &h_thrust_peak, &h_thrust_peak_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+//
+//#ifdef DEBUG_POPDECONVOLVE_TIME
+//	t2 = microsec_clock::local_time();
+//	td = t2 - t1;
+//	cout << "thrust did peak and index detection in " << td.total_microseconds() << "us." << endl;
+//#endif
+//
+//
+//
+//
+//	float h_thrust_d;
+//
+//	h_thrust_d = sqrt(h_thrust_peak);
+//
+//	if( h_thrust_d > 3.7e4 )
+//		cout << "THRUST style peak is " << h_thrust_d << endl;
 
 
 }
