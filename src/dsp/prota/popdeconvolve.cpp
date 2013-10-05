@@ -13,11 +13,14 @@
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
 #include <complex>
+#include <algorithm>    // std::min
+#include "boost/tuple/tuple.hpp"
 
 #include "cuda/helper_cuda.h"
 
 #include <core/popexception.hpp>
 
+#include <dsp/prota/popchanfilter.cuh>
 #include "popdeconvolve.hpp"
 
 //#define DEBUG_POPDECONVOLVE_TIME
@@ -250,6 +253,50 @@ unsigned IFloatFlip(unsigned f)
 }
 
 
+float magnitude2( const complex<float>& in )
+{
+	return in.real() * in.real() + in.imag() * in.imag();
+}
+
+// we need to check the points forwards and backwards in time, we also need to check up and down in fbins
+// then we also check the corners
+bool sampleIsLocalMaxima(const complex<float>* data, int sample, int spreadLength, int fbins)
+{
+	//TODO: we don't have a circular buffer of the final data, so if a sample lies on a boundary
+	// we can't check for local maxima by negativly indexing to verify local maximums
+
+	int sampleTime, sampleBin;
+
+	float surroundingMax = 0.0; // maximum of surrounding points
+
+	vector<int> check; // vector of indices we want to check
+
+	check.push_back( sample+1 ); // right
+	check.push_back( sample-1 ); // left
+	check.push_back( sample - spreadLength ); // up
+	check.push_back( sample + spreadLength ); // down
+	check.push_back( sample - spreadLength - 1 ); // up left
+	check.push_back( sample - spreadLength + 1 ); // up right
+	check.push_back( sample + spreadLength - 1 ); // down left
+	check.push_back( sample + spreadLength + 1 ); // down right
+
+	for( unsigned i = 0; i < check.size(); i++ )
+	{
+		// bound to edges of array
+		int testSample = min(max(check[i],0), spreadLength*fbins);
+
+		if( testSample != check[i] )
+			cout << "hit boundary in sampleIsLocalMaxima()" << endl;
+
+		// compute maximum of surrounding indices
+		surroundingMax = max(surroundingMax, magnitude2(data[testSample]));
+	}
+
+	// is local maxima?
+	return ( magnitude2(data[sample]) > surroundingMax );
+}
+
+
 void PopProtADeconvolve::process(const complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 	unsigned n;
@@ -294,12 +341,38 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 	cudaMemcpy(h_peaks, d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int), cudaMemcpyDeviceToHost);
 	cudaMemcpy(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost);
 
-	for( int i = 0; i < MAX_SIGNALS_PER_SPREAD; i++ )
+
+	cout << "found " << h_peaks_len << " peaks! ::" << endl;
+
+	// at this point magnitudes have been detected that aren't in the padding
+	// the padding is actually in the center of the SPREADING_LENGTH, but we want to visiualize the padding on the outside and the data on the inside
+
+	if( h_peaks_len > 2 )
+		int a = 4;
+
+	vector<int> localMaximaPeaks;
+	bool isLocalMaxima;
+
+	// look at all peaks above the thresh and scan for local maxima
+	for( unsigned int i = 0; i < std::min((unsigned)MAX_SIGNALS_PER_SPREAD, h_peaks_len); i++ )
 	{
-		cout << "val at " << i << " is " << h_peaks[i] << endl;
+		cout << "index of peak " << i << " is " << h_peaks[i] << " with mag2 " << magnitude2(h_cts[h_peaks[i]]);
+
+		isLocalMaxima = sampleIsLocalMaxima(h_cts, h_peaks[i], SPREADING_LENGTH * 2, SPREADING_BINS);
+
+		// save the index
+		if( isLocalMaxima )
+		{
+			localMaximaPeaks.push_back(h_peaks[i]);
+			cout << " LOCAL MAX";
+		}
+
+		cout << endl;
 	}
 
-	cout << "found " << h_peaks_len << " peaks!" << endl;
+
+
+
 
 
 //
@@ -397,8 +470,9 @@ public:
 	    	PopTimestamp t[stamps];
 
 	    	float min, max;
-	    	min = -10000;
-	    	max = -1 * min;
+	    	max = 225000;
+	    	min = -1 * max;
+
 
 	    	// build msgs
 	    	for( size_t i = 0; i < count; i++ )
@@ -434,7 +508,7 @@ BOOST_AUTO_TEST_CASE( cpu_peek_compare )
 //	source.send_both(SPREADING_LENGTH,0);
 //
 //	// sleep for N second(s)
-//	for( int i = 0; i < 2; i++ )
+//	for( ;; )
 //	{
 //		boost::posix_time::microseconds workTime(1000000);
 //		boost::this_thread::sleep(workTime);

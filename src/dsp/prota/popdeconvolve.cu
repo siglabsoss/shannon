@@ -30,8 +30,6 @@
 using namespace std;
 
 
-//__global__ void gpu_threshold_detection(cuComplex* in, int* out, int* outLen, int outMaxLen, int len, int fbins);
-
 __global__ void threshold_detection(cuComplex *in, int *out, unsigned int *outLen, int outLenMax, float thresholdSquared, int len, int fbins)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -41,8 +39,8 @@ __global__ void threshold_detection(cuComplex *in, int *out, unsigned int *outLe
 //	int F = (I / len);
 //	int f = (i / len) - (F / 2); // frequency
 	int b = i % len; // fft bin
+
 	float mag; // magnitude of peak
-	unsigned si; // sortable integer
 
 	// don't look for peaks in padding
 	if( (b > (len / 4)) && (b <= (3 * len /4)) ) return;
@@ -50,23 +48,20 @@ __global__ void threshold_detection(cuComplex *in, int *out, unsigned int *outLe
 	// take the magnitude of the detection
 	mag = magnitude2(in[i]);
 
+	// if the magnitude is below the thresh, return
 	if( mag < thresholdSquared ) return;
 
-	int oldVal = atomicInc(outLen, INT_MAX);
+	// atomicInc incriments the variable at the pointer only if the second param is larger than the stored variable
+	// this variable always starts at 0 (set before the kernel launch)
+	// the "old" value at the pointer location is returned, which is this thread's unique index into the output buffer
+	int ourUniqueIndex = atomicInc(outLen, INT_MAX);
 
-	if( oldVal > outLenMax ) return; // out of bounds, this is an OVERFLOW ie we found too many peaks
+	// out of bounds, this is an OVERFLOW ie we found too many peaks
+	// in this case we discard the data, but outLen is still incrimented.  we can check for overflow after the kernel launch is done
+	if( ourUniqueIndex > outLenMax ) return;
 
-	out[oldVal] = i;
-
-//	printf("here from cuda\r\n");
-
-//	// transform into sortable integer
-//	// https://devtalk.nvidia.com/default/topic/406770/cuda-programming-and-performance/atomicmax-for-float/
-//	//si = *((unsigned*)&mag) ^ (-signed(*((unsigned*)&mag)>>31) | 0x80000000);
-//	si = FloatFlip((unsigned&)mag);
-//
-//	// check to see if this is the highest recorded value
-//	atomicMax((unsigned*)peak, si);
+	// save the index of our detection to the array
+	out[ourUniqueIndex] = i;
 }
 
 
@@ -76,9 +71,7 @@ extern "C"
 
 	void gpu_threshold_detection(cuComplex* d_in, int* d_out, unsigned int *d_outLen, int outLenMax, float threshold, int len, int fbins)
 	{
-		cout << "here" << endl;
-
-		// reset this counter to 0
+		// reset this index of the largest detected peak to 0
 		checkCudaErrors(cudaMemset(d_outLen, 0, sizeof(int)));
 
 		threshold_detection<<<fbins * 16, len / 16>>>(d_in, d_out, d_outLen, outLenMax, (threshold*threshold), len, fbins);
