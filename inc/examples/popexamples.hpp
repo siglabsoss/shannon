@@ -412,7 +412,7 @@ private:
     void init()
     {
     }
-    void process(const T* in, size_t size)
+    void process(const T* in, size_t size, const pop::PopTimestamp *t, size_t tt)
     {
         printf("+");
         size_t bytes = size * sizeof(T);
