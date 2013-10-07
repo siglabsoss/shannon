@@ -19,7 +19,7 @@
 using namespace boost::posix_time;
 
 #include "core/popblock.hpp"
-#include "dsp/utils.hpp"
+#include "core/utilities.hpp"
 
 namespace pop
 {

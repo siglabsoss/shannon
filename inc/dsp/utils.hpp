@@ -20,8 +20,5 @@ void check(T err, const char* const func, const char* const file, const int line
   }
 }
 
-// returns a random value between to floats, min, max.  run srand before
-#define RAND_BETWEEN(Min,Max)  (((double(rand()) / double(RAND_MAX)) * (Max - Min)) + Min)
-
 
 #endif
