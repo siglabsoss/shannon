@@ -16,6 +16,7 @@
 #include <core/objectstash.hpp>
 #include <core/popassert.h>
 #include <core/config.hpp>
+#include "examples/popexamples.hpp"
 
 // include raw cpp files
 #include <dsp/prota/popdeconvolve.cpp>
@@ -147,7 +148,11 @@ BOOST_AUTO_TEST_SUITE_END()
 
 
 
-BOOST_AUTO_TEST_SUITE( timestamp_suite )
+
+
+
+
+
 
 struct PopTestMsg
 {
@@ -180,11 +185,17 @@ class PopTestSinkOne : public PopSink<PopTestMsg>
 public:
 
 	bool verbose;
+	// members which hold onto the most recent values of these variables from the last time process is called
+	const PopTestMsg* m_lastData;
+	size_t m_lastSize;
 
 	PopTestSinkOne() : PopSink<PopTestMsg>("PopTestSinkOne", 0), verbose(0) { }
 	void init() { }
 	void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
+		m_lastData = data;
+		m_lastSize = size;
+
 		if(verbose) printf("received %lu PopMsg(s)\r\n", size);
 
 		//        for( size_t i = 0; i < size; i++ )
@@ -203,6 +214,13 @@ public:
 			}
 		}
 
+	}
+	
+	// returns a hash calculated from the data given to us by the most recent call to process()
+	size_t get_last_hash()
+	{
+		const unsigned char* addr = reinterpret_cast<const unsigned char*>(m_lastData);
+		return boost::hash_range(addr, addr + m_lastSize);
 	}
 
 };
@@ -335,6 +353,7 @@ public:
 
 };
 
+BOOST_AUTO_TEST_SUITE( timestamp_suite )
 
 
 BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
@@ -513,6 +532,64 @@ BOOST_AUTO_TEST_CASE( timestamp_divide_by_zero_with_no_time )
 
 
 BOOST_AUTO_TEST_SUITE_END()
+
+
+
+BOOST_AUTO_TEST_SUITE( file_read_write_suite )
+
+
+BOOST_AUTO_TEST_CASE( file_readback )
+{
+	char filename[] = "file_readback_test.raw";
+	size_t test_object_count = 3;
+
+	// sink -> source to disk
+	PopTestSourceOne source;
+	PopDumpToFile<PopTestMsg> fileSink(filename);
+	source.connect(fileSink);
+	source.send_both(test_object_count, 0);
+
+
+
+	// source from disk -> sink
+	PopReadFromFile<PopTestMsg> fileSource(filename);
+	PopTestSinkOne sink;
+	fileSource.connect(sink);
+	fileSource.read(test_object_count);
+
+	size_t hashThroughDisk = sink.get_last_hash();
+
+
+	// source -> sink
+
+	PopTestSourceOne sourceDirect;
+	PopTestSinkOne   sinkDirect;
+	sourceDirect.connect(sinkDirect);
+	sourceDirect.send_both(test_object_count, 0);
+	size_t hashDirect = sinkDirect.get_last_hash();
+
+	BOOST_CHECK_EQUAL( hashThroughDisk, hashDirect );
+
+
+	// different value hash
+	sourceDirect.send_both(test_object_count + 1, 0);
+	size_t differentHash = sinkDirect.get_last_hash();
+
+	BOOST_CHECK( differentHash != hashThroughDisk );
+
+	// check to see if we can get a good hash again this time
+	sourceDirect.send_both(test_object_count, 0);
+	size_t hashDirectTwo = sinkDirect.get_last_hash();
+
+	BOOST_CHECK_EQUAL( hashThroughDisk, hashDirectTwo );
+
+}
+
+
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
 
 
 #endif // UNIT_TEST

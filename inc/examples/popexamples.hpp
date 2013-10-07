@@ -422,6 +422,34 @@ private:
     const char* m_fileName;
 };
 
+template <typename T>
+class PopReadFromFile : public PopSource<T>
+{
+public:
+	PopReadFromFile(const char* file_name = "dump.raw") : PopSource<T>("PopReadFromFile"),
+	m_fileName(file_name)
+	{
+		printf("%s - opened %s file for reading\r\n", PopSource<T>::get_name(), m_fileName);
+		m_fs.open(m_fileName, std::ifstream::binary);
+	}
+	~PopReadFromFile()
+	{
+		m_fs.close();
+	}
+
+	void read(size_t count = 16)
+	{
+		printf("~");
+		T* memory = PopSource<T>::get_buffer(count);
+		size_t bytes = count * sizeof(T);
+		m_fs.read((char*)memory, bytes);
+
+		PopSource<T>::process();  // because we just called get_buffer, we can use this overload with no params
+	}
+	std::ifstream m_fs;
+	const char* m_fileName;
+};
+
 class PopMagnitude : public PopSink<std::complex<float> >, public PopSource<float>
 {
 public:
