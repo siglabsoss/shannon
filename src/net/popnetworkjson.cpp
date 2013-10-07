@@ -16,7 +16,7 @@
 #include <boost/shared_ptr.hpp>
 #include "net/popnetworkjson.hpp"
 #include "json/json.h"
-#include "dsp/utils.hpp"
+#include "core/utilities.hpp"
 
 
 using boost::asio::ip::udp;
