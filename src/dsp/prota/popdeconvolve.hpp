@@ -37,6 +37,7 @@ namespace pop
 
 		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<float>* cfc,
 	                                      size_t  ncs, size_t osl, float bt);
+		double sincInterpolateMaxima(const std::complex<float>* data, int sample, int neighbors );
 
 	private:
 		cufftHandle plan_fft;
@@ -50,6 +51,7 @@ namespace pop
 		int*       d_peaks; // array of indices of detected peaks
 		unsigned int*  	   d_peaks_len; // index of last detected peak
 		float* d_peak; // detector output
+		std::complex<double>* d_sinc_yp; // samples for sinc interpolation around detected peak
 
 		friend class blahtest;
 	};

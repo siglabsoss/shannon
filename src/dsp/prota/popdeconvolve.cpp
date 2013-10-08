@@ -12,9 +12,9 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
-#include <complex>
 #include <algorithm>    // std::min
 #include "boost/tuple/tuple.hpp"
+#include <boost/lexical_cast.hpp>
 
 #include "cuda/helper_cuda.h"
 
@@ -33,6 +33,8 @@ namespace pop
 #define SPREADING_LENGTH 4096
 #define SPREADING_BINS 400
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
+#define PEAK_SINC_NEIGHBORS (8)     // how many samples to add to either side of a local maxima for sinc interpolate
+#define PEAK_SINC_SAMPLES (10000)  // how many samples to sinc interpolate around detected peaks
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
@@ -236,6 +238,9 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_peaks, 0, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
 
+    // malloc host memory
+    d_sinc_yp = (complex<double>*)malloc(PEAK_SINC_SAMPLES * sizeof(complex<double>));
+
     // generate convolution filter coefficients
     cout << "generating spreading codes..." << endl;
     h_cfc = (complex<float>*)malloc(2 * SPREADING_LENGTH * sizeof(complex<float>));
@@ -252,6 +257,12 @@ unsigned IFloatFlip(unsigned f)
 	return f ^ mask;
 }
 
+
+
+double magnitude2( const complex<double>& in )
+{
+	return in.real() * in.real() + in.imag() * in.imag();
+}
 
 float magnitude2( const complex<float>& in )
 {
@@ -294,6 +305,87 @@ bool sampleIsLocalMaxima(const complex<float>* data, int sample, int spreadLengt
 
 	// is local maxima?
 	return ( magnitude2(data[sample]) > surroundingMax );
+}
+
+
+double PopProtADeconvolve::sincInterpolateMaxima(const complex<float>* data, int sample, int neighbors )
+{
+	size_t osl; // osl oversampled symbol length
+	osl = PEAK_SINC_SAMPLES; // should be one hundred thousand
+	const complex<float>* y = data; // rename this symbol
+
+	// offset to first symbol
+	y += sample - neighbors;
+
+	size_t ncs; // number of input samples
+	ncs = neighbors*2 + 1;
+	size_t n, m;
+	double a; // holder
+
+	size_t pixelSize = ceil((float)(osl / ncs) * 1.05);  // number of oversamples that signify one pixel (padded by a margin)
+
+
+	// we only sink interpolate and look for maximum between these values
+	// this is the center plus and minus one pixel
+	size_t oslClipMin, oslClipMax;
+	oslClipMin = floor((float)(osl/2) - pixelSize);
+	oslClipMax = ceil((float)(osl/2) + pixelSize);
+
+
+	// rename member variable that was mallocd during init
+	// Note that because we are only looking in the clipped region but using real offsets into the output array, we are mallocing a bunch of extra memory that is never used
+	complex<double> *yp = d_sinc_yp;
+
+	double img, rl;
+
+	for( m = oslClipMin; m < oslClipMax; m++ )
+	{
+		yp[m] = complex<double>(0.0, 0.0);
+		for( n = 0; n < ncs; n++ )
+		{
+			a = M_PI * ( (double)m / (double)osl * (double)ncs - (double)n );
+			if( 0 == a )
+				yp[m] += y[n];
+			else
+			{
+				// required to keep things in double
+				complex<double> holder(y[n].real(), y[n].imag());
+				yp[m] += sin(a) / a * holder;
+			}
+		}
+
+//		cout << "yp[" << m << "] = " << yp[m] << "( " << magnitude2(yp[m]) << " )" << endl;
+
+//		cout << magnitude2(yp[m]) << endl;
+	}
+
+//	cout << endl << endl << endl;
+
+
+
+	// max detection
+	double max = 0.0;
+	int maxIndex = 0;
+	for( m = oslClipMin; m < oslClipMax; m++ )
+	{
+		max = std::max(magnitude2(yp[m]), max);
+
+		if( max == magnitude2(yp[m]) )
+			maxIndex = m;
+	}
+
+//	cout << "found max " << max << " at index " << maxIndex << endl;
+
+	double decimatedIndex = (double)maxIndex / osl * ncs;
+
+//	cout << "decimatedIndex " << decimatedIndex << endl;
+
+	double sampleIndex = sample - (ncs/2.0) + decimatedIndex;
+
+//	cout << "sampleIndex " << boost::lexical_cast<string>(sampleIndex) << endl;
+
+	return sampleIndex;
+
 }
 
 
@@ -368,6 +460,14 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 		}
 
 		cout << endl;
+	}
+
+
+
+	for( unsigned i = 0; i < localMaximaPeaks.size(); i++ )
+	{
+		double sincIndex = sincInterpolateMaxima(h_cts, localMaximaPeaks[i], PEAK_SINC_NEIGHBORS);
+		cout << "sincIndex " << boost::lexical_cast<string>(sincIndex) << endl;
 	}
 
 
