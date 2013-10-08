@@ -378,9 +378,16 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<float>* data, int
 
 	double decimatedIndex = (double)maxIndex / osl * ncs;
 
+	if( decimatedIndex < (neighbors-0.5) )
+		cout << "sincInterpolateMaxima out of bounds min" << endl;
+
+	if( decimatedIndex > (neighbors+0.5) )
+		cout << "sincInterpolateMaxima out of bounds max" << endl;
+
+
 //	cout << "decimatedIndex " << decimatedIndex << endl;
 
-	double sampleIndex = sample - (ncs/2.0) + decimatedIndex;
+	double sampleIndex = sample - ((ncs-1)/2.0) + decimatedIndex;
 
 //	cout << "sampleIndex " << boost::lexical_cast<string>(sampleIndex) << endl;
 
