@@ -69,7 +69,7 @@ class PopBob : public PopSink<PopMsg>
 public:
     PopBob() : PopSink<PopMsg>("PopBob", 100) { }
     void init() { }
-    void process(const PopMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+    void process(const PopMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
     {
         printf("received %lu PopBob(s)\r\n", size);
 //        for( size_t i = 0; i < size; i++ )
@@ -412,7 +412,7 @@ private:
     void init()
     {
     }
-    void process(const T* in, size_t size, const pop::PopTimestamp *t, size_t tt)
+    void process(const T* in, size_t size, const pop::PopTimestamp *t, size_t tt, size_t timestamp_buffer_correction)
     {
         printf("+");
         size_t bytes = size * sizeof(T);

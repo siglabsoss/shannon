@@ -55,7 +55,7 @@ namespace pop
 				boost::asio::placeholders::bytes_transferred));
 	}
 
-	void PopNetworkComplex::process(const NETWORK_STREAM_DATA_TYPE* data, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+	void PopNetworkComplex::process(const NETWORK_STREAM_DATA_TYPE* data, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
 	{
 		socket_.send_to(boost::asio::buffer(data, NETWORK_PACKET_SIZE_BYTES),
 			outgoing_endpoint_);

@@ -396,7 +396,7 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<float>* data, int
 }
 
 
-void PopProtADeconvolve::process(const complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopProtADeconvolve::process(const complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
 {
 	unsigned n;
 	float h_peak[10];

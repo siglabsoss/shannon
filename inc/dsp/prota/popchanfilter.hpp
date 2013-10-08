@@ -29,7 +29,7 @@ namespace pop
 		~PopChanFilter();
 
 	private:
-		void process(const std::complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void process(const std::complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction);
 		void init();
 
 		void gen_dft(std::complex<float>* out, size_t bins);
