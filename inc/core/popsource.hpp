@@ -238,25 +238,6 @@ protected:
     	process(m_buf.m_bufPtr + m_buf.m_bufIdx, num_new_pts, timestamp_data, num_new_timestamp_pts);
     }
 
-    /**
-     * Get next buffer. This is an efficient way of writing directly into
-     * the objects data structure to avoid having to make a copy of the data.
-     */
-    OUT_TYPE* get_buffer(size_t sizeBuf)
-    {
-        // remember allocated size for process() helper function
-    	m_buf.m_lastReqSize = sizeBuf;
-
-        // automatically grow buffer if needed
-        if( sizeBuf * POPSOURCE_NUM_BUFFERS > m_buf.m_sizeBuf )
-        	m_buf.resize_buffer(sizeBuf);
-
-        // only called if no size requested and no sinks are connected
-        if( 0 == m_buf.m_bufPtr )
-            throw PopException(msg_no_buffer_allocated, get_name());
-
-        return m_buf.m_bufPtr + m_buf.m_bufIdx;
-    }
 
 
 
@@ -479,6 +460,45 @@ public:
     	size_t m_lastReqSize;
 
     }; //PopSourceBuffer
+
+private:
+
+    template <typename BUFFER_TYPE>
+    BUFFER_TYPE* get_buffer(size_t sizeBuf, PopSourceBuffer<BUFFER_TYPE> &buf)
+    {
+    	// remember allocated size for process() helper function
+    	buf.m_lastReqSize = sizeBuf;
+
+    	// automatically grow buffer if needed
+    	if( sizeBuf * POPSOURCE_NUM_BUFFERS > buf.m_sizeBuf )
+    		buf.resize_buffer(sizeBuf);
+
+    	// only called if no size requested and no sinks are connected
+    	if( 0 == buf.m_bufPtr )
+    		throw PopException(msg_no_buffer_allocated, get_name());
+
+    	return buf.m_bufPtr + buf.m_bufIdx;
+    }
+
+
+
+protected:
+
+    /**
+     * Get next buffer. This is an efficient way of writing directly into
+     * the objects data structure to avoid having to make a copy of the data.
+     */
+    OUT_TYPE* get_buffer(size_t sizeBuf)
+    {
+    	return get_buffer(sizeBuf, m_buf);
+    }
+
+    PopTimestamp* get_timestamp_buffer(size_t sizeBuf)
+    {
+    	return get_buffer(sizeBuf, m_timestamp_buf);
+    }
+
+
 
 private:
     void correct_timestamp_indices(PopSource::PopSourceBuffer<OUT_TYPE> &buf, PopSource::PopSourceBuffer<PopTimestamp> &tbuf, size_t new_stamps)
