@@ -160,7 +160,7 @@ namespace pop
             samps_received = rx_stream->recv(buf, samps_per_buff, md, timeout);
 
             // wait till the uhd timestamp rolls over to the next second
-            if( md.time_spec.get_frac_secs() < .0009)
+            if( md.time_spec.get_frac_secs() < .0009 && m_timestamp_offset.get_full_secs() == 0 )
             {
             	// sample system time
                 uhd::time_spec_t now = get_microsec_system_time();
@@ -168,12 +168,22 @@ namespace pop
                 // round system time to nearest second
                 m_timestamp_offset = uhd::time_spec_t(round(now.get_real_secs()));
 
+                // below we add the radio seconds (which count up since launch) to our offset which doesn't change.
+                // at this point the radio seconds are probably about 2.0001
+                // we want to subract the whole seconds from our m_timestamp_offset right now (one time) so we can just do a simple add below and get real time
+				// ( this uses the constructor to construct a temporary timestamp object holding just N whole seconds. then we use the -= overload to subtract it)
+                m_timestamp_offset -= uhd::time_spec_t(md.time_spec.get_full_secs());
+
+
 //                cout << "rounded to base: '" << m_timestamp_offset.get_full_secs() << "' '" <<  m_timestamp_offset.get_frac_secs()<< "' from now of: '" << now.get_full_secs()  << "' '" << now.get_frac_secs() << "'" << endl;
+
             }
 
             // build a pop timestamp from uhd time + offset.
             // the time always applies to sample 0
             PopTimestamp pop_stamp = PopTimestamp(md.time_spec + m_timestamp_offset, 0);
+
+            // cout << "    samp time was" << boost::lexical_cast<string>(pop_stamp.get_real_secs()) << endl;
 
             //use a small timeout for subsequent packets
             timeout = 0.1;
