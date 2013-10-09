@@ -356,6 +356,46 @@ public:
 BOOST_AUTO_TEST_SUITE( timestamp_suite )
 
 
+void debug_print_timestamp(PopTimestamp half)
+{
+	cout << "real() = " << half.get_real_secs() << endl;
+	cout << "whole " << half.get_full_secs() << " and frac " << half.get_frac_secs() << endl;
+}
+
+BOOST_AUTO_TEST_CASE( timestamp_plus_overloads )
+{
+	double tol = 0.00000001;
+
+	PopTimestamp half(0.6);
+	PopTimestamp halfAgain(0.6);
+
+	// add using the timestamp += timestamp overload
+	half += halfAgain;
+
+	// check if full seconds are wrapped correctly in a +=
+	BOOST_CHECK_EQUAL( half.get_full_secs(), 1 );
+
+	// check that frac secs were correctly modded
+	BOOST_CHECK_CLOSE( half.get_frac_secs() , 0.2, tol );
+
+	// start with a different fraction
+	PopTimestamp other(0.4);
+
+	// add using the timestamp += double overload
+	other += 0.8;
+
+	// check if things wrap correctly
+	BOOST_CHECK_EQUAL( other.get_full_secs(), 1 );
+	BOOST_CHECK_CLOSE( other.get_frac_secs() , 0.2, tol );
+
+	// check that the two timestamps are the same
+	BOOST_CHECK_CLOSE( half.get_real_secs() , other.get_real_secs(), tol );
+
+	// this fails due to lambda
+//	BOOST_CHECK( half == other );
+}
+
+
 BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
 {
 	PopTestSourceOne source;

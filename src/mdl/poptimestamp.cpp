@@ -144,28 +144,37 @@ double PopTimestamp::get_real_secs(void) const{
 ///***********************************************************************
 // * Time spec math overloads
 // **********************************************************************/
-//time_spec_t &time_spec_t::operator+=(const time_spec_t &rhs){
-//    time_spec_init(
-//        this->get_full_secs() + rhs.get_full_secs(),
-//        this->get_frac_secs() + rhs.get_frac_secs()
-//    );
-//    return *this;
-//}
-//
-//time_spec_t &time_spec_t::operator-=(const time_spec_t &rhs){
-//    time_spec_init(
-//        this->get_full_secs() - rhs.get_full_secs(),
-//        this->get_frac_secs() - rhs.get_frac_secs()
-//    );
-//    return *this;
-//}
-//
-//bool uhd::operator==(const time_spec_t &lhs, const time_spec_t &rhs){
-//    return
-//        lhs.get_full_secs() == rhs.get_full_secs() and
-//        lhs.get_frac_secs() == rhs.get_frac_secs()
-//    ;
-//}
+
+PopTimestamp &PopTimestamp::operator+=(const double &rhs){
+    time_spec_init(
+        this->get_full_secs(),
+        this->get_frac_secs() + rhs
+    );
+    return *this;
+}
+
+PopTimestamp &PopTimestamp::operator+=(const PopTimestamp &rhs){
+    time_spec_init(
+        this->get_full_secs() + rhs.get_full_secs(),
+        this->get_frac_secs() + rhs.get_frac_secs()
+    );
+    return *this;
+}
+
+PopTimestamp &PopTimestamp::operator-=(const PopTimestamp &rhs){
+    time_spec_init(
+        this->get_full_secs() - rhs.get_full_secs(),
+        this->get_frac_secs() - rhs.get_frac_secs()
+    );
+    return *this;
+}
+
+bool operator==(const PopTimestamp &lhs, const PopTimestamp &rhs){
+    return
+        lhs.get_full_secs() == rhs.get_full_secs() and
+        lhs.get_frac_secs() == rhs.get_frac_secs()
+    ;
+}
 //
 //bool uhd::operator<(const time_spec_t &lhs, const time_spec_t &rhs){
 //    return (

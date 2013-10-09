@@ -29,7 +29,12 @@ public:
 	/*!
 	 * Copy constructor from time_spec_t type
 	 */
-	PopTimestamp(uhd::time_spec_t copy, size_t off) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(off) {}
+	PopTimestamp(uhd::time_spec_t copy, double off) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(off) {}
+
+	/*!
+	 * Copy constructor from PopTimestamp with explicit setter for new offset
+	 */
+	PopTimestamp(PopTimestamp copy, double off) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(off) {}
 
 	/*!
 	 * Get the system time in time_spec_t format.
@@ -104,11 +109,17 @@ public:
 //	 */
 //	double get_frac_secs(void) const;
 //
-//	//! Implement addable interface
-//	time_spec_t &operator+=(const time_spec_t &);
-//
-//	//! Implement subtractable interface
-//	time_spec_t &operator-=(const time_spec_t &);
+
+
+
+	//! Add double to timestamp
+	PopTimestamp &operator+=(const double &rhs);
+
+	//! Implement addable interface
+	PopTimestamp &operator+=(const PopTimestamp &);
+
+	//! Implement subtractable interface
+	PopTimestamp &operator-=(const PopTimestamp &);
 
 	//public time storage details
 
@@ -133,9 +144,15 @@ public:
 		return _frac_secs;
 	}
 
+	double offset_adjusted(double o) const{
+		return offset - o;
+	}
 
 
-};
+
+}; // class PopTimestamp
+
+extern bool operator==(const PopTimestamp &lhs, const PopTimestamp &rhs);
 
 
 
