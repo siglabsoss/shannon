@@ -87,12 +87,39 @@ namespace pop
 
 		complex<float> *out = get_buffer(CHAN_SIZE);
 
-		//cudaProfilerStart();
-		// call the GPU to process work
+//		//cudaProfilerStart();
+//		// call the GPU to process work
 		gpu_channel_split(in, out);
 
+
+		// in comes FFT_SIZE (65K) samples, and out goes CHAN_SIZE (1040)
+		// these 1040 samples still represent the same timestamps
+		// so we need to just do a simple divide
+
+		// get timestamp buffer
+		PopTimestamp *timestampOut = get_timestamp_buffer(timestamp_size);
+
+		// get correction factor (note we do (slower) division here outside of loop and then (faster) multiplication inside the loop
+		double factor = (double) CHAN_SIZE / FFT_SIZE;
+
+
+		for(size_t i = 0; i < timestamp_size; i++ )
+		{
+			timestampOut[i] = PopTimestamp(timestamp_data[i], calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) * factor );
+
+//			cout << "got timestamp with raw index " << timestamp_data[i].offset << " and adjustment " << timestamp_buffer_correction << " which adjusts to " << calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) << endl;
+//			cout << "got timestamp with raw index " << timestampOut[i].offset << " and ... " << endl;
+		}
+//
+
+//		cout << "got " << timestamp_size << " timestamps for " << len << " samples." << endl;
+//		cout << "with indices " << timestamp_data[0].offset_adjusted(timestamp_buffer_correction) << " and " << timestamp_data[timestamp_size-1].offset_adjusted(timestamp_buffer_correction) << endl;
+
+
+
+
 		// process data
-		PopSource<complex<float> >::process();
+		PopSource<complex<float> >::process(out, CHAN_SIZE, timestampOut, timestamp_size);
 
 		// while( chan_buf_len >= PN_SIZE)
 		// {
