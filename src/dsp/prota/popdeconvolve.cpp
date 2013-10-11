@@ -209,7 +209,7 @@ void PopProtADeconvolve::init()
         cout << "Detected " << deviceCount << " CUDA Capable device(s)\n" << endl;
 
     // choose which device to use for this thread
-    cudaSetDevice(1);
+    cudaSetDevice(0);
 
     // setup FFT plans
     cufftPlan1d(&plan_fft, SPREADING_LENGTH * 2, CUFFT_C2C, 1); // pad
@@ -472,7 +472,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 	cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyDeviceToHost);
 	cudaThreadSynchronize();
 
-	float threshold = 3.7e7;
+	float threshold = 1.5e6;
 
 	// threshold detection
 	gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, MAX_SIGNALS_PER_SPREAD, threshold, SPREADING_LENGTH * 2, SPREADING_BINS);
