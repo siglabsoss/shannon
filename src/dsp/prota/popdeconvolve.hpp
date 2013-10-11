@@ -23,6 +23,15 @@
 
 using namespace boost::posix_time;
 
+
+
+#define SPREADING_LENGTH (4096)
+#define SPREADING_BINS   (400)
+#define SPREADING_CODES  (2)
+
+
+
+
 namespace pop
 {
 	class PopProtADeconvolve : public PopSink<std::complex<float> >, public PopSource<std::complex<float> >
@@ -47,7 +56,7 @@ namespace pop
 		cuComplex* d_cfs; // convoluted frequency swept series
 		cuComplex* d_cts; // convoluted time series
 		thrust::device_vector<float>* d_mag_vec; // convoluted time series magnitude
-		cuComplex* d_cfc; // convolution filter coefficients
+		cuComplex* d_cfc[SPREADING_LENGTH]; // convolution filter coefficients
 		int*       d_peaks; // array of indices of detected peaks
 		unsigned int*  	   d_peaks_len; // index of last detected peak
 		float* d_peak; // detector output

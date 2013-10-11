@@ -30,8 +30,7 @@ using namespace std;
 namespace pop
 {
 
-#define SPREADING_LENGTH 4096
-#define SPREADING_BINS 400
+
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
 #define PEAK_SINC_NEIGHBORS (8)     // how many samples to add to either side of a local maxima for sinc interpolate
 #define PEAK_SINC_SAMPLES (10000)  // how many samples to sinc interpolate around detected peaks
@@ -219,7 +218,8 @@ void PopProtADeconvolve::init()
     // allocate device memory
     checkCudaErrors(cudaMalloc(&d_sts, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_sfs, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
-    checkCudaErrors(cudaMalloc(&d_cfc, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
+    // host has an array of pointers which will point to d_cfc's.  after this cuda malloc we aren't quit done yet
+    checkCudaErrors(cudaMalloc(&d_cfc[0], SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_cfs, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_cts, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
@@ -234,6 +234,7 @@ void PopProtADeconvolve::init()
     // initialize device memory
     checkCudaErrors(cudaMemset(d_sts, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_sfs, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
+    checkCudaErrors(cudaMemset(d_cfc[0], 0, SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_cfs, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMemset(d_peaks, 0, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
@@ -244,10 +245,32 @@ void PopProtADeconvolve::init()
     // generate convolution filter coefficients
     cout << "generating spreading codes..." << endl;
     h_cfc = (complex<float>*)malloc(2 * SPREADING_LENGTH * sizeof(complex<float>));
-	gpu_gen_pn_match_filter_coef(m4k_001, h_cfc, SPREADING_LENGTH, SPREADING_LENGTH /*oversampled*/, 0.5);
-	checkCudaErrors(cudaMemcpy(d_cfc, h_cfc, 2 * SPREADING_LENGTH * sizeof(cuComplex), cudaMemcpyHostToDevice));
+
+
+
+    // list of spreading codes
+    const int8_t* code_list[SPREADING_CODES];
+    code_list[0] = s4k_001;
+    code_list[1] = m4k_001;
+
+
+    for( int i = 0; i < SPREADING_CODES; i++)
+    {
+    	// finish up our cuda malloc for d_cfc
+    	// this line sets a pointer to the chunk of memory that we allocated on the device for each entry
+        d_cfc[i] = d_cfc[0] + (SPREADING_LENGTH * 2) * i;
+
+    	cout << "code " << i << endl;
+
+    	// call this function which computes (and overwrites) the result into h_cfc on the host
+    	gpu_gen_pn_match_filter_coef(code_list[i], h_cfc, SPREADING_LENGTH, SPREADING_LENGTH /*oversampled*/, 0.5);
+
+    	// copy to the specific index of d_cfc on the device
+    	checkCudaErrors(cudaMemcpy(d_cfc[i], h_cfc, 2 * SPREADING_LENGTH * sizeof(cuComplex), cudaMemcpyHostToDevice));
+    }
+
 	cout << "done generating spreading codes" << endl;
-	//free(h_cfc);
+	free(h_cfc);
 }
 
 
@@ -461,138 +484,143 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 	cudaThreadSynchronize();
 
 
-	// rolling dot product
-	gpu_rolling_dot_product(d_sfs, d_cfc, d_cfs, SPREADING_LENGTH * 2, SPREADING_BINS);
-	cudaThreadSynchronize();
-
-
-	// perform IFFT on dot product
-	cufftExecC2C(plan_deconvolve, d_cfs, d_cts, CUFFT_INVERSE);
-	cudaThreadSynchronize();
-	cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyDeviceToHost);
-	cudaThreadSynchronize();
-
-	float threshold = 1.5e6;
-
-	// threshold detection
-	gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, MAX_SIGNALS_PER_SPREAD, threshold, SPREADING_LENGTH * 2, SPREADING_BINS);
-	cudaThreadSynchronize();
-
-	int h_peaks[MAX_SIGNALS_PER_SPREAD];
-	unsigned int h_peaks_len;
-
-	cudaMemcpy(h_peaks, d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int), cudaMemcpyDeviceToHost);
-	cudaMemcpy(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost);
-
-
-//	cout << "found " << h_peaks_len << " peaks! ::" << endl;
-
-	// at this point magnitudes have been detected that aren't in the padding
-	// the padding is actually in the center of the SPREADING_LENGTH, but we want to visiualize the padding on the outside and the data on the inside
-
-	if( h_peaks_len > 2 )
-		int a = 4;
-
-	vector<int> localMaximaPeaks;
-	bool isLocalMaxima;
-
-	// look at all peaks above the thresh and scan for local maxima
-	for( unsigned int i = 0; i < std::min((unsigned)MAX_SIGNALS_PER_SPREAD, h_peaks_len); i++ )
+	for(int spreading_code = 0; spreading_code < SPREADING_CODES; spreading_code++ )
 	{
-//		cout << "index of peak " << i << " is " << h_peaks[i] << " with mag2 " << magnitude2(h_cts[h_peaks[i]]);
 
-		isLocalMaxima = sampleIsLocalMaxima(h_cts, h_peaks[i], SPREADING_LENGTH * 2, SPREADING_BINS);
 
-		// save the index
-		if( isLocalMaxima )
+		// rolling dot product
+		gpu_rolling_dot_product(d_sfs, d_cfc[spreading_code], d_cfs, SPREADING_LENGTH * 2, SPREADING_BINS);
+		cudaThreadSynchronize();
+
+
+		// perform IFFT on dot product
+		cufftExecC2C(plan_deconvolve, d_cfs, d_cts, CUFFT_INVERSE);
+		cudaThreadSynchronize();
+		cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyDeviceToHost);
+		cudaThreadSynchronize();
+
+		float threshold = 1.5e6;
+
+		// threshold detection
+		gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, MAX_SIGNALS_PER_SPREAD, threshold, SPREADING_LENGTH * 2, SPREADING_BINS);
+		cudaThreadSynchronize();
+
+		int h_peaks[MAX_SIGNALS_PER_SPREAD];
+		unsigned int h_peaks_len;
+
+		cudaMemcpy(h_peaks, d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int), cudaMemcpyDeviceToHost);
+		cudaMemcpy(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
+
+		//	cout << "found " << h_peaks_len << " peaks! ::" << endl;
+
+		// at this point magnitudes have been detected that aren't in the padding
+		// the padding is actually in the center of the SPREADING_LENGTH, but we want to visiualize the padding on the outside and the data on the inside
+
+		if( h_peaks_len > 2 )
+			int a = 4;
+
+		vector<int> localMaximaPeaks;
+		bool isLocalMaxima;
+
+		// look at all peaks above the thresh and scan for local maxima
+		for( unsigned int i = 0; i < std::min((unsigned)MAX_SIGNALS_PER_SPREAD, h_peaks_len); i++ )
 		{
-			localMaximaPeaks.push_back(h_peaks[i]);
-//			cout << " LOCAL MAX";
-		}
+			//		cout << "index of peak " << i << " is " << h_peaks[i] << " with mag2 " << magnitude2(h_cts[h_peaks[i]]);
 
-//		cout << endl;
-	}
+			isLocalMaxima = sampleIsLocalMaxima(h_cts, h_peaks[i], SPREADING_LENGTH * 2, SPREADING_BINS);
 
-
-
-	for( unsigned i = 0; i < localMaximaPeaks.size(); i++ )
-	{
-		cout << endl;
-		cout << endl;
-		cout << endl;
-
-		// calculate the fractional sample which the peak occured in relative to the linear sample
-		double sincIndex = sincInterpolateMaxima(h_cts, localMaximaPeaks[i], PEAK_SINC_NEIGHBORS);
-//		cout << "sincIndex " << boost::lexical_cast<string>(sincIndex) << endl;
-
-		double sincTimeIndex;
-		int sincTimeBin;
-
-		// convert this linear sample into a range of (0 - SPREADING_LENGTH) samples which represents real time
-		boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
-
-//		cout << "sincTimeIndex " << sincTimeIndex << endl;
-
-		const PopTimestamp *prev = 0;
-		const PopTimestamp *next = 0;
-
-
-		// loop through every timestamp except for the last one and set the prev/next pointers to timestamps surrounding sincTimeIndex
-		for( size_t j = 0; j < timestamp_size - 1; j++ )
-		{
-			// grab the indices for j and j+1 (won't overflow because we never do the last iteration of the loop)
-			double currentIndex = timestamp_data[ j ].offset_adjusted(timestamp_buffer_correction);
-			double nextIndex    = timestamp_data[j+1].offset_adjusted(timestamp_buffer_correction);
-
-//			cout << "    " << currentIndex;
-
-
-
-			// true when the loop is pointing at a timestamp with an largest index that is less than sincTimeIndex (assuming timestamps are in order)
-			if( nextIndex >= sincTimeIndex && prev == 0)
+			// save the index
+			if( isLocalMaxima )
 			{
-				prev = timestamp_data + j; // set the pointer to this timestamp because the next is past
-				next = timestamp_data + j + 1; // set the pointer to the next timestamp because we just detected that it's past
-				break;
+				localMaximaPeaks.push_back(h_peaks[i]);
+				//			cout << " LOCAL MAX";
 			}
 
-//			if( currentIndex > sincTimeIndex )
-//			{
-//				indexNext = std::min(indexNext, currentIndex);
-//				cout << "n";
-//			}
-
-//			cout << endl;
+			//		cout << endl;
 		}
 
-//		cout << "    found min, max indexes of " << indexPrev << " // " << indexNext << endl;
-//		cout << "    found min, max indexes of " << prev->offset_adjusted(timestamp_buffer_correction) << " /-/ " << next->offset_adjusted(timestamp_buffer_correction) << endl;
-
-		// create mutable copy
-		PopTimestamp timeDifference = PopTimestamp(*next);
-
-		// calculate difference using -= overload (which should be most accurate)
-		timeDifference -= *prev;
-
-		double timePerSample = timeDifference.get_real_secs() / (  next->offset_adjusted(timestamp_buffer_correction) - prev->offset_adjusted(timestamp_buffer_correction) );
-
-//		cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
-
-		PopTimestamp exactTimestamp = PopTimestamp(*prev);
 
 
+		for( unsigned i = 0; i < localMaximaPeaks.size(); i++ )
+		{
+			cout << endl;
+			cout << endl;
+			cout << endl;
 
-//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+			// calculate the fractional sample which the peak occured in relative to the linear sample
+			double sincIndex = sincInterpolateMaxima(h_cts, localMaximaPeaks[i], PEAK_SINC_NEIGHBORS);
+			//		cout << "sincIndex " << boost::lexical_cast<string>(sincIndex) << endl;
 
-		exactTimestamp += timePerSample * ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+			double sincTimeIndex;
+			int sincTimeBin;
 
-		cout << "peak number " << i << " found in bin " << sincTimeBin << endl;
-//		cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
-		cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+			// convert this linear sample into a range of (0 - SPREADING_LENGTH) samples which represents real time
+			boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
+
+			//		cout << "sincTimeIndex " << sincTimeIndex << endl;
+
+			const PopTimestamp *prev = 0;
+			const PopTimestamp *next = 0;
+
+
+			// loop through every timestamp except for the last one and set the prev/next pointers to timestamps surrounding sincTimeIndex
+			for( size_t j = 0; j < timestamp_size - 1; j++ )
+			{
+				// grab the indices for j and j+1 (won't overflow because we never do the last iteration of the loop)
+				double currentIndex = timestamp_data[ j ].offset_adjusted(timestamp_buffer_correction);
+				double nextIndex    = timestamp_data[j+1].offset_adjusted(timestamp_buffer_correction);
+
+				//			cout << "    " << currentIndex;
+
+
+
+				// true when the loop is pointing at a timestamp with an largest index that is less than sincTimeIndex (assuming timestamps are in order)
+				if( nextIndex >= sincTimeIndex && prev == 0)
+				{
+					prev = timestamp_data + j; // set the pointer to this timestamp because the next is past
+					next = timestamp_data + j + 1; // set the pointer to the next timestamp because we just detected that it's past
+					break;
+				}
+
+				//			if( currentIndex > sincTimeIndex )
+				//			{
+				//				indexNext = std::min(indexNext, currentIndex);
+				//				cout << "n";
+				//			}
+
+				//			cout << endl;
+			}
+
+			//		cout << "    found min, max indexes of " << indexPrev << " // " << indexNext << endl;
+			//		cout << "    found min, max indexes of " << prev->offset_adjusted(timestamp_buffer_correction) << " /-/ " << next->offset_adjusted(timestamp_buffer_correction) << endl;
+
+			// create mutable copy
+			PopTimestamp timeDifference = PopTimestamp(*next);
+
+			// calculate difference using -= overload (which should be most accurate)
+			timeDifference -= *prev;
+
+			double timePerSample = timeDifference.get_real_secs() / (  next->offset_adjusted(timestamp_buffer_correction) - prev->offset_adjusted(timestamp_buffer_correction) );
+
+			//		cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
+
+			PopTimestamp exactTimestamp = PopTimestamp(*prev);
+
+
+
+			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+
+			exactTimestamp += timePerSample * ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+
+			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << endl;
+
+			//		cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
+			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+
+		}
 
 	}
-
-
 
 
 
