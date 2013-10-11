@@ -185,28 +185,32 @@ class PopTestSinkOne : public PopSink<PopTestMsg>
 public:
 
 	bool verbose;
+	bool verboseVerbose;
 	// members which hold onto the most recent values of these variables from the last time process is called
 	const PopTestMsg* m_lastData;
 	size_t m_lastSize;
 
-	PopTestSinkOne() : PopSink<PopTestMsg>("PopTestSinkOne", 0), verbose(0) { }
+	PopTestSinkOne() : PopSink<PopTestMsg>("PopTestSinkOne", 0), verbose(0), verboseVerbose(0), m_lastData(0), m_lastSize(0) { }
 	void init() { }
 	void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
 	{
 		m_lastData = data;
 		m_lastSize = size;
 
-		if(verbose) printf("received %lu PopMsg(s)\r\n", size);
+		if(verbose || verboseVerbose) printf("received %lu PopMsg(s)\r\n", size);
 
-		//        for( size_t i = 0; i < size; i++ )
-		//        {
-		//        	printf("Data was '%s'\r\n", (data+i)->origin);
-		//        }
+		if(verboseVerbose)
+		{
+			for( size_t i = 0; i < size; i++ )
+			{
+				printf("Data was '%s'\r\n", (data+i)->origin);
+			}
+		}
 
-		if(verbose) printf("received %lu timestamps(s)\r\n", timestamp_size);
+		if(verbose || verboseVerbose) printf("received %lu timestamps(s)\r\n", timestamp_size);
 		for( size_t i = 0; i < timestamp_size; i++ )
 		{
-			if(verbose)
+			if(verbose || verboseVerbose)
 			{
 				cout << "offset [" << timestamp_data[i].offset << "]" << endl;
 				std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
@@ -221,6 +225,57 @@ public:
 	{
 		const unsigned char* addr = reinterpret_cast<const unsigned char*>(m_lastData);
 		return boost::hash_range(addr, addr + m_lastSize);
+	}
+
+};
+
+class PopTestSinkThree : public PopSink<PopTestMsg>, public PopSource<PopTestMsg>
+{
+public:
+
+	bool verbose;
+
+	PopTestSinkThree() : PopSink<PopTestMsg>("PopTestSinkThree", 10), verbose(0) { }
+	void init() { }
+	void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+	{
+
+
+
+
+		PopTestMsg *out = get_buffer(size/2);
+
+		PopTimestamp* timestampOut = get_timestamp_buffer(timestamp_size);
+
+		// correction factor for timestamps
+		double factor = 0.5;
+
+		// copy every other sample
+		for(size_t i = 0; i < size/2; i++ )
+		{
+			memcpy(out+i, data+(i*2), sizeof(PopTestMsg));
+
+//			cout << "copy " << i << " from " << i*2 << endl;
+		}
+
+
+		// copy every timestamp but decimate the index
+		for(size_t i = 0; i < timestamp_size; i++ )
+		{
+			timestampOut[i] = PopTimestamp(timestamp_data[i], calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) * factor );
+
+//			cout << "got timestamp with raw index " << timestamp_data[i].offset << " and adjustment " << timestamp_buffer_correction << " which adjusts to " << calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) << endl;
+//			cout << "got timestamp with raw index " << timestampOut[i].offset << " and ... " << endl;
+		}
+		//
+		//		cout << "got " << timestamp_size << " timestamps for " << len << " samples." << endl;
+
+
+
+
+		// process data
+		PopSource<PopTestMsg>::process(out, size/2, timestampOut, timestamp_size);
+
 	}
 
 };
@@ -485,6 +540,19 @@ BOOST_AUTO_TEST_CASE( timestamp_staggering )
 	// connect them to the same source
 	source.connect(biteTwo);
 	source.connect(biteThree);
+
+
+	// these 5 lines connect through a decimation block and handle the same data
+	PopTestSinkThree  decimatePassThrough;
+	PopTestSinkOne    finalPrintOutput;
+	finalPrintOutput.verboseVerbose = false;
+
+
+	source.connect(decimatePassThrough);
+	decimatePassThrough.connect(finalPrintOutput);
+
+
+
 
 	// the following commands build the following data picture:
 	// the numbers are samples and the bars are timestamp points
