@@ -32,7 +32,7 @@ find_library(UHD_LIBRARY uhd)
 find_package(Boost 1.48.0 COMPONENTS date_time thread filesystem
 	timer program_options prg_exec_monitor regex system unit_test_framework)
 
-set(CUDA_TOOLKIT_ROOT_DIR ~/cuda-5.0)
+set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-5.5)
 
 find_package(CUDA REQUIRED)
 
