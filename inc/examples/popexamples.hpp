@@ -237,7 +237,7 @@ class PopPrintCharStream : public PopSink<char>
 public:
 	PopPrintCharStream() : PopSink<char>("PopPrintCharStream") { }
     void init() { }
-    void process(const char* data, size_t size)
+    void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
     {
     	std::cout << data << std::endl;
     }
