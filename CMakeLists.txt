@@ -29,15 +29,21 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 find_library(UHD_LIBRARY uhd)
 
-find_package(Boost 1.48.0 COMPONENTS date_time thread filesystem
-	timer program_options prg_exec_monitor regex system unit_test_framework)
+find_package(Boost COMPONENTS date_time thread filesystem program_options prg_exec_monitor regex system unit_test_framework)
 
 set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-5.5)
 
-find_package(CUDA REQUIRED)
+find_package(CUDA)
 
 if(NOT CUDA_FOUND)
-    message(FATAL_ERROR "CUDA Library not properly installed")
+    message(WARNING "CUDA Library not found, skipping")
+
+    # Set all these cuda variables to empty string so that targets down the line don't freak out
+    set(CUDA_INCLUDE_DIRS "")
+    set(CUDA_LIBRARY_DIRS "")
+    set(CUDA_CUDART_LIBRARY "")
+    set(CUDA_cufft_LIBRARY "")
+    
 endif()
 
 set(CUDA_64_BIT_DEVICE_CODE ON)
