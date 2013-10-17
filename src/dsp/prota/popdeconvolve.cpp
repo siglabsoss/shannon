@@ -43,7 +43,7 @@ extern "C" void init_popdeconvolve(thrust::device_vector<float>** d_mag_vec, siz
 
 
 PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<float> >( "PopProtADeconvolve", SPREADING_LENGTH ),
-		PopSource<complex<float> >( "PopProtADeconvolve" )
+		cts( "PopProtADeconvolve" )
 {
 
 }
@@ -469,7 +469,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 //	cout << "  with indices " << timestamp_data[0].offset_adjusted(timestamp_buffer_correction) << " and " << timestamp_data[timestamp_size-1].offset_adjusted(timestamp_buffer_correction) << endl;
 
 
-	complex<float>* h_cts = get_buffer(len * SPREADING_BINS * 2);
+	complex<float>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
 
 	// copy new host data into device memory
 	cudaMemcpy(d_sts, in - SPREADING_LENGTH, SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyHostToDevice);

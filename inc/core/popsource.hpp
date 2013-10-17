@@ -41,7 +41,7 @@ namespace pop
 template <typename OUT_TYPE = std::complex<float> >
 class PopSource : public PopObject
 {
-protected:
+public:
     /**
      * Class constructor.
      * @param sizeBuf The default length of the output buffer in samples. If
@@ -482,7 +482,7 @@ private:
 
 
 
-protected:
+public:
 
     /**
      * Get next buffer. This is an efficient way of writing directly into

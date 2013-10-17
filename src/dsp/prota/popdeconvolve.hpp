@@ -35,11 +35,12 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopProtADeconvolve : public PopSink<std::complex<float> >, public PopSource<std::complex<float> >
+	class PopProtADeconvolve : public PopSink<std::complex<float> >
 	{
 	public:
 		PopProtADeconvolve();
 		~PopProtADeconvolve();
+		PopSource<std::complex<float> > cts;
 
 	private:
 		void process(const std::complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction);
