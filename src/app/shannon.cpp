@@ -21,6 +21,8 @@
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "dsp/prota/popdeconvolve.hpp"
 
+#include "dsp/common/poputils.hpp"
+
 //#include "core/popsourcemsg.hpp"
 
 using namespace boost;
@@ -93,6 +95,9 @@ int main(int argc, char *argv[])
 	// Initialize Software Defined Radio (SDR) and start
 	PopUhd popuhd;
 
+	// Initialize data upconversion
+	PopTypeConversion<complex<float>, complex<double> > conv;
+
 	// Initialize Decimator
 	//PopDecimate<complex<float> > decimate(64);
 
@@ -108,11 +113,6 @@ int main(int argc, char *argv[])
 	chanfilter.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
 
-	//PopDumpToFile<complex<float> > dump;
-
-	//deconvolve.cts.connect(dump);
-
-	//chanfilter.connect(dump);
 
 
 

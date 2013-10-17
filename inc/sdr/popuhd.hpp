@@ -42,7 +42,7 @@ namespace pop
 
 	typedef void (*SDR_DATA_FUNC)(void* data, std::size_t len);
 
-	class PopUhd : public PopSource<>
+	class PopUhd : public PopSource<std::complex<double> >
 	{
 	public:
 		PopUhd();
