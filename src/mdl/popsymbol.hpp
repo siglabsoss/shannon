@@ -2,6 +2,7 @@
 #define __POP_SYMBOL_H_
 
 #include "mdl/poptimestamp.hpp"
+#include <stdint.h>
 
 namespace pop
 {
@@ -12,7 +13,10 @@ public:
 	PopSymbol();
 	~PopSymbol();
 
-	unsigned int symbol;
+	uint8_t symbol;
+	double magnitude;
+	uint8_t fbin;
+	uint8_t channel;
 	PopTimestamp timestamp;
 };
 

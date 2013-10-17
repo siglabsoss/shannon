@@ -16,6 +16,7 @@
 
 #include <core/popsource.hpp>
 #include <core/popsink.hpp>
+#include <mdl/popsymbol.hpp>
 
 #include <cufft.h>
 

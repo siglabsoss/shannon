@@ -57,7 +57,8 @@ PopProtADeconvolve::~PopProtADeconvolve()
 	checkCudaErrors(cudaFree(d_cfc));
 	checkCudaErrors(cudaFree(d_cfs));
 	checkCudaErrors(cudaFree(d_cts));
-	checkCudaErrors(cudaFree(d_peak));
+	checkCudaErrors(cudaFree(d_peaks));
+	checkCudaErrors(cudaFree(d_peaks_len));
 }
 
 	/// spreading code m4k_001
@@ -224,11 +225,6 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMalloc(&d_cts, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
     checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
     checkCudaErrors(cudaMalloc(&d_peaks_len, sizeof(unsigned int)));
-    checkCudaErrors(cudaMalloc(&d_peak, sizeof(float)));
-
-    // allocate thrust memory
-    init_popdeconvolve(&d_mag_vec, SPREADING_LENGTH * SPREADING_BINS * 2);
-
 
 
     // initialize device memory

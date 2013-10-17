@@ -283,13 +283,4 @@ extern "C"
 
 
 
-
-
-
-	void init_popdeconvolve(thrust::device_vector<float>** d_mag_vec, size_t size)
-	{
-		*d_mag_vec = new thrust::device_vector<float>(size);
-	}
-
-
 }
