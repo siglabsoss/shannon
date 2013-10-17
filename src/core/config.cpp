@@ -45,6 +45,11 @@ void Config::loadFile( std::string const& filename )
 	}
 }
 
+void Config::loadFromDisk()
+{
+	rbx::Config::loadFile( DEFAULT_CONFIG_FILE_PATH );
+}
+
 namespace rbx // template specializations need to be in the cpp file but in the same namespace
 {
 
@@ -62,6 +67,13 @@ double Config::get<double>( std::string const& key )
 {
 	init();
 	return json::to_number(instance->mJsonStorage[key]);
+}
+
+template<>
+int Config::get<int>( std::string const& key )
+{
+	init();
+	return (int)json::to_number(instance->mJsonStorage[key]);
 }
 
 template<>

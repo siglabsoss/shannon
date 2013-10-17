@@ -7,6 +7,8 @@
 #include <boost/variant.hpp>
 #include "json/json.h"
 
+#define DEFAULT_CONFIG_FILE_PATH "node_config.json"
+
 namespace rbx
 {
 /// this class has its own internal singleton instead of using the Singleton
@@ -16,6 +18,9 @@ class Config
 public:
 	/// load a config file into the specified group
 	static void loadFile( std::string const& filename );
+
+	// load the default config for shannon or s3p or whatever we are
+	static void loadFromDisk( void );
 
 	template<class T>
 	static T get( std::string const& key );
