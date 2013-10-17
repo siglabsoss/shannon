@@ -41,6 +41,7 @@ namespace pop
 		PopProtADeconvolve();
 		~PopProtADeconvolve();
 		PopSource<std::complex<float> > cts;
+		PopSource<PopSymbol> maxima;
 
 	private:
 		void process(const std::complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction);

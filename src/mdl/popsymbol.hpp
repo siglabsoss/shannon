@@ -10,7 +10,7 @@ namespace pop
 class PopSymbol
 {
 public:
-	PopSymbol();
+	PopSymbol(uint8_t, double, uint8_t, uint8_t, PopTimestamp&);
 	~PopSymbol();
 
 	uint8_t symbol;

@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 
 	//PopDumpToFile<complex<float> > dump;
 
-	//deconvolve.connect(dump);
+	//deconvolve.cts.connect(dump);
 
 	//chanfilter.connect(dump);
 

@@ -43,7 +43,7 @@ extern "C" void init_popdeconvolve(thrust::device_vector<float>** d_mag_vec, siz
 
 
 PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<float> >( "PopProtADeconvolve", SPREADING_LENGTH ),
-		cts( "PopProtADeconvolve" )
+		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima")
 {
 
 }
@@ -507,14 +507,8 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 		cudaMemcpy(h_peaks, d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost);
 
-
 		//	cout << "found " << h_peaks_len << " peaks! ::" << endl;
-
 		// at this point magnitudes have been detected that aren't in the padding
-		// the padding is actually in the center of the SPREADING_LENGTH, but we want to visiualize the padding on the outside and the data on the inside
-
-		if( h_peaks_len > 2 )
-			int a = 4;
 
 		vector<int> localMaximaPeaks;
 		bool isLocalMaxima;
@@ -535,6 +529,17 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 			//		cout << endl;
 		}
+
+
+
+		// Grab a buffer from our second source in prepration for outputting local maxima peaks
+
+		PopSymbol* maximaOut;
+		PopSymbol* currentMaxima;
+
+		// only get_buffer if we are going to write into it
+		if( localMaximaPeaks.size() != 0 )
+			maximaOut = maxima.get_buffer( localMaximaPeaks.size() );
 
 
 
@@ -614,7 +619,14 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 			//		cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
 			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
 
+
+			// pointer to current maxima in the source buffer
+			currentMaxima = maximaOut+i;
+
+			*currentMaxima = pop::PopSymbol(spreading_code, 0.0, sincTimeBin, 0, exactTimestamp);
 		}
+
+		maxima.process();
 
 	}
 
