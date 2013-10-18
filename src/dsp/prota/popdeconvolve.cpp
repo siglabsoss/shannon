@@ -481,7 +481,7 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 	cudaThreadSynchronize();
 
 
-	for(int spreading_code = 0; spreading_code < 1; spreading_code++ )
+	for(int spreading_code = 0; spreading_code < SPREADING_CODES; spreading_code++ )
 	{
 
 		// rolling dot product
@@ -633,7 +633,7 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 	t2 = microsec_clock::local_time();
 	td = t2 - t1;
-	cout << " PopDeconvolve - 1040 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
+	//cout << " PopDeconvolve - 1040 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
 
 
 
