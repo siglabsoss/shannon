@@ -42,7 +42,7 @@
 
 #define NETWORK_UDP_PACKET_MTU (1500)
 
-#define OUTGOING_IP_ADDRESS "192.168.1.41"
+//#define OUTGOING_IP_ADDRESS "192.168.1.41"
 //#define OUTGOING_IP_ADDRESS "173.167.119.220"
 
 
@@ -143,7 +143,7 @@ namespace pop
 
 						/* We set the outgoing address on the first incoming packet
 						   and set the outgoing port here. */
-						outgoing_endpoint_.address(ip::address::from_string(OUTGOING_IP_ADDRESS));
+						outgoing_endpoint_.address(ip::address::from_string(outgoing_ip));
 						outgoing_endpoint_.port(outgoing_port);
 
 //						if( NETWORK_BUFFER_SIZE_BYTES % sizeof(NETWORK_STREAM_DATA_TYPE) )
