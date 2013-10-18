@@ -26,6 +26,7 @@ set(all_SOURCES
 	core/config.cpp
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
+	net/popnetworktimestamp.cpp
 	net/popnetwork.cpp
 	sdr/popuhd.cpp)
 

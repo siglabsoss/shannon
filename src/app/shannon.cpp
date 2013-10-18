@@ -20,12 +20,16 @@
 #include "dsp/prota/popchanfilter.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "dsp/prota/popdeconvolve.hpp"
+#include "core/config.hpp"
+#include "net/popnetworktimestamp.hpp"
+#include "mdl/popsymbol.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
 using namespace boost;
 using namespace pop;
 using namespace std;
+using namespace rbx;
 
 namespace po = boost::program_options;
 
@@ -83,6 +87,9 @@ int main(int argc, char *argv[])
 
 
 #if 1
+
+	Config::loadFromDisk();
+
 	// Initialize Graphics Card
 	PopChanFilter chanfilter;
 	chanfilter.start_thread();
@@ -107,6 +114,16 @@ int main(int argc, char *argv[])
 
 	chanfilter.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
+
+	int lol = Config::get<int>("basestation_s3p_port");
+
+	PopNetworkTimestamp<PopSymbol> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"));
+
+	deconvolve.maxima.connect(s3pConnection);
+
+	// call this after connecting all sources or sinks
+	s3pConnection.wakeup();
+//	s3pConnection.process();
 
 	//PopDumpToFile<complex<float> > dump;
 
