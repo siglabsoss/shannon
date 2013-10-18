@@ -15,16 +15,20 @@
 #include <boost/program_options.hpp>
 
 #include "core/objectstash.hpp"
+#include "core/poptokenizer.hpp"
 #include "net/popnetworkjson.hpp"
 #include "sdr/popuhd.hpp"
+#include "core/config.hpp"
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
+#include "net/popnetworktimestamp.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
 using namespace boost;
 using namespace pop;
 using namespace std;
+using namespace rbx;
 
 namespace po = boost::program_options;
 
@@ -82,34 +86,42 @@ int main(int argc, char *argv[])
 
 
 
+//	// Build Stash of PopRadio objects
+//	ObjectStash stash;
+//
+//	// Populate with N Radio
+//
+//	int testRadioCount = 100000;
+//
+//	buildNFakePopRadios(stash, testRadioCount);
+//
+//	// This source prints to stdout
+//	PopPrintCharStream printer;
+//
+//	// This source generates GPS changes for devices
+//	PopRandomMoveGPS randomMove;
+//
+//	// wire in pointer to our global PopRadio stash
+//	randomMove.stash = &stash;
+//
+//	// tell it which serial numbers to nudge around the map
+//	randomMove.testRadioCount = testRadioCount;
+//
+//	// connect a source which prints
+//	randomMove.connect(printer);
+//
+//	// start it up
+//	randomMove.start();
 
-	// Build Stash of PopRadio objects
-	ObjectStash stash;
+	Config::loadFromDisk();
 
-	// Populate with N Radio
 
-	int testRadioCount = 100000;
 
-	buildNFakePopRadios(stash, testRadioCount);
+	PopNetworkTimestamp<PopSymbol> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
-	// This source prints to stdout
-	PopPrintCharStream printer;
+	PopTokenizer tokenizer;
 
-	// This source generates GPS changes for devices
-	PopRandomMoveGPS randomMove;
-
-	// wire in pointer to our global PopRadio stash
-	randomMove.stash = &stash;
-
-	// tell it which serial numbers to nudge around the map
-	randomMove.testRadioCount = testRadioCount;
-
-	// connect a source which prints
-	randomMove.connect(printer);
-
-	// start it up
-	randomMove.start();
-
+	basestationConnection.connect(tokenizer);
 
 
 

@@ -80,17 +80,9 @@ namespace pop
 
 
                 // forward declare stuff
-		void handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred);
+//		void handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred);
 		void start_receive();
 //		void init();
-		void thread_run();
-		void test();
-		size_t get_length(uint8_t* data, size_t max_length);
-		size_t get_length_from_header(uint8_t* data, size_t max_length);
-		void build_message_header(const size_t byte_count, char header[3], size_t* header_len);
-		void handle_json(uint8_t* bytes, size_t len);
-		static void setup_radio(PopRadio *r);
-		void debug_pipe();
 
 
 		boost::asio::ip::udp::socket socket_;
@@ -105,7 +97,7 @@ namespace pop
 		boost::asio::ip::udp::endpoint incoming_endpoint_;
 		boost::asio::ip::udp::endpoint outgoing_endpoint_;
 
-		char recv_buffer_[POPNETWORK_SOCKET_MAXLEN];
+		char recv_buffer_[NETWORK_UDP_PACKET_MTU];
 
 
                 
@@ -171,7 +163,7 @@ namespace pop
 				cout << "awake" << endl;
 
 				// if there is a source connected to us
-				if( this->m_rgSource )
+				if( this->m_rgSource != NULL )
 				{
 					// open an outgoing connection
 
@@ -181,6 +173,23 @@ namespace pop
 
 					cout << this->m_rgSource->get_name() << " is connected to us " << endl;
 				}
+
+				// if there is a sink connected to us
+				if( this->m_rgSinks.size() != 0 )
+				{
+					// prep for first packet
+					receive_next();
+
+					// start networking run loop in a new thread
+					if( 0 == m_pThread )
+						m_pThread = new boost::thread(boost::bind(&PopNetworkTimestamp::start_io_run_loop, this));
+				}
+			}
+
+			void start_io_run_loop()
+			{
+				// this is blocking
+				popnetwork_timestamp_io_service.run();
 			}
 
 
@@ -207,21 +216,68 @@ namespace pop
 //				cout << "sending " << outputByteCount << " bytes." << endl;
 			}
 
+
+			void receive_next()
+			{
+//				cout << "waiting for next packet" << endl;
+				socket_.async_receive_from(
+						boost::asio::buffer(recv_buffer_, NETWORK_UDP_PACKET_MTU), incoming_endpoint_,
+						boost::bind(&PopNetworkTimestamp::handle_receive, this,
+								boost::asio::placeholders::error,
+								boost::asio::placeholders::bytes_transferred));
+			}
+
+			void handle_receive(const boost::system::error_code& error, std::size_t bytes_transferred)
+				{
+
+			            cout << "received UDP packet" << endl;
+
+//			//            float* buffer = PopSource<float>::get_buffer(bytes_transferred/sizeof(float));
+//
+//
+//			            // print raw bytes
+//
+//
+//
+//			            size_t message_length = this->get_length((uint8_t*)recv_buffer_, bytes_transferred);
+//			            size_t header_length = this->get_length_from_header((uint8_t*)recv_buffer_, bytes_transferred);
+//
+//			            if( bytes_transferred < message_length + header_length )
+//			            {
+//			                printf("Invalid or truncated message\r\n");
+//			            }
+//			            else
+//			            {
+//			                handle_json((uint8_t*)recv_buffer_+header_length, message_length);
+//			            }
+//
+//			#ifdef DEBUG_POPNETWORK_JSON
+//			            for(int i = 0; i < bytes_transferred; i++)
+//			            {
+//			                printf("%0x\r\n", recv_buffer_[i]);
+//			            }
+//			            printf("Got length of: %ld with %ld extra bytes for header\r\n", message_length, header_length);
+//			            printf("Got %ld bytes\r\n", bytes_transferred);
+//			#endif
+//
+////			            DATA_TYPE* dataOut = get_buffer(bytes_transferred);
+
+			            size_t objectCount = bytes_transferred / sizeof(DATA_TYPE);
+
+			            if( bytes_transferred % sizeof(DATA_TYPE) != 0 )
+			            	cout << "received " << bytes_transferred << " bytes which is not evenly divisible by datatype size of " << sizeof(DATA_TYPE) << ".  Discarding the last partial object!" << endl;
+
+			            // send to our sinks with no timestamps (cuz this class drops them)
+			            PopSource<DATA_TYPE>::process((DATA_TYPE*) recv_buffer_, objectCount, NULL, 0);
+
+			            // wait for next packet
+			            receive_next();
+
+				}
+
 	};
 } // namespace pop
 
-
-//template <typename DATA_TYPE>
-//boost::asio::io_service PopNetworkTimestamp<DATA_TYPE>::io_service;
-
-
-//template<>
-//boost::asio::io_service PopNetworkComplex<PopSymbol>::io_service;
-
-
-
-
-//boost::asio::io_service PopNetworkComplex::io_service;
 
 #undef NETWORK_STREAM_DATA_TYPE
 

@@ -532,6 +532,8 @@ private:
     /// current JSON string
     std::ostringstream m_jsonString;
 
+protected:
+
     /// Attached Sink Classes
     std::vector<PopSink<OUT_TYPE>* > m_rgSinks;
 

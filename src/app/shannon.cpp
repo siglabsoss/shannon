@@ -115,8 +115,6 @@ int main(int argc, char *argv[])
 	chanfilter.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
 
-	int lol = Config::get<int>("basestation_s3p_port");
-
 	PopNetworkTimestamp<PopSymbol> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"));
 
 	deconvolve.maxima.connect(s3pConnection);
