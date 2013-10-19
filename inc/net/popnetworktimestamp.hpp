@@ -88,6 +88,7 @@ namespace pop
 		boost::asio::ip::udp::socket socket_;
 		int incoming_port_;
 		int outgoing_port_;
+		std::string outgoing_ip_;
 
 		uint8_t *mp_buf; ///< circular buffer
 		size_t m_buf_read_idx; ///< read index in samples
@@ -115,9 +116,10 @@ namespace pop
 			PopNetworkTimestamp(int incoming_port, std::string outgoing_ip, int outgoing_port, int chunk = 0)
 				: PopSink<DATA_TYPE>("PopNetworkTimestamp", chunk), PopSource<DATA_TYPE>("PopNetworkTimestamp"),
 				  socket_(popnetwork_timestamp_io_service, udp::endpoint(udp::v4(), incoming_port)),
-				incoming_port_(incoming_port), outgoing_port_(outgoing_port), mp_buf(0),
+				incoming_port_(incoming_port), outgoing_port_(outgoing_port), outgoing_ip_(outgoing_ip), mp_buf(0),
 				m_buf_read_idx(0), m_buf_write_idx(0),
-				m_buf_size(NETWORK_BUFFER_SIZE_BYTES / sizeof(NETWORK_STREAM_DATA_TYPE))
+				m_buf_size(NETWORK_BUFFER_SIZE_BYTES / sizeof(NETWORK_STREAM_DATA_TYPE)),
+				m_pThread(0)
 				{
 
 //
@@ -135,8 +137,7 @@ namespace pop
 
 						/* We set the outgoing address on the first incoming packet
 						   and set the outgoing port here. */
-						outgoing_endpoint_.address(ip::address::from_string(outgoing_ip));
-						outgoing_endpoint_.port(outgoing_port);
+
 
 //						if( NETWORK_BUFFER_SIZE_BYTES % sizeof(NETWORK_STREAM_DATA_TYPE) )
 //							throw runtime_error("[POPNETWORK] - network stream datatype not divisible by packet length\r\n");
@@ -165,24 +166,34 @@ namespace pop
 				// if there is a source connected to us
 				if( this->m_rgSource != NULL )
 				{
+					// We assume these were set correctly in the constructor
+					outgoing_endpoint_.address(ip::address::from_string(outgoing_ip_));
+					outgoing_endpoint_.port(outgoing_port_);
+
 					// open an outgoing connection
 
 					if( NETWORK_BUFFER_SIZE_BYTES % sizeof(NETWORK_STREAM_DATA_TYPE) )
 							throw runtime_error("[POPNETWORK] - network stream datatype not divisible by packet length\r\n");
 
 
-					cout << this->m_rgSource->get_name() << " is connected to us " << endl;
+//					cout << this->m_rgSource->get_name() << " is connected to us for input" << endl;
 				}
 
 				// if there is a sink connected to us
 				if( this->m_rgSinks.size() != 0 )
 				{
+					// open the udp port.
+					// How is this different than the socket_ constructor in this class's constructor?
+					incoming_endpoint_.port(incoming_port_);
+
 					// prep for first packet
 					receive_next();
 
 					// start networking run loop in a new thread
 					if( 0 == m_pThread )
 						m_pThread = new boost::thread(boost::bind(&PopNetworkTimestamp::start_io_run_loop, this));
+
+//					cout << "we connected to " << this->m_rgSinks[0]->get_name() << " for output " << endl;
 				}
 			}
 

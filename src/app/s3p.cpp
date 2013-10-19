@@ -123,6 +123,8 @@ int main(int argc, char *argv[])
 
 	basestationConnection.connect(tokenizer);
 
+	// call this after connecting all sources or sinks
+	basestationConnection.wakeup();
 
 
 	char c;
