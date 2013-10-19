@@ -24,7 +24,6 @@
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
-//#include "net/popnetworktimestamp.hpp"
 //#include "json/json.h"
 //#include "core/utilities.hpp"
 

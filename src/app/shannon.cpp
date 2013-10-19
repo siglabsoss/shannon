@@ -21,7 +21,7 @@
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "dsp/prota/popdeconvolve.hpp"
 #include "core/config.hpp"
-#include "net/popnetworktimestamp.hpp"
+#include "net/popnetwork.hpp"
 #include "mdl/popsymbol.hpp"
 
 //#include "core/popsourcemsg.hpp"
@@ -103,10 +103,6 @@ int main(int argc, char *argv[])
 	// Initialize Decimator
 	//PopDecimate<complex<float> > decimate(64);
 
-	// Initialize Network Connection
-	PopNetworkComplex popnetwork(incoming_address.c_str(), incoming_port,
-		                         outgoing_address.c_str(), outgoing_port);
-
 	popuhd.connect(chanfilter);
 
 	PopProtADeconvolve deconvolve;
@@ -115,7 +111,8 @@ int main(int argc, char *argv[])
 	chanfilter.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
 
-	PopNetworkTimestamp<PopSymbol> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"));
+	// Open Network Connection to our designated s3p
+	PopNetwork<PopSymbol> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"));
 
 	deconvolve.maxima.connect(s3pConnection);
 

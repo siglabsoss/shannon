@@ -21,7 +21,7 @@
 #include "core/config.hpp"
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
-#include "net/popnetworktimestamp.hpp"
+#include "net/popnetwork.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 
 
 
-	PopNetworkTimestamp<PopSymbol> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
+	PopNetwork<PopSymbol> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
 	PopTokenizer tokenizer;
 
