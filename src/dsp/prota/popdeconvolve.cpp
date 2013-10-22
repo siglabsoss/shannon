@@ -34,7 +34,7 @@ namespace pop
 
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
 #define PEAK_SINC_NEIGHBORS (8)     // how many samples to add to either side of a local maxima for sinc interpolate
-#define PEAK_SINC_SAMPLES (10000)  // how many samples to sinc interpolate around detected peaks
+#define PEAK_SINC_SAMPLES (100000)  // how many samples to sinc interpolate around detected peaks
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
