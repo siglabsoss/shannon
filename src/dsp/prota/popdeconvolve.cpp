@@ -546,9 +546,9 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 		for( unsigned i = 0; i < localMaximaPeaks.size(); i++ )
 		{
-			cout << endl;
-			cout << endl;
-			cout << endl;
+//			cout << endl;
+//			cout << endl;
+//			cout << endl;
 
 			// calculate the fractional sample which the peak occured in relative to the linear sample
 			double sincIndex = sincInterpolateMaxima(h_cts, localMaximaPeaks[i], PEAK_SINC_NEIGHBORS);
@@ -560,7 +560,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 			// convert this linear sample into a range of (0 - SPREADING_LENGTH) samples which represents real time
 			boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
 
-			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
+//			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
 
 			const PopTimestamp *prev = 0;
 			const PopTimestamp *next = 0;
@@ -615,10 +615,11 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 			exactTimestamp += timePerSample * ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
 
-			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << endl;
+//			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << endl;
 
 			//		cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
-			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+//			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
 
 
 			// pointer to current maxima in the source buffer
