@@ -560,7 +560,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 			// convert this linear sample into a range of (0 - SPREADING_LENGTH) samples which represents real time
 			boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
 
-			//		cout << "sincTimeIndex " << sincTimeIndex << endl;
+			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
 
 			const PopTimestamp *prev = 0;
 			const PopTimestamp *next = 0;
