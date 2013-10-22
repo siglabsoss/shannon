@@ -15,6 +15,7 @@
 #include <algorithm>    // std::min
 #include "boost/tuple/tuple.hpp"
 #include <boost/lexical_cast.hpp>
+#include "core/config.hpp"
 
 #include "cuda/helper_cuda.h"
 
@@ -495,7 +496,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 		cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyDeviceToHost);
 		cudaThreadSynchronize();
 
-		float threshold = 1.5e6;
+		float threshold = rbx::Config::get<double>("basestation_threshhold");
 
 		// threshold detection
 		gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, MAX_SIGNALS_PER_SPREAD, threshold, SPREADING_LENGTH * 2, SPREADING_BINS);
