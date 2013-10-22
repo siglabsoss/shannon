@@ -15,6 +15,7 @@
 #include <algorithm>    // std::min
 #include "boost/tuple/tuple.hpp"
 #include <boost/lexical_cast.hpp>
+#include "core/config.hpp"
 
 #include "cuda/helper_cuda.h"
 
@@ -33,7 +34,7 @@ namespace pop
 
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
 #define PEAK_SINC_NEIGHBORS (8)     // how many samples to add to either side of a local maxima for sinc interpolate
-#define PEAK_SINC_SAMPLES (10000)  // how many samples to sinc interpolate around detected peaks
+#define PEAK_SINC_SAMPLES (100000)  // how many samples to sinc interpolate around detected peaks
 
 extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
 extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
@@ -495,7 +496,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 		cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyDeviceToHost);
 		cudaThreadSynchronize();
 
-		float threshold = 1.5e6;
+		float threshold = rbx::Config::get<double>("basestation_threshhold");
 
 		// threshold detection
 		gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, MAX_SIGNALS_PER_SPREAD, threshold, SPREADING_LENGTH * 2, SPREADING_BINS);
@@ -545,9 +546,9 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 		for( unsigned i = 0; i < localMaximaPeaks.size(); i++ )
 		{
-			cout << endl;
-			cout << endl;
-			cout << endl;
+//			cout << endl;
+//			cout << endl;
+//			cout << endl;
 
 			// calculate the fractional sample which the peak occured in relative to the linear sample
 			double sincIndex = sincInterpolateMaxima(h_cts, localMaximaPeaks[i], PEAK_SINC_NEIGHBORS);
@@ -559,7 +560,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 			// convert this linear sample into a range of (0 - SPREADING_LENGTH) samples which represents real time
 			boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
 
-			//		cout << "sincTimeIndex " << sincTimeIndex << endl;
+//			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
 
 			const PopTimestamp *prev = 0;
 			const PopTimestamp *next = 0;
@@ -614,19 +615,21 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 			exactTimestamp += timePerSample * ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
 
-			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << endl;
+//			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << endl;
 
 			//		cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
-			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+//			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
 
 
 			// pointer to current maxima in the source buffer
 			currentMaxima = maximaOut+i;
 
-			*currentMaxima = pop::PopSymbol(spreading_code, 0.0, sincTimeBin, 0, exactTimestamp);
+			*currentMaxima = pop::PopSymbol(spreading_code, sqrt(magnitude2(h_cts[localMaximaPeaks[i]])), sincTimeBin, 0, rbx::Config::get<double>("basestation_id"), exactTimestamp);
 		}
 
-		maxima.process();
+		// call process and send out all detected maxima.  If this is 0 nothing happens (ie it's handled correctly internally)
+		maxima.process(localMaximaPeaks.size());
 
 	}
 

@@ -37,6 +37,11 @@ public:
 	PopTimestamp(PopTimestamp copy, double off) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(off) {}
 
 	/*!
+	 * Traditional copy constructor
+	 */
+	PopTimestamp(const PopTimestamp &copy) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(copy.offset) {}
+
+	/*!
 	 * Get the system time in time_spec_t format.
 	 * Uses the highest precision clock available.
 	 * \return the system time as a time_spec_t

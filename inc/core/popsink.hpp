@@ -56,7 +56,7 @@ protected:
      * zero indicates that the class can accept any number of input samples.
      */
     PopSink(const char* name, size_t nInBuf = 0) : PopObject(name), m_reqBufSize(nInBuf),
-        m_sourceBufIdx(0), m_timestampSourceBufIdx(0), m_pThread(0)
+        m_sourceBufIdx(0), m_timestampSourceBufIdx(0), m_pThread(0), m_rgSource(0)
     {
     }
 
@@ -170,6 +170,10 @@ private:
 
     // friend classes
     template <typename> friend class PopSource;
+
+protected:
+    // pointer to the source that feeds into us
+    PopSource<IN_TYPE>* m_rgSource;
 };
 
 } // namespace pop

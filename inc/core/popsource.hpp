@@ -101,9 +101,9 @@ public:
         correct_timestamp_indices(m_buf, m_timestamp_buf, num_new_timestamp_pts);
 
 
-        /* iterate through list of sources and determine how many times
+        /* iterate through list of sinks and determine how many times
            to call them. */
-        for( it = m_rgSources.begin(); it != m_rgSources.end(); it++ )
+        for( it = m_rgSinks.begin(); it != m_rgSinks.end(); it++ )
         {
             // get source buffer index and number of uncopied points
             size_t &sink_idx_into_buffer = (*it)->m_sourceBufIdx;
@@ -258,7 +258,10 @@ public:
         sink.m_timestampSourceBufIdx = m_timestamp_buf.m_bufIdx;
 
         // store sink
-        m_rgSources.push_back(&sink);
+        m_rgSinks.push_back(&sink);
+
+        // store source into the sink
+        sink.m_rgSource = this;
     }
 
 
@@ -529,8 +532,10 @@ private:
     /// current JSON string
     std::ostringstream m_jsonString;
 
-    /// Attached Classes
-    std::vector<PopSink<OUT_TYPE>* > m_rgSources;
+protected:
+
+    /// Attached Sink Classes
+    std::vector<PopSink<OUT_TYPE>* > m_rgSinks;
 
     // --------------------------------
     // JSON methods
