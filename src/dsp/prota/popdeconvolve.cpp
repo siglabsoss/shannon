@@ -624,7 +624,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 			// pointer to current maxima in the source buffer
 			currentMaxima = maximaOut+i;
 
-			*currentMaxima = pop::PopSymbol(spreading_code, 0.0, sincTimeBin, 0, rbx::Config::get<double>("basestation_id"), exactTimestamp);
+			*currentMaxima = pop::PopSymbol(spreading_code, sqrt(magnitude2(h_cts[localMaximaPeaks[i]])), sincTimeBin, 0, rbx::Config::get<double>("basestation_id"), exactTimestamp);
 		}
 
 		// call process and send out all detected maxima.  If this is 0 nothing happens (ie it's handled correctly internally)
