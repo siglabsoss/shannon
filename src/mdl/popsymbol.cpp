@@ -21,7 +21,7 @@ PopSymbol::~PopSymbol()
 
 void PopSymbol::debug_print()
 {
-	cout << "  symbol: " << symbol << endl;
+	cout << "  symbol: " << (int)symbol << endl;
 	cout << "  magnitude: " << magnitude << endl;
 	cout << "  host: " << host << endl;
 	cout << "  time: " << boost::lexical_cast<string>(timestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(timestamp.get_frac_secs()) << endl;
