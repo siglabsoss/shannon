@@ -60,8 +60,40 @@ public:
 			symbols.push_back(data[i]);
 		}
 
-		cout << "holding " << symbols.size() << " symbols";
+		cout << "holding " << symbols.size() << " symbols" << endl;
 
+		if( symbols.size() > 10 )
+			tokenize();
+
+	}
+
+	void tokenize()
+	{
+
+		// sort Symbols in order
+		std::sort(symbols.begin(), symbols.end(), PopSymbol::timestamp_comparitor);
+
+		for( unsigned i = 0; i < symbols.size() - 1; i++ )
+		{
+			PopSymbol *current = &symbols[i];
+			PopSymbol *next = &symbols[i+1];
+
+			if( abs(current->timestamp.get_real_secs() - next->timestamp.get_real_secs()) < 0.1 )
+			{
+
+			}
+			else
+			{
+				cout << "these two stamps are too far apart: " << endl;
+				current->debug_print();
+				next->debug_print();
+
+				cout << endl << endl;
+			}
+
+//			PopTimestamp difference = PopTimestamp
+
+		}
 	}
 
 
