@@ -27,6 +27,7 @@
 //#define DEBUG_POPDECONVOLVE_TIME
 
 using namespace std;
+using namespace boost::posix_time;
 
 namespace pop
 {
@@ -36,14 +37,14 @@ namespace pop
 #define PEAK_SINC_NEIGHBORS (8)     // how many samples to add to either side of a local maxima for sinc interpolate
 #define PEAK_SINC_SAMPLES (100000)  // how many samples to sinc interpolate around detected peaks
 
-extern "C" void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins);
-extern "C" void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins);
-extern "C" void gpu_threshold_detection(cuComplex* d_in, int* d_out, unsigned int *d_outLen, int outLenMax, float threshold, int len, int fbins);
-extern "C" void thrust_peak_detection(cuComplex* in, thrust::device_vector<float>* d_mag_vec, float* peak, int* index, int len, int fbins);
-extern "C" void init_popdeconvolve(thrust::device_vector<float>** d_mag_vec, size_t size);
+extern "C" void gpu_rolling_dot_product(popComplex *in, popComplex *cfc, popComplex *out, int len, int fbins);
+extern "C" void gpu_peak_detection(popComplex* in, double* peak, int len, int fbins);
+extern "C" void gpu_threshold_detection(popComplex* d_in, int* d_out, unsigned int *d_outLen, int outLenMax, double threshold, int len, int fbins);
+extern "C" void thrust_peak_detection(popComplex* in, thrust::device_vector<double>* d_mag_vec, double* peak, int* index, int len, int fbins);
+extern "C" void init_popdeconvolve(thrust::device_vector<double>** d_mag_vec, size_t size);
 
 
-PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<float> >( "PopProtADeconvolve", SPREADING_LENGTH ),
+PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<double> >( "PopProtADeconvolve", SPREADING_LENGTH ),
 		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima")
 {
 
@@ -77,8 +78,8 @@ PopProtADeconvolve::~PopProtADeconvolve()
  * @param bt Gaussian filter value. -3dB bandwidth symbol time.
  **/
 void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
-	const int8_t* prn, complex<float>* cfc,
-	size_t  ncs, size_t osl, float bt)
+	const int8_t* prn, complex<double>* cfc,
+	size_t  ncs, size_t osl, double bt)
 {
 	size_t n, m;
 	double* p;  ///< phase
@@ -189,7 +190,7 @@ void PopProtADeconvolve::gpu_gen_pn_match_filter_coef(
 	free( yf );
 }
 
-complex<float>* h_cfc;
+complex<double>* h_cfc;
 
 void PopProtADeconvolve::init()
 {
@@ -213,27 +214,27 @@ void PopProtADeconvolve::init()
     cudaSetDevice(0);
 
     // setup FFT plans
-    cufftPlan1d(&plan_fft, SPREADING_LENGTH * 2, CUFFT_C2C, 1); // pad
+    cufftPlan1d(&plan_fft, SPREADING_LENGTH * 2, CUFFT_Z2Z, 1); // pad
     int rank_size = SPREADING_LENGTH * 2;
-    cufftPlanMany(&plan_deconvolve, 1, &rank_size, 0, 1, 0, 0, 1, 0, CUFFT_C2C, SPREADING_BINS);
+    cufftPlanMany(&plan_deconvolve, 1, &rank_size, 0, 1, 0, 0, 1, 0, CUFFT_Z2Z, SPREADING_BINS);
 
     // allocate device memory
-    checkCudaErrors(cudaMalloc(&d_sts, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
-    checkCudaErrors(cudaMalloc(&d_sfs, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
+    checkCudaErrors(cudaMalloc(&d_sts, SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMalloc(&d_sfs, SPREADING_LENGTH * 2 * sizeof(popComplex)));
     // host has an array of pointers which will point to d_cfc's.  after this cuda malloc we aren't quit done yet
-    checkCudaErrors(cudaMalloc(&d_cfc[0], SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(cuComplex)));
-    checkCudaErrors(cudaMalloc(&d_cfs, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
-    checkCudaErrors(cudaMalloc(&d_cts, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
+    checkCudaErrors(cudaMalloc(&d_cfc[0], SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(popComplex)));
+    checkCudaErrors(cudaMalloc(&d_cfs, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMalloc(&d_cts, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
     checkCudaErrors(cudaMalloc(&d_peaks_len, sizeof(unsigned int)));
 
 
     // initialize device memory
-    checkCudaErrors(cudaMemset(d_sts, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
-    checkCudaErrors(cudaMemset(d_sfs, 0, SPREADING_LENGTH * 2 * sizeof(cuComplex)));
-    checkCudaErrors(cudaMemset(d_cfc[0], 0, SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(cuComplex)));
-    checkCudaErrors(cudaMemset(d_cfs, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
-    checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(cuComplex)));
+    checkCudaErrors(cudaMemset(d_sts, 0, SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMemset(d_sfs, 0, SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMemset(d_cfc[0], 0, SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(popComplex)));
+    checkCudaErrors(cudaMemset(d_cfs, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_peaks, 0, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
 
     // malloc host memory
@@ -241,7 +242,7 @@ void PopProtADeconvolve::init()
 
     // generate convolution filter coefficients
     cout << "generating spreading codes..." << endl;
-    h_cfc = (complex<float>*)malloc(2 * SPREADING_LENGTH * sizeof(complex<float>));
+    h_cfc = (complex<double>*)malloc(2 * SPREADING_LENGTH * sizeof(complex<double>));
 
 
 
@@ -263,7 +264,7 @@ void PopProtADeconvolve::init()
     	gpu_gen_pn_match_filter_coef(code_list[i], h_cfc, SPREADING_LENGTH, SPREADING_LENGTH /*oversampled*/, 0.5);
 
     	// copy to the specific index of d_cfc on the device
-    	checkCudaErrors(cudaMemcpy(d_cfc[i], h_cfc, 2 * SPREADING_LENGTH * sizeof(cuComplex), cudaMemcpyHostToDevice));
+    	checkCudaErrors(cudaMemcpy(d_cfc[i], h_cfc, 2 * SPREADING_LENGTH * sizeof(popComplex), cudaMemcpyHostToDevice));
     }
 
 	cout << "done generating spreading codes" << endl;
@@ -284,21 +285,16 @@ double magnitude2( const complex<double>& in )
 	return in.real() * in.real() + in.imag() * in.imag();
 }
 
-float magnitude2( const complex<float>& in )
-{
-	return in.real() * in.real() + in.imag() * in.imag();
-}
-
 // we need to check the points forwards and backwards in time, we also need to check up and down in fbins
 // then we also check the corners
-bool sampleIsLocalMaxima(const complex<float>* data, int sample, int spreadLength, int fbins)
+bool sampleIsLocalMaxima(const complex<double>* data, int sample, int spreadLength, int fbins)
 {
 	//TODO: we don't have a circular buffer of the final data, so if a sample lies on a boundary
 	// we can't check for local maxima by negativly indexing to verify local maximums
 
 	int sampleTime, sampleBin;
 
-	float surroundingMax = 0.0; // maximum of surrounding points
+	double surroundingMax = 0.0; // maximum of surrounding points
 
 	vector<int> check; // vector of indices we want to check
 
@@ -328,11 +324,11 @@ bool sampleIsLocalMaxima(const complex<float>* data, int sample, int spreadLengt
 }
 
 
-double PopProtADeconvolve::sincInterpolateMaxima(const complex<float>* data, int sample, int neighbors )
+double PopProtADeconvolve::sincInterpolateMaxima(const complex<double>* data, int sample, int neighbors )
 {
 	size_t osl; // osl oversampled symbol length
 	osl = PEAK_SINC_SAMPLES; // should be one hundred thousand
-	const complex<float>* y = data; // rename this symbol
+	const complex<double>* y = data; // rename this symbol
 
 	// offset to first symbol
 	y += sample - neighbors;
@@ -342,14 +338,14 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<float>* data, int
 	size_t n, m;
 	double a; // holder
 
-	size_t pixelSize = ceil((float)(osl / ncs) * 1.05);  // number of oversamples that signify one pixel (padded by a margin)
+	size_t pixelSize = ceil((double)(osl / ncs) * 1.05);  // number of oversamples that signify one pixel (padded by a margin)
 
 
 	// we only sink interpolate and look for maximum between these values
 	// this is the center plus and minus one pixel
 	size_t oslClipMin, oslClipMax;
-	oslClipMin = floor((float)(osl/2) - pixelSize);
-	oslClipMax = ceil((float)(osl/2) + pixelSize);
+	oslClipMin = floor((double)(osl/2) - pixelSize);
+	oslClipMax = ceil((double)(osl/2) + pixelSize);
 
 
 	// rename member variable that was mallocd during init
@@ -447,10 +443,14 @@ boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbin
 
 
 
-void PopProtADeconvolve::process(const complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+void PopProtADeconvolve::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
 {
 	unsigned n;
-	float h_peak[10];
+	double h_peak[10];
+
+	ptime t1, t2;
+	time_duration td, tLast;
+	t1 = microsec_clock::local_time();
 
 	//cout << "received " << len << " samples" << endl;
 
@@ -470,20 +470,19 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 //	cout << "  with indices " << timestamp_data[0].offset_adjusted(timestamp_buffer_correction) << " and " << timestamp_data[timestamp_size-1].offset_adjusted(timestamp_buffer_correction) << endl;
 
 
-	complex<float>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
+	complex<double>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
 
 	// copy new host data into device memory
-	cudaMemcpy(d_sts, in - SPREADING_LENGTH, SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_sts, in - SPREADING_LENGTH, SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyHostToDevice);
 	cudaThreadSynchronize();
 
 	// perform FFT on spectrum
-	cufftExecC2C(plan_fft, d_sts, d_sfs, CUFFT_FORWARD);
+	cufftExecZ2Z(plan_fft, (cufftDoubleComplex*)d_sts, (cufftDoubleComplex*)d_sfs, CUFFT_FORWARD);
 	cudaThreadSynchronize();
 
 
 	for(int spreading_code = 0; spreading_code < SPREADING_CODES; spreading_code++ )
 	{
-
 
 		// rolling dot product
 		gpu_rolling_dot_product(d_sfs, d_cfc[spreading_code], d_cfs, SPREADING_LENGTH * 2, SPREADING_BINS);
@@ -491,12 +490,12 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 
 		// perform IFFT on dot product
-		cufftExecC2C(plan_deconvolve, d_cfs, d_cts, CUFFT_INVERSE);
+		cufftExecZ2Z(plan_deconvolve, (cufftDoubleComplex*)d_cfs, (cufftDoubleComplex*)d_cts, CUFFT_INVERSE);
 		cudaThreadSynchronize();
-		cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(cuComplex), cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyDeviceToHost);
 		cudaThreadSynchronize();
 
-		float threshold = rbx::Config::get<double>("basestation_threshhold");
+		double threshold = rbx::Config::get<double>("basestation_threshhold");
 
 		// threshold detection
 		gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, MAX_SIGNALS_PER_SPREAD, threshold, SPREADING_LENGTH * 2, SPREADING_BINS);
@@ -634,24 +633,29 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 	}
 
 
+	t2 = microsec_clock::local_time();
+	td = t2 - t1;
+	//cout << " PopDeconvolve - 1040 RF samples received and computed in " << td.total_microseconds() << "us." << endl;
+
+
 
 
 //
 //	// peak detection
-//	checkCudaErrors(cudaMemset(d_peak, 0, sizeof(float)));
+//	checkCudaErrors(cudaMemset(d_peak, 0, sizeof(double)));
 //	cudaThreadSynchronize();
 //	gpu_peak_detection(d_cts, d_peak, SPREADING_LENGTH * 2, SPREADING_BINS);
 //	cudaThreadSynchronize();
-//	cudaMemcpy(h_peak, d_peak, sizeof(float), cudaMemcpyDeviceToHost);
+//	cudaMemcpy(h_peak, d_peak, sizeof(double), cudaMemcpyDeviceToHost);
 //	cudaThreadSynchronize();
 //
-//	// cast back to float from "sortable integer"
+//	// cast back to double from "sortable integer"
 //	unsigned a, b, c;
 //	//a = *((unsigned*)h_peak);
 //	//b = ((a >> 31) - 1) | 0x80000000;
 //	//c = a ^ b;
-//	float d;
-//	//d = *((float*)&c);
+//	double d;
+//	//d = *((double*)&c);
 //	(unsigned&)d = IFloatFlip((unsigned&)h_peak);
 //
 //	d = sqrt(d);
@@ -659,7 +663,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 //	cout << "old style peak is " << d << endl;
 //
 //
-//	float h_thrust_peak;
+//	double h_thrust_peak;
 //	int h_thrust_peak_index;
 //
 //#ifdef DEBUG_POPDECONVOLVE_TIME
@@ -680,7 +684,7 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 //
 //
 //
-//	float h_thrust_d;
+//	double h_thrust_d;
 //
 //	h_thrust_d = sqrt(h_thrust_peak);
 //
@@ -694,11 +698,11 @@ void PopProtADeconvolve::process(const complex<float>* in, size_t len, const Pop
 
 BOOST_AUTO_TEST_CASE( blahtest )
 {
-	complex<float>* cfc;
+	complex<double>* cfc;
 	ptime t1, t2;
 	time_duration td, tLast;
 
-	cfc = (complex<float>*)malloc(512*2*sizeof(complex<float>)); ///< pad
+	cfc = (complex<double>*)malloc(512*2*sizeof(complex<double>)); ///< pad
 
 	t1 = microsec_clock::local_time();
 	pop::PopProtADeconvolve::gpu_gen_pn_match_filter_coef( pop::m4k_001, cfc, 512, 512, 0.5 );
@@ -718,19 +722,19 @@ BOOST_AUTO_TEST_CASE( blahtest )
 #define RAND_BETWEEN(Min,Max)  (((double(rand()) / double(RAND_MAX)) * (Max - Min)) + Min)
 
 
-class PopTestRandComplexSource : public PopSource<complex<float> >
+class PopTestRandComplexSource : public PopSource<complex<double> >
 {
 public:
-	PopTestRandComplexSource() : PopSource<complex<float> >("PopTestRandComplexSource") { }
+	PopTestRandComplexSource() : PopSource<complex<double> >("PopTestRandComplexSource") { }
 
 
 	    void send_both(size_t count, size_t stamps, double start_time = -1, double time_inc_divisor = -1)
 	    {
 
-	    	complex<float> *b = get_buffer(count);
+	    	complex<double> *b = get_buffer(count);
 	    	PopTimestamp t[stamps];
 
-	    	float min, max;
+	    	double min, max;
 	    	max = 225000;
 	    	min = -1 * max;
 

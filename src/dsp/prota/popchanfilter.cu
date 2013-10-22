@@ -9,6 +9,7 @@
 
 // Bad practice, but I can't get multiple cuda files to link http://stackoverflow.com/questions/13683575/cuda-5-0-separate-compilation-of-library-with-cmake
 #include <dsp/prota/popdeconvolve.cu>
+#include <dsp/common/poptypes.cu>
 
 
 #include <iostream>
@@ -29,6 +30,8 @@
 #include <cstdlib>
 #include <time.h>
 
+#include <dsp/common/poptypes.cuh>
+
 #include <dsp/prota/popchanfilter.cuh>
 
 
@@ -36,28 +39,8 @@
 using namespace std;
 using namespace thrust;
 
-__device__ float magnitude2( cuComplex& in )
-{
-	return in.x * in.x + in.y * in.y;
-}
 
-__device__ cuComplex operator*(const cuComplex& a, const cuComplex& b)
-{
-	cuComplex r;
-	r.x = b.x*a.x - b.y*a.y;
-	r.y = b.y*a.x + b.x*a.y;
-	return r;
-}
-
-__device__ cuComplex operator+(const cuComplex& a, const cuComplex& b)
-{
-	cuComplex r;
-	r.x = a.x + b.x;
-	r.y = a.y + b.y;
-	return r;
-}
-
-__global__ void rolling_scalar_multiply(cuComplex *in, cuComplex *cfc, cuComplex *out, int len)
+__global__ void rolling_scalar_multiply(popComplex *in, popComplex *cfc, popComplex *out, int len)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	int I = blockDim.x * gridDim.x;
@@ -82,39 +65,14 @@ __device__ unsigned FloatFlip(unsigned f)
 	return f ^ mask;
 }
 
-__global__ void peak_detection(cuComplex *in, float *peak, int len)
-{
-	int i = blockIdx.x * blockDim.x + threadIdx.x;
-	int I = blockDim.x * gridDim.x;
-
-	int F = (I / len);
-	int f = (i / len) - (F / 2); // frequency
-	int b = i % len; // fft bin
-	float mag; // magnitude of peak
-	unsigned si; // sortable integer
-
-	// don't look for peaks in padding
-	if( (b > (len / 4)) && (b <= (3 * len /4)) ) return;
-
-	// take the magnitude of the detection
-	mag = magnitude2(in[i]);
-
-	// transform into sortable integer
-	// https://devtalk.nvidia.com/default/topic/406770/cuda-programming-and-performance/atomicmax-for-float/
-	//si = *((unsigned*)&mag) ^ (-signed(*((unsigned*)&mag)>>31) | 0x80000000);
-	si = FloatFlip((unsigned&)mag);
-
-	// check to see if this is the highest recorded value
-	atomicMax((unsigned*)peak, si);
-}
 
 
 extern "C"
 {	
-	cuComplex* d_dataa;
-	cuComplex* d_datab;
-	cuComplex* d_datac;
-	cuComplex* d_datad;
+	popComplex* d_dataa;
+	popComplex* d_datab;
+	popComplex* d_datac;
+	popComplex* d_datad;
 	cufftHandle plan1;
 	cufftHandle plan2;
 	size_t g_len_chan; ///< length of time series in samples
@@ -122,7 +80,7 @@ extern "C"
 	size_t g_start_chan = 16128;
 
 
-	size_t gpu_channel_split(const complex<float> *h_data, complex<float> *out)
+	size_t gpu_channel_split(const complex<double> *h_data, complex<double> *out)
 	{
 		//double ch_start, ch_end, ch_ctr;
 
@@ -138,34 +96,34 @@ extern "C"
 		unsigned small_bin_sideband = g_len_chan / 2;
 
 		// copy new host data into device memory
-		cudaMemcpy(d_dataa, h_data, g_len_fft * sizeof(cuComplex), cudaMemcpyHostToDevice);
+		cudaMemcpy(d_dataa, h_data, g_len_fft * sizeof(popComplex), cudaMemcpyHostToDevice);
 		cudaThreadSynchronize();
 
 		// perform FFT on spectrum
-		cufftExecC2C(plan1, (cufftComplex*)d_dataa, (cufftComplex*)d_datab, CUFFT_FORWARD);
+		cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_dataa, (cufftDoubleComplex*)d_datab, CUFFT_FORWARD);
 		cudaThreadSynchronize();
 
 		
 		// chop spectrum up into 50 spreading channels low side-band
 		cudaMemcpy(d_datac,
 			       d_datab + small_bin_start + small_bin_sideband,
-			       small_bin_sideband * sizeof(cuComplex),
+			       small_bin_sideband * sizeof(popComplex),
 			       cudaMemcpyDeviceToDevice);
 		// chop spectrum up into 50 spreading channels high side-band
 		cudaMemcpy(d_datac + small_bin_sideband,
 			       d_datab + small_bin_start,
-			       small_bin_sideband * sizeof(cuComplex),
+			       small_bin_sideband * sizeof(popComplex),
 			       cudaMemcpyDeviceToDevice);
 		cudaThreadSynchronize();
 
 
 		// put back into time domain
-		cufftExecC2C(plan2, (cufftComplex*)d_datac, (cufftComplex*)d_datad, CUFFT_INVERSE);
+		cufftExecZ2Z(plan2, (cufftDoubleComplex*)d_datac, (cufftDoubleComplex*)d_datad, CUFFT_INVERSE);
 		cudaThreadSynchronize();
   		checkCudaErrors(cudaGetLastError());
 
   		// Copy results to host
-		cudaMemcpy(out, d_datad, g_len_chan * sizeof(cuComplex), cudaMemcpyDeviceToHost);
+		cudaMemcpy(out, d_datad, g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost);
 		cudaThreadSynchronize();
 		
   		return 0;
@@ -178,20 +136,20 @@ extern "C"
 		g_len_fft = len_fft;
 
 		// allocate CUDA memory
-		checkCudaErrors(cudaMalloc(&d_dataa, g_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_datab, g_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_datac, g_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMalloc(&d_datad, g_len_fft * sizeof(cuComplex)));
+		checkCudaErrors(cudaMalloc(&d_dataa, g_len_fft * sizeof(popComplex)));
+		checkCudaErrors(cudaMalloc(&d_datab, g_len_fft * sizeof(popComplex)));
+		checkCudaErrors(cudaMalloc(&d_datac, g_len_fft * sizeof(popComplex)));
+		checkCudaErrors(cudaMalloc(&d_datad, g_len_fft * sizeof(popComplex)));
 
 		// initialize CUDA memory
-		checkCudaErrors(cudaMemset(d_dataa, 0, g_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMemset(d_datab, 0, g_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMemset(d_datac, 0, g_len_fft * sizeof(cuComplex)));
-		checkCudaErrors(cudaMemset(d_datad, 0, g_len_fft * sizeof(cuComplex)));
+		checkCudaErrors(cudaMemset(d_dataa, 0, g_len_fft * sizeof(popComplex)));
+		checkCudaErrors(cudaMemset(d_datab, 0, g_len_fft * sizeof(popComplex)));
+		checkCudaErrors(cudaMemset(d_datac, 0, g_len_fft * sizeof(popComplex)));
+		checkCudaErrors(cudaMemset(d_datad, 0, g_len_fft * sizeof(popComplex)));
 
 	    // setup FFT plans
-	    cufftPlan1d(&plan1, g_len_fft, CUFFT_C2C, 1);
-	    cufftPlan1d(&plan2, g_len_chan, CUFFT_C2C, 1);
+	    cufftPlan1d(&plan1, g_len_fft, CUFFT_Z2Z, 1);
+	    cufftPlan1d(&plan2, g_len_chan, CUFFT_Z2Z, 1);
 
 	    printf("\n[Popwi::popprotadespread]: init deconvolve complete \n");
 	}
@@ -209,17 +167,10 @@ extern "C"
 	}
 
 
-	void gpu_rolling_dot_product(cuComplex *in, cuComplex *cfc, cuComplex *out, int len, int fbins)
+	void gpu_rolling_dot_product(popComplex *in, popComplex *cfc, popComplex *out, int len, int fbins)
 	{
 		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
 		rolling_scalar_multiply<<<fbins * 16, len / 16>>>(in, cfc, out, len);
-		cudaThreadSynchronize();
-	}
-
-	void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins)
-	{
-		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
-		peak_detection<<<fbins * 16, len / 16>>>(in, peak, len);
 		cudaThreadSynchronize();
 	}
 
@@ -227,13 +178,13 @@ extern "C"
 	// this is the functor which calculates magnitude's for samples in the keep zone
 	// and calculates 0.0 for samples outside of the zone
 	// note for some weird reason if this struct has a normal style constructor other basic CUDA functions are affected and refuse to run!??
-	struct indexed_magnitude_squared_functor_fixed : public thrust::binary_function<int,cuComplex,float>
+	struct indexed_magnitude_squared_functor_fixed : public thrust::binary_function<int,popComplex,double>
 		{
 		public:
 			int m_len;
 
 			__host__ __device__
-			float operator()(const int& index, const cuComplex& a) const {
+			double operator()(const int& index, const popComplex& a) const {
 
 				int b = index % m_len; // fft bin
 
@@ -247,12 +198,12 @@ extern "C"
 			}
 		};
 
-	void thrust_peak_detection(cuComplex* in, thrust::device_vector<float>* d_mag_vec, float* peak, int* index, int len, int fbins)
+	void thrust_peak_detection(popComplex* in, thrust::device_vector<double>* d_mag_vec, double* peak, int* index, int len, int fbins)
 	{
 		int totalLen = len*fbins;
 
 		// grab an iterator to the beginning of the data that was already cuda memcopied onto the gpu
-		thrust::device_ptr<cuComplex> d_vec_begin = thrust::device_pointer_cast(in);
+		thrust::device_ptr<popComplex> d_vec_begin = thrust::device_pointer_cast(in);
 
 //		// transform between two vectors like this:
 //		// http://thrust.github.io/doc/group__transformations.html#ga68a3ba7d332887f1332ca3bc04453792
@@ -274,10 +225,10 @@ extern "C"
 
 		// find the maximum element using the gpu, and return a pointer to it (a device_vector::iterator)
 		// this takes about 36000us
-		thrust::device_vector<float>::iterator d_max_element_itr = thrust::max_element(d_mag_vec->begin(), d_mag_vec->end());
+		thrust::device_vector<double>::iterator d_max_element_itr = thrust::max_element(d_mag_vec->begin(), d_mag_vec->end());
 
 		unsigned int position = d_max_element_itr - d_mag_vec->begin();
-		float max_val = *d_max_element_itr;
+		double max_val = *d_max_element_itr;
 		*peak = max_val;
 	}
 

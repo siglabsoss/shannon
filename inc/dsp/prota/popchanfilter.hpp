@@ -22,21 +22,21 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopChanFilter : public PopSink<std::complex<float> >, public PopSource<std::complex<float> >
+	class PopChanFilter : public PopSink<std::complex<double> >, public PopSource<std::complex<double> >
 	{
 	public:
 		PopChanFilter();
 		~PopChanFilter();
 
 	private:
-		void process(const std::complex<float>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction);
+		void process(const std::complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction);
 		void init();
 
-		void gen_dft(std::complex<float>* out, size_t bins);
-		void gen_inv_dft(std::complex<float>* out, size_t bins);
-		void gen_carrier(std::complex<float>* out, size_t bins, size_t harmonic);
+		void gen_dft(std::complex<double>* out, size_t bins);
+		void gen_inv_dft(std::complex<double>* out, size_t bins);
+		void gen_carrier(std::complex<double>* out, size_t bins, size_t harmonic);
 
-		std::complex<float> *mp_demod_func; ///< PN code vector
+		std::complex<double> *mp_demod_func; ///< PN code vector
 	};
 }
 

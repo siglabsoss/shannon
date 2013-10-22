@@ -10,7 +10,7 @@
 #ifndef __POP_DECONVOLVE_CU__
 #define __POP_DECONVOLVE_CU__
 
-//#include <cuComplex.h>
+//#include <popComplex.h>
 #include <complex>
 #include <iostream>
 #include <stdexcept>
@@ -24,13 +24,14 @@
 //#include "cuPrintf.cu"
 //#include "shrUtils.h"
 //#include "cutil_inline.h"
+#include <dsp/common/poptypes.cuh>
 
 #include <dsp/prota/popchanfilter.cuh>
 
 using namespace std;
 
 
-__global__ void threshold_detection(cuComplex *in, int *out, unsigned int *outLen, int outLenMax, float thresholdSquared, int len, int fbins)
+__global__ void threshold_detection(popComplex *in, int *out, unsigned int *outLen, int outLenMax, double thresholdSquared, int len, int fbins)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -40,7 +41,7 @@ __global__ void threshold_detection(cuComplex *in, int *out, unsigned int *outLe
 //	int f = (i / len) - (F / 2); // frequency
 	int b = i % len; // fft bin
 
-	float mag; // magnitude of peak
+	double mag; // magnitude of peak
 
 	// don't look for peaks in padding
 	if( (b > (len / 4)) && (b <= (3 * len /4)) ) return;
@@ -69,7 +70,7 @@ extern "C"
 {	
 
 
-	void gpu_threshold_detection(cuComplex* d_in, int* d_out, unsigned int *d_outLen, int outLenMax, float threshold, int len, int fbins)
+	void gpu_threshold_detection(popComplex* d_in, int* d_out, unsigned int *d_outLen, int outLenMax, double threshold, int len, int fbins)
 	{
 		// reset this index of the largest detected peak to 0
 		checkCudaErrors(cudaMemset(d_outLen, 0, sizeof(int)));
@@ -84,7 +85,7 @@ extern "C"
 
 
 
-//	void gpu_peak_detection(cuComplex* in, float* peak, int len, int fbins)
+//	void gpu_peak_detection(popComplex* in, double* peak, int len, int fbins)
 //	{
 //		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
 //		peak_detection<<<fbins * 16, len / 16>>>(in, peak, len);

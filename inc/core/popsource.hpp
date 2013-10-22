@@ -472,6 +472,10 @@ private:
     	// remember allocated size for process() helper function
     	buf.m_lastReqSize = sizeBuf;
 
+        /* If requested size is 0 samples then allocate minimum (1 sample) to
+           prevent null pointers from causing arithmetic errors. */
+        if( 0 == sizeBuf ) sizeBuf = 1;
+
     	// automatically grow buffer if needed
     	if( sizeBuf * POPSOURCE_NUM_BUFFERS > buf.m_sizeBuf )
     		buf.resize_buffer(sizeBuf);

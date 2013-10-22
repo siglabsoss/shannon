@@ -3,8 +3,7 @@
 
 #include <complex>
 #include <cufft.h>
-
-__device__ float magnitude2( cuComplex& in );
+#include <dsp/common/poptypes.cuh>
 
 
 #endif

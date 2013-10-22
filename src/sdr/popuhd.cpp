@@ -57,7 +57,7 @@ namespace pop
 	/**
 	 * Constructor for Software Defined radio class.
 	 */
-	PopUhd::PopUhd() : PopSource<>("PopUhd"), mp_thread(0), m_timestamp_offset(0, 0.0)
+	PopUhd::PopUhd() : PopSource<complex<double> >("PopUhd"), mp_thread(0), m_timestamp_offset(0, 0.0)
 	{
 	}
 
@@ -130,7 +130,7 @@ namespace pop
 
         //create a receive streamer
         //linearly map channels (index0 = channel0, index1 = channel1, ...)
-        uhd::stream_args_t stream_args("fc32"); //complex floats
+        uhd::stream_args_t stream_args("fc64"); //complex doubles
         for (size_t chan = 0; chan < usrp->get_rx_num_channels(); chan++)
             stream_args.channels.push_back(chan); //linear mapping
 
@@ -152,7 +152,7 @@ namespace pop
 
 		for(;;)
 		{
-			std::vector<std::complex<float> *> buf;
+			std::vector<std::complex<double> *> buf;
 
 			buf.push_back(get_buffer(samps_per_buff));
 
