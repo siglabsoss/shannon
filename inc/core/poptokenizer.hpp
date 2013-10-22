@@ -41,6 +41,8 @@ class PopTokenizer : public PopSink<PopSymbol>, public PopSource<PopSymbol>
 {
 public:
 
+	vector<PopSymbol> symbols;
+
 	PopTokenizer() : PopSink<PopSymbol>( "PopTokenizer" ), PopSource<PopSymbol>( "PopTokenizer" )
 	{}
 
@@ -53,6 +55,12 @@ public:
 
 	void process(const PopSymbol* data, size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
 	{
+		for( size_t i = 0; i < data_size; i++ )
+		{
+			symbols.push_back(data[i]);
+		}
+
+		cout << "holding " << symbols.size() << " symbols";
 
 	}
 
