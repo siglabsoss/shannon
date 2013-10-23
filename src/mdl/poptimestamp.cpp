@@ -169,6 +169,15 @@ PopTimestamp &PopTimestamp::operator-=(const PopTimestamp &rhs){
     return *this;
 }
 
+PopTimestamp &PopTimestamp::operator*=(const double &rhs){
+    time_spec_init(
+        this->get_full_secs() * rhs,
+        this->get_frac_secs() * rhs
+    );
+    return *this;
+}
+
+
 bool operator==(const PopTimestamp &lhs, const PopTimestamp &rhs){
     return
         lhs.get_full_secs() == rhs.get_full_secs() and

@@ -104,10 +104,13 @@ namespace pop
 		double factor = (double) FFT_SIZE / CHAN_SIZE;
 
 		double a;
-		double secs;
+//		double secs;
 
 		// index of two timestamps to interpolate between
-		size_t ts1, ts2;
+		size_t i1, i2;
+
+		// two timestamps
+		PopTimestamp ts1, ts2;
 
 		for(size_t m = 0; m < CHAN_SIZE; m++ )
 		{
@@ -115,12 +118,24 @@ namespace pop
 
 			a = fmod( factor * m, 1.0 );
 
-			ts1 = floor(factor * m);
-			ts2 =  ceil(factor * m);
+			i1 = floor(factor * m);
+			i2 =  ceil(factor * m);
 
-			secs = (1-a) * timestamp_data[ts1].get_real_secs() + a * timestamp_data[ts2].get_real_secs();
+			ts1 = timestamp_data[i1];
+			ts2 = timestamp_data[i2];
 
-			cout << "m = " << m << " secs = " << boost::lexical_cast<string>(secs) << endl;
+			ts1 *= (1-a);
+			ts2 *= (a);
+
+//			secs = (1-a) * timestamp_data[i1].get_real_secs() + a * timestamp_data[i2].get_real_secs();
+
+//			cout << "m = " << m << " secs = " << boost::lexical_cast<string>(secs) << endl;
+
+			// final result is stored in ts1
+			ts1 += ts2;
+
+			timestampOut[m] = ts1;
+
 
 
 //			cout << "got timestamp with raw index " << timestamp_data[i].offset << " and adjustment " << timestamp_buffer_correction << " which adjusts to " << calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) << endl;
@@ -135,7 +150,7 @@ namespace pop
 
 
 		// process data
-		PopSource<complex<double> >::process(out, CHAN_SIZE, timestampOut, timestamp_size);
+		PopSource<complex<double> >::process(out, CHAN_SIZE, timestampOut, CHAN_SIZE);
 
 		// while( chan_buf_len >= PN_SIZE)
 		// {

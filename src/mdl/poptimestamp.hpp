@@ -121,6 +121,9 @@ public:
 	//! Implement subtractable interface
 	PopTimestamp &operator-=(const PopTimestamp &);
 
+	//! Implement subtractable interface
+	PopTimestamp &operator*=(const double &);
+
 	//public time storage details
 
 	// time stuff

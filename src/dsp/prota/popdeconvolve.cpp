@@ -445,6 +445,9 @@ boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbin
 
 void PopProtADeconvolve::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
 {
+
+//	cout << "in deconv with " << len << " samples and " << timestamp_size << " stamps " << endl;
+
 	unsigned n;
 	double h_peak[10];
 
@@ -541,6 +544,7 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 		if( localMaximaPeaks.size() != 0 )
 			maximaOut = maxima.get_buffer( localMaximaPeaks.size() );
 
+//		cout << "got " << localMaximaPeaks.size() << " peaks!" << endl;
 
 
 		for( unsigned i = 0; i < localMaximaPeaks.size(); i++ )
@@ -561,8 +565,8 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 //			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
 
-			const PopTimestamp *prev = &timestamp_data[localMaximaPeaks[i]];
-			const PopTimestamp *next = &timestamp_data[localMaximaPeaks[i]+1];
+			const PopTimestamp *prev = &timestamp_data[(int)floor(sincTimeIndex)];
+			const PopTimestamp *next = &timestamp_data[(int)floor(sincTimeIndex)+1];
 
 //
 //			// loop through every timestamp except for the last one and set the prev/next pointers to timestamps surrounding sincTimeIndex
@@ -612,13 +616,13 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
 
-			exactTimestamp += timePerSample * ( sincTimeIndex - localMaximaPeaks[i] );
+			exactTimestamp += timePerSample * ( sincTimeIndex - sincIndex );
 
-//			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << endl;
+			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << " with mag " << sqrt(magnitude2(h_cts[localMaximaPeaks[i]])) << endl;
 
 			//		cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
-//			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
-			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+//			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
 
 
 			// pointer to current maxima in the source buffer
