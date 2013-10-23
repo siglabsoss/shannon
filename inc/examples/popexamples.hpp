@@ -165,9 +165,9 @@ public:
 
     		PopTimestamp t[4];
     		t[0] = PopTimestamp(3.3);
-    		t[0].offset = 0;
+//    		t[0].offset = 0;
     		t[1] = PopTimestamp(4.0);
-    		t[1].offset = chunk-1;
+//    		t[1].offset = chunk-1;
 
 //
 //    		std::cout << "time was " << t[0].get_full_secs() << std::endl;

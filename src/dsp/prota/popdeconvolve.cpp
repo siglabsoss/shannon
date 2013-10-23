@@ -561,40 +561,40 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 //			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
 
-			const PopTimestamp *prev = 0;
-			const PopTimestamp *next = 0;
+			const PopTimestamp *prev = &timestamp_data[localMaximaPeaks[i]];
+			const PopTimestamp *next = &timestamp_data[localMaximaPeaks[i]+1];
 
-
-			// loop through every timestamp except for the last one and set the prev/next pointers to timestamps surrounding sincTimeIndex
-			for( size_t j = 0; j < timestamp_size - 1; j++ )
-			{
-				// grab the indices for j and j+1 (won't overflow because we never do the last iteration of the loop)
-				double currentIndex = timestamp_data[ j ].offset_adjusted(timestamp_buffer_correction);
-				double nextIndex    = timestamp_data[j+1].offset_adjusted(timestamp_buffer_correction);
-
-				//			cout << "    " << currentIndex;
-
-
-
-				// true when the loop is pointing at a timestamp with an largest index that is less than sincTimeIndex (assuming timestamps are in order)
-				if( nextIndex >= sincTimeIndex && prev == 0)
-				{
-					prev = timestamp_data + j; // set the pointer to this timestamp because the next is past
-					next = timestamp_data + j + 1; // set the pointer to the next timestamp because we just detected that it's past
-					break;
-				}
-
-				//			if( currentIndex > sincTimeIndex )
-				//			{
-				//				indexNext = std::min(indexNext, currentIndex);
-				//				cout << "n";
-				//			}
-
-				//			cout << endl;
-			}
-
-			//		cout << "    found min, max indexes of " << indexPrev << " // " << indexNext << endl;
-			//		cout << "    found min, max indexes of " << prev->offset_adjusted(timestamp_buffer_correction) << " /-/ " << next->offset_adjusted(timestamp_buffer_correction) << endl;
+//
+//			// loop through every timestamp except for the last one and set the prev/next pointers to timestamps surrounding sincTimeIndex
+//			for( size_t j = 0; j < timestamp_size - 1; j++ )
+//			{
+//				// grab the indices for j and j+1 (won't overflow because we never do the last iteration of the loop)
+//				double currentIndex = timestamp_data[ j ].offset_adjusted(timestamp_buffer_correction);
+//				double nextIndex    = timestamp_data[j+1].offset_adjusted(timestamp_buffer_correction);
+//
+//				//			cout << "    " << currentIndex;
+//
+//
+//
+//				// true when the loop is pointing at a timestamp with an largest index that is less than sincTimeIndex (assuming timestamps are in order)
+//				if( nextIndex >= sincTimeIndex && prev == 0)
+//				{
+//					prev = timestamp_data + j; // set the pointer to this timestamp because the next is past
+//					next = timestamp_data + j + 1; // set the pointer to the next timestamp because we just detected that it's past
+//					break;
+//				}
+//
+//				//			if( currentIndex > sincTimeIndex )
+//				//			{
+//				//				indexNext = std::min(indexNext, currentIndex);
+//				//				cout << "n";
+//				//			}
+//
+//				//			cout << endl;
+//			}
+//
+//			//		cout << "    found min, max indexes of " << indexPrev << " // " << indexNext << endl;
+//			//		cout << "    found min, max indexes of " << prev->offset_adjusted(timestamp_buffer_correction) << " /-/ " << next->offset_adjusted(timestamp_buffer_correction) << endl;
 
 			// create mutable copy
 			PopTimestamp timeDifference = PopTimestamp(*next);
@@ -602,7 +602,7 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 			// calculate difference using -= overload (which should be most accurate)
 			timeDifference -= *prev;
 
-			double timePerSample = timeDifference.get_real_secs() / (  next->offset_adjusted(timestamp_buffer_correction) - prev->offset_adjusted(timestamp_buffer_correction) );
+			double timePerSample = timeDifference.get_real_secs();// / (  next->offset_adjusted(timestamp_buffer_correction) - prev->offset_adjusted(timestamp_buffer_correction) );
 
 			//		cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
 
@@ -612,7 +612,7 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
 
-			exactTimestamp += timePerSample * ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+			exactTimestamp += timePerSample * ( sincTimeIndex - localMaximaPeaks[i] );
 
 //			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << endl;
 

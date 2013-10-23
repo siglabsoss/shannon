@@ -17,6 +17,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
+#include <boost/lexical_cast.hpp>
 
 #include "cuda/helper_cuda.h"
 
@@ -100,12 +101,27 @@ namespace pop
 		PopTimestamp *timestampOut = get_timestamp_buffer(timestamp_size);
 
 		// get correction factor (note we do (slower) division here outside of loop and then (faster) multiplication inside the loop
-		double factor = (double) CHAN_SIZE / FFT_SIZE;
+		double factor = (double) FFT_SIZE / CHAN_SIZE;
 
+		double a;
+		double secs;
 
-		for(size_t i = 0; i < timestamp_size; i++ )
+		// index of two timestamps to interpolate between
+		size_t ts1, ts2;
+
+		for(size_t m = 0; m < CHAN_SIZE; m++ )
 		{
-			timestampOut[i] = PopTimestamp(timestamp_data[i], calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) * factor );
+//			timestampOut[i] = PopTimestamp(timestamp_data[i], calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) * factor );
+
+			a = fmod( factor * m, 1.0 );
+
+			ts1 = floor(factor * m);
+			ts2 =  ceil(factor * m);
+
+			secs = (1-a) * timestamp_data[ts1].get_real_secs() + a * timestamp_data[ts2].get_real_secs();
+
+			cout << "m = " << m << " secs = " << boost::lexical_cast<string>(secs) << endl;
+
 
 //			cout << "got timestamp with raw index " << timestamp_data[i].offset << " and adjustment " << timestamp_buffer_correction << " which adjusts to " << calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) << endl;
 //			cout << "got timestamp with raw index " << timestampOut[i].offset << " and ... " << endl;

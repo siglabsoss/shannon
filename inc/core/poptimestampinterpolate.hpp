@@ -75,7 +75,7 @@ public:
     		exact_timestamp += time_per_sample * n;
 
     		// save to buffer
-    		out_ts[n] = timestamp_data[n];
+    		out_ts[n] = PopTimestamp(exact_timestamp);
     	}
 
     	// above, we omit calling get_buffer() and let PopSource copy the data samples for us

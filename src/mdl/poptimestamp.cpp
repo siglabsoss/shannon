@@ -96,17 +96,17 @@ PopTimestamp PopTimestamp::get_system_time(void){
 //    return (long long)(x + 0.5); // assumption of non-negativity
 //}
 //
-PopTimestamp::PopTimestamp(double secs): offset(0)
+PopTimestamp::PopTimestamp(double secs)
 {
 	time_spec_init(0, secs);
 }
 
-PopTimestamp::PopTimestamp(time_t full_secs, double frac_secs): offset(0)
+PopTimestamp::PopTimestamp(time_t full_secs, double frac_secs)
 {
 	time_spec_init(full_secs, frac_secs);
 }
 
-PopTimestamp::PopTimestamp(time_t full_secs, long tick_count, double tick_rate): offset(0)
+PopTimestamp::PopTimestamp(time_t full_secs, long tick_count, double tick_rate)
 {
     const double frac_secs = tick_count/tick_rate;
     time_spec_init(full_secs, frac_secs);

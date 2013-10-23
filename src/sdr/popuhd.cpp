@@ -181,7 +181,7 @@ namespace pop
 
             // build a pop timestamp from uhd time + offset.
             // the time always applies to sample 0
-            PopTimestamp pop_stamp = PopTimestamp(md.time_spec + m_timestamp_offset, 0);
+            PopTimestamp pop_stamp = PopTimestamp(md.time_spec + m_timestamp_offset);
 
             // cout << "    samp time was" << boost::lexical_cast<string>(pop_stamp.get_real_secs()) << endl;
 
