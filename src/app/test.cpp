@@ -708,10 +708,11 @@ BOOST_AUTO_TEST_CASE( fec_basic )
 
 	bchcode_t bch;
 
-	int m = 7;
-	int length = 64;
+	int m = 7;       // sets a min/max of the message length according to ...
+	int length = 64; // how long of a message are we sending
+	int t = 6;       // how many bits can we correct
 
-	bch_init(&bch, m, length);
+	bch_init(&bch, m, length, t);
 
 }
 

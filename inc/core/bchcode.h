@@ -20,6 +20,7 @@ typedef struct {
 void bch_init(bchcode_t* that, int mIN, int lengthIn);
 void bch_compute_p(bchcode_t* that);
 void bch_generate_gf(bchcode_t* that);
+void bch_generate_polynomial(bchcode_t* that);
 
 #ifdef __cplusplus
 }
