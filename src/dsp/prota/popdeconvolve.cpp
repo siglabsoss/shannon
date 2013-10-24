@@ -415,7 +415,7 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<double>* data, in
 
 
 
-// assumes input has not been shifted and is in the form of [m -> h][l -> m]
+// assumes input has not been shifted and is in the form of [m -> h][l -> m] where the center half is bad data
 // assumes spreadLength to be 2x the number of valid samples
 // returns a pair ( time , bin )
 boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbins)
@@ -423,9 +423,13 @@ boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbin
 	double timeIndex;
 	int fbin;
 
-	// add half of spread length to offset us to the center, then mod to calculate time
-
+	// add half of spread length to offset us to the center, then mod
+	// this leaves us with [l -> m][m -> h] where the first and last quarters are bad data
 	timeIndex = fmod( sample + (spreadLength/2), spreadLength );
+
+	// subtract 1 quarter to shift the good data into the first half.
+	// this ranges the timeIndex from (0 - spreadLength/2)
+	timeIndex -= (spreadLength / 4);
 
 	fbin = floor(sample / spreadLength);
 
