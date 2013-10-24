@@ -19,11 +19,13 @@
 #include "examples/popexamples.hpp"
 
 // include raw cpp files
+#include <core/config.cpp>
+#include <popsymbol.cpp>
 #include <dsp/prota/popdeconvolve.cpp>
 #include <core/objectstash.cpp>
 #include <mdl/popradio.cpp>
 #include <mdl/poptimestamp.cpp>
-#include <core/config.cpp>
+
 
 #include <iostream>
 #include <fstream>
