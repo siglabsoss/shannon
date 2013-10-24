@@ -25,6 +25,7 @@
 #include <core/objectstash.cpp>
 #include <mdl/popradio.cpp>
 #include <mdl/poptimestamp.cpp>
+#include <core/bchcode.c>
 
 
 #include <iostream>
@@ -699,6 +700,22 @@ BOOST_AUTO_TEST_CASE( file_readback )
 
 BOOST_AUTO_TEST_SUITE_END()
 
+
+BOOST_AUTO_TEST_SUITE( forward_error_correction )
+
+BOOST_AUTO_TEST_CASE( fec_basic )
+{
+
+	bchcode_t bch;
+
+	int m = 7;
+	int length = 64;
+
+	bch_init(&bch, m, length);
+
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 
 
