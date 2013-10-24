@@ -32,6 +32,8 @@ using namespace boost::posix_time;
 namespace pop
 {
 
+PopTimestamp last;
+
 
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
 #define PEAK_SINC_NEIGHBORS (8)     // how many samples to add to either side of a local maxima for sinc interpolate
@@ -194,7 +196,7 @@ complex<double>* h_cfc;
 
 void PopProtADeconvolve::init()
 {
-	
+	last = PopTimestamp(0,0);
 
 	// Init CUDA
  	int deviceCount = 0;
@@ -413,32 +415,22 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<double>* data, in
 
 
 
-
-// only flips in one direction
+// assumes input has not been shifted and is in the form of [m -> h][l -> m]
 // assumes spreadLength to be 2x the number of valid samples
-// returns a sample as if the padding were on the sides from a sample that has padding in the center
-double flipPad(double sample, int spreadLength, int fbins)
-{
-	double mod = fmod( sample, spreadLength );
-	if( mod < spreadLength / 4)
-		return sample + spreadLength / 4;
-	if( mod >= (3*spreadLength) / 4)
-		return sample - spreadLength / 4;
-	return -1; // undefined
-}
-
-// assumes input has not been flipped (between padding / data in center / edges)
-// assumes spreadLength to be 2x the number of valid samples, (and chops of first and last 4th)
 // returns a pair ( time , bin )
 boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbins)
 {
-	sample = flipPad(sample, spreadLength, fbins);
-	double time = fmod(sample, spreadLength) - spreadLength / 4;
-	int bin = floor(sample / spreadLength);  // integer math will floor
-	return boost::tuple<double,int>(time,bin);
+	double timeIndex;
+	int fbin;
+
+	// add half of spread length to offset us to the center, then mod to calculate time
+
+	timeIndex = fmod( sample + (spreadLength/2), spreadLength );
+
+	fbin = floor(sample / spreadLength);
+
+	return boost::tuple<double,int>(timeIndex,fbin);
 }
-
-
 
 
 
@@ -620,9 +612,22 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << " with mag " << sqrt(magnitude2(h_cts[localMaximaPeaks[i]])) << endl;
 
-			//		cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
+//					cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
 			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
 //			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+
+
+			if( i == 0 )
+			{
+				PopTimestamp delta = exactTimestamp;
+
+				delta -= last;
+
+				cout << "    delt time is " << boost::lexical_cast<string>(delta.get_full_secs()) << "   -   " << boost::lexical_cast<string>(delta.get_frac_secs()) << endl;
+
+
+				last = exactTimestamp;
+			}
 
 
 			// pointer to current maxima in the source buffer
