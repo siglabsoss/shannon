@@ -616,7 +616,7 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
 
-			exactTimestamp += timePerSample * ( sincTimeIndex - sincIndex );
+			exactTimestamp += timePerSample * ( sincTimeIndex - floor(sincTimeIndex) );
 
 			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << " with mag " << sqrt(magnitude2(h_cts[localMaximaPeaks[i]])) << endl;
 
