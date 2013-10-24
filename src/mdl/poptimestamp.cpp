@@ -170,9 +170,32 @@ PopTimestamp &PopTimestamp::operator-=(const PopTimestamp &rhs){
 }
 
 PopTimestamp &PopTimestamp::operator*=(const double &rhs){
+
+	// this function calculates ( full + frac ) * rhs
+	// by breaking into full * rhs + frac * rhs
+
+	// multiply seconds part
+	double stepOne = this->get_full_secs() * rhs;
+
+	// extract fraction of result
+	double stepOneFrac = fmod(stepOne, 1.0);
+
+	// extract full seconds of result
+	time_t stepOneFull = round(stepOne - stepOneFrac);
+
+	// make a timestamp
+	PopTimestamp step1 = PopTimestamp( stepOneFull, stepOneFrac );
+
+	// multiply fraction part and build stamp, we use the Constructor because this shouldn't lose any precision
+	PopTimestamp step2 = PopTimestamp( this->get_frac_secs() * rhs );
+
+	// add them
+	step1 += step2;
+
+	// assign to our stamp
     time_spec_init(
-        this->get_full_secs() * rhs,
-        this->get_frac_secs() * rhs
+        step1.get_full_secs(),
+        step1.get_frac_secs()
     );
     return *this;
 }
