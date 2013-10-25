@@ -27,6 +27,17 @@ namespace pop
 	public:
 		PopChanFilter();
 		~PopChanFilter();
+		static double fbin_size();
+		static double fft_bottom_frequency();
+		static double fft_top_frequency();
+		static double fbins_per_channel();
+		static double channel_frequency(unsigned c);
+		static double channel_frequency_above_fft(unsigned c);
+		static double channel_fbin_center(unsigned c);
+		static double channel_fbin_low_exact(unsigned c);
+		static double channel_fbin_high_exact(unsigned c);
+		static size_t channel_fbin_low(unsigned c);
+		static size_t channel_fbin_high(unsigned c);
 
 	private:
 		void process(const std::complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
