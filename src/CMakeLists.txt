@@ -21,6 +21,7 @@ set(all_SOURCES
 	mdl/poptimestamp.cpp
 	mdl/popsymbol.cpp
 	core/popassert.c
+	core/basestationfreq.c
 	core/popsource.cpp
 	core/objectstash.cpp
 	core/config.cpp

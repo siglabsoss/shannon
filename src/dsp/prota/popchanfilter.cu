@@ -34,6 +34,8 @@
 
 #include <dsp/prota/popchanfilter.cuh>
 
+#include "core/basestationfreq.h"
+
 
 
 using namespace std;
@@ -77,12 +79,14 @@ extern "C"
 	cufftHandle plan2;
 	size_t g_len_chan; ///< length of time series in samples
 	size_t g_len_fft; ///< length of fft in samples
-	size_t g_start_chan = 16128;
+	size_t g_start_chan;
 
 
 	size_t gpu_channel_split(const complex<double> *h_data, complex<double> *out)
 	{
 		//double ch_start, ch_end, ch_ctr;
+
+		g_start_chan = bsf_channel_fbin_low(9);
 
 /*		ch_start = 903626953 + (3200000 / (double)g_len_fft * (double)g_start_chan) - 1600000;
 		ch_end = 903626953 + (3200000 / (double)g_len_fft * ((double)g_start_chan + 1040)) - 1600000;

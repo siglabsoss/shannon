@@ -21,16 +21,12 @@
 #include "sdr/popuhd.hpp"
 
 #include "cuda/helper_cuda.h"
+//#include "core/basestationfreq.h"
 
 #include "dsp/prota/popchanfilter.hpp"
 
 using namespace std;
 using namespace boost::posix_time;
-
-#define FFT_SIZE 65536
-#define CHAN_SIZE 1040
-#define POP_CHANNEL_SPACING ((double) 50781.25)
-#define POP_PROTA_BLOCK_A_CHANNEL_0 ((double) 902382812.50)
 
 
 /**************************************************************************
@@ -165,62 +161,6 @@ namespace pop
 
 		// free CUDA memory
 		cleanup();
-	}
-
-	double PopChanFilter::fbin_size()
-	{
-		return 1.0 / ((double)FFT_SIZE / POP_PROTA_BLOCK_A_WIDTH);
-	}
-
-	double PopChanFilter::fft_bottom_frequency()
-	{
-		return POP_PROTA_BLOCK_A_UPLK - (double) POP_PROTA_BLOCK_A_WIDTH / 2;
-	}
-
-	double PopChanFilter::fft_top_frequency()
-	{
-		return POP_PROTA_BLOCK_A_UPLK + (double) POP_PROTA_BLOCK_A_WIDTH / 2;
-	}
-
-	double PopChanFilter::fbins_per_channel()
-	{
-		return POP_CHANNEL_SPACING / fbin_size();
-	}
-
-	double PopChanFilter::channel_frequency(unsigned c)
-	{
-		return POP_PROTA_BLOCK_A_CHANNEL_0 + c * POP_CHANNEL_SPACING;
-	}
-
-	double PopChanFilter::channel_frequency_above_fft(unsigned c)
-	{
-		return channel_frequency(c) - fft_bottom_frequency();
-	}
-
-	double PopChanFilter::channel_fbin_center(unsigned c)
-	{
-		return channel_frequency_above_fft(c) / fbin_size();
-	}
-
-	double PopChanFilter::channel_fbin_low_exact(unsigned c)
-	{
-		return channel_fbin_center(c) - fbins_per_channel() / 2;
-	}
-
-	double PopChanFilter::channel_fbin_high_exact(unsigned c)
-	{
-		return channel_fbin_center(c) + fbins_per_channel() / 2;
-	}
-
-	// rounded versions of the above
-	size_t PopChanFilter::channel_fbin_low(unsigned c)
-	{
-		return round( channel_fbin_low_exact(c) );
-	}
-
-	size_t PopChanFilter::channel_fbin_high(unsigned c)
-	{
-		return round( channel_fbin_high_exact(c) );
 	}
 
 

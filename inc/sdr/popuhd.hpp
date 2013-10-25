@@ -22,23 +22,12 @@
 #include "core/popassert.h"
 #include "core/popsource.hpp"
 
+// include macros for frequency constants
+#include "core/basestationfreq.h"
+
 namespace pop
 {
 
-#define POP_PROTA_BLOCK_A_UPLK 903626953
-#define POP_PROTA_BLOCK_B_UPLK 906673828
-#define POP_PROTA_BLOCK_C_UPLK 909720703
-#define POP_PROTA_BLOCK_D_UPLK 912767578
-
-#define POP_PROTA_BLOCK_A_DOWN 917236328
-#define POP_PROTA_BLOCK_B_DOWN 920283203
-#define POP_PROTA_BLOCK_C_DOWN 923330078
-#define POP_PROTA_BLOCK_D_DOWN 926376953
-
-#define POP_PROTA_BLOCK_A_WIDTH 3200000
-#define POP_PROTA_BLOCK_B_WIDTH 3200000
-#define POP_PROTA_BLOCK_C_WIDTH 3200000
-#define POP_PROTA_BLOCK_D_WIDTH 3200000
 
 	typedef void (*SDR_DATA_FUNC)(void* data, std::size_t len);
 

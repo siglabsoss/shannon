@@ -24,6 +24,7 @@
 #include <dsp/prota/popdeconvolve.cpp>
 #include "dsp/prota/popchanfilter.cpp"
 #include <core/objectstash.cpp>
+#include <core/basestationfreq.c>
 #include <mdl/popradio.cpp>
 #include <mdl/poptimestamp.cpp>
 #include <mdl/popsymbol.cpp>
@@ -668,21 +669,21 @@ BOOST_AUTO_TEST_CASE( basic_channel_math )
 {
 	return; // disable to visually check
 
-	cout << "fbin size: " <<  boost::lexical_cast<string>(  PopChanFilter::fbin_size()  )   << endl;
-	cout << "bottom: " <<  boost::lexical_cast<string>(  PopChanFilter::fft_bottom_frequency()  )   << endl;
-	cout << "top   : " <<  boost::lexical_cast<string>(  PopChanFilter::fft_top_frequency()  )   << endl;
-	cout << "bins per channel: " <<  boost::lexical_cast<string>(  PopChanFilter::fbins_per_channel()  )   << endl;
+	cout << "fbin size: " <<  boost::lexical_cast<string>(  bsf_fbin_size()  )   << endl;
+	cout << "bottom: " <<  boost::lexical_cast<string>(  bsf_fft_bottom_frequency()  )   << endl;
+	cout << "top   : " <<  boost::lexical_cast<string>(  bsf_fft_top_frequency()  )   << endl;
+	cout << "bins per channel: " <<  boost::lexical_cast<string>(  bsf_fbins_per_channel()  )   << endl;
 
 	cout << endl;
 
 	for( int i = 0; i < 50; i++ )
 	{
-		cout << "channel " << i <<  ": " <<  boost::lexical_cast<string>(  PopChanFilter::channel_frequency(i)  )   << endl;
-		cout << "above fft " << i <<  ": " <<  boost::lexical_cast<string>(  PopChanFilter::channel_frequency_above_fft(i)  )   << endl;
-		cout << "fbin center " << i <<  ": " <<  boost::lexical_cast<string>(  PopChanFilter::channel_fbin_center(i)  )   << endl;
+		cout << "channel " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_frequency(i)  )   << endl;
+		cout << "above fft " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_frequency_above_fft(i)  )   << endl;
+		cout << "fbin center " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_fbin_center(i)  )   << endl;
 
-		cout << "fbin low  " << i <<  ": " <<  boost::lexical_cast<string>(  PopChanFilter::channel_fbin_low_exact(i)  )   << endl;
-		cout << "fbin high " << i <<  ": " <<  boost::lexical_cast<string>(  PopChanFilter::channel_fbin_high_exact(i)  )   << endl;
+		cout << "fbin low  " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_fbin_low_exact(i)  )   << endl;
+		cout << "fbin high " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_fbin_high_exact(i)  )   << endl;
 	}
 }
 
@@ -693,7 +694,7 @@ BOOST_AUTO_TEST_CASE( test_channel_frequency )
 	// test channel frequency calculation against every pre-defined one from the wiki
 	for( int i = 0; i < 50; i++ )
 	{
-		BOOST_CHECK_EQUAL( channels[i], PopChanFilter::channel_frequency(i) );
+		BOOST_CHECK_EQUAL( channels[i], bsf_channel_frequency(i) );
 	}
 
 	size_t difference;
@@ -701,8 +702,8 @@ BOOST_AUTO_TEST_CASE( test_channel_frequency )
 	// test if the rounded versions are returning discreet integers
 	for( int i = 0; i < 50; i++ )
 	{
-		difference = PopChanFilter::channel_fbin_high(i) - PopChanFilter::channel_fbin_low(i);
-		BOOST_CHECK_EQUAL( difference, 1040 ); // this is a hard check, this could also be PopChanFilter::bins_per_channel()
+		difference = bsf_channel_fbin_high(i) - bsf_channel_fbin_low(i);
+		BOOST_CHECK_EQUAL( difference, 1040 ); // this is a hard check, this could also be bsf_bins_per_channel()
 	}
 }
 BOOST_AUTO_TEST_SUITE_END()
