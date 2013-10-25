@@ -398,7 +398,9 @@ template <typename T>
 class PopDumpToFile : public PopSink<T>
 {
 public:
+	bool flush_immediately;
     PopDumpToFile(const char* file_name = "dump.raw") : PopSink<T>("PopDumpToFile"),
+    	flush_immediately(false),
         m_fileName(file_name)
     {
         printf("%s - created %s file\r\n", PopSink<T>::get_name(), m_fileName);
@@ -417,6 +419,9 @@ private:
         printf("+");
         size_t bytes = size * sizeof(T);
         m_fs.write((const char*)in, bytes);
+
+        if( flush_immediately )
+        	  flush(m_fs);
     }
     std::ofstream m_fs;
     const char* m_fileName;

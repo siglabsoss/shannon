@@ -249,35 +249,6 @@ public:
     	cout << endl;
     }
 
-    // returns: Are all the offsets for the timestamps in this buffer in order (only checks the first N)?
-    bool timestamp_offsets_in_order(size_t count)
-    {
-    	bool in_order = true;
-
-    	size_t last_offset = (size_t)-1; // WARNING: this is a weird way to get the maximum value for size_t
-
-    	for(size_t i = 0; i < count; i++)
-    	{
-    		// the sample we want is the tail minus i, minus one.  (minus one because the tail always points to the next to be written object)
-    		size_t offset = m_timestamp_buf.m_bufPtr[m_timestamp_buf.m_bufIdx-i-1].offset;
-
-    		// skip the first check
-    		// we are running backwards through the last N samples
-    		// therefor if this offset is greater than or equal to the previous, set flag and break
-    		if(offset >= last_offset)
-    		{
-    			in_order = false;
-    			break;
-    		}
-
-    		last_offset = offset;
-    	}
-
-    	return in_order;
-    }
-
-
-
     // Joel's magical circular buffer
     template <typename BUFFER_TYPE>
     class PopSourceBuffer : public PopObject

@@ -19,11 +19,12 @@
 #include "examples/popexamples.hpp"
 
 // include raw cpp files
+#include <core/config.cpp>
 #include <dsp/prota/popdeconvolve.cpp>
 #include <core/objectstash.cpp>
 #include <mdl/popradio.cpp>
 #include <mdl/poptimestamp.cpp>
-#include <core/config.cpp>
+#include <mdl/popsymbol.cpp>
 
 #include <iostream>
 #include <fstream>
@@ -212,7 +213,7 @@ public:
 		{
 			if(verbose || verboseVerbose)
 			{
-				cout << "offset [" << timestamp_data[i].offset << "]" << endl;
+//				cout << "offset [" << timestamp_data[i].offset << "]" << endl;
 				std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
 				std::cout << "frac was " << timestamp_data[i].get_frac_secs() << std::endl;
 			}
@@ -248,7 +249,7 @@ public:
 		PopTimestamp* timestampOut = get_timestamp_buffer(timestamp_size);
 
 		// correction factor for timestamps
-		double factor = 0.5;
+//		double factor = 0.5;
 
 		// copy every other sample
 		for(size_t i = 0; i < size/2; i++ )
@@ -258,19 +259,13 @@ public:
 //			cout << "copy " << i << " from " << i*2 << endl;
 		}
 
-
-		// copy every timestamp but decimate the index
-		for(size_t i = 0; i < timestamp_size; i++ )
+		// copy every other timsetamp
+		for(size_t i = 0; i < size/2; i++ )
 		{
-			timestampOut[i] = PopTimestamp(timestamp_data[i], calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) * factor );
+			memcpy(timestampOut+i, timestamp_data+(i*2), sizeof(PopTimestamp));
 
-//			cout << "got timestamp with raw index " << timestamp_data[i].offset << " and adjustment " << timestamp_buffer_correction << " which adjusts to " << calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) << endl;
-//			cout << "got timestamp with raw index " << timestampOut[i].offset << " and ... " << endl;
+//			cout << "copy " << i << " from " << i*2 << endl;
 		}
-		//
-		//		cout << "got " << timestamp_size << " timestamps for " << len << " samples." << endl;
-
-
 
 
 		// process data
@@ -310,9 +305,11 @@ public:
 
     		PopTimestamp t[4];
     		t[0] = PopTimestamp(3.3);
-    		t[0].offset = 0;
+//    		t[0].offset = 0;
     		t[1] = PopTimestamp(4.0);
-    		t[1].offset = chunk-1;
+    		t[2] = PopTimestamp(5.0);
+    		t[3] = PopTimestamp(7.0);
+//    		t[1].offset = chunk-1;
 
 
     		process(b, chunk, t, 2);
@@ -349,51 +346,6 @@ public:
     	{
     		// first timestamp is based on now
     		t[0] = PopTimestamp::get_system_time();
-    		t[0].offset = 0;
-    	}
-
-
-    	for( size_t j = 1; j < stamps; j++ )
-    	{
-    		t[j] = PopTimestamp(t[0].get_real_secs()+ ((double)j/time_inc_divisor) );
-    		t[j].offset = j;
-    	}
-
-
-    	process(b, count, t, stamps);
-
-    }
-
-    void send_manual_offset(size_t offset, double start_time = -1)
-    {
-    	// this whole function is copypasta
-    	size_t count = 1;
-    	size_t stamps = 1;
-
-    	PopTestMsg b[count];
-    	PopTimestamp t[stamps];
-
-    	// build msgs
-    	for( size_t i = 0; i < count; i++ )
-    	{
-    		char buff[20];
-    		sprintf(buff, "Bob #%ld", i);
-    		strcpy(b[i].origin, buff);
-    	}
-
-
-    	double time_inc_divisor = 100000.0;
-
-    	// what to use for a start time
-    	if( start_time != -1 )
-    	{
-    		t[0] = PopTimestamp(start_time);
-    	}
-    	else
-    	{
-    		// first timestamp is based on now
-    		t[0] = PopTimestamp::get_system_time();
-    		t[0].offset = offset;
     	}
 
 
@@ -402,9 +354,52 @@ public:
     		t[j] = PopTimestamp(t[0].get_real_secs()+ ((double)j/time_inc_divisor) );
     	}
 
+
     	process(b, count, t, stamps);
 
     }
+
+//    void send_manual_offset(size_t offset, double start_time = -1)
+//    {
+//    	// this whole function is copypasta
+//    	size_t count = 1;
+//    	size_t stamps = 1;
+//
+//    	PopTestMsg b[count];
+//    	PopTimestamp t[stamps];
+//
+//    	// build msgs
+//    	for( size_t i = 0; i < count; i++ )
+//    	{
+//    		char buff[20];
+//    		sprintf(buff, "Bob #%ld", i);
+//    		strcpy(b[i].origin, buff);
+//    	}
+//
+//
+//    	double time_inc_divisor = 100000.0;
+//
+//    	// what to use for a start time
+//    	if( start_time != -1 )
+//    	{
+//    		t[0] = PopTimestamp(start_time);
+//    	}
+//    	else
+//    	{
+//    		// first timestamp is based on now
+//    		t[0] = PopTimestamp::get_system_time();
+//    		t[0].offset = offset;
+//    	}
+//
+//
+//    	for( size_t j = 1; j < stamps; j++ )
+//    	{
+//    		t[j] = PopTimestamp(t[0].get_real_secs()+ ((double)j/time_inc_divisor) );
+//    	}
+//
+//    	process(b, count, t, stamps);
+//
+//    }
 
 };
 
@@ -451,77 +446,77 @@ BOOST_AUTO_TEST_CASE( timestamp_plus_overloads )
 }
 
 
-BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
-{
-	PopTestSourceOne source;
-	PopTestSinkOne sink;
-
-	source.connect(sink);
-	source.send_both(5, 5, 0, 10);
-
-//	source.debug_print_timestamp_buffer();
-
-
-	source.send_manual_offset(0);
-//	source.debug_print_timestamp_buffer();
-
-
-	source.send_both(5, 5, 1, 10);
-
-//	source.debug_print_timestamp_buffer();
-
-	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
-}
+//BOOST_AUTO_TEST_CASE( timestamp_source_with_0_sample_size )
+//{
+//	PopTestSourceOne source;
+//	PopTestSinkOne sink;
+//
+//	source.connect(sink);
+//	source.send_both(5, 5, 0, 10);
+//
+////	source.debug_print_timestamp_buffer();
+//
+//
+//	source.send_manual_offset(0);
+////	source.debug_print_timestamp_buffer();
+//
+//
+//	source.send_both(5, 5, 1, 10);
+//
+////	source.debug_print_timestamp_buffer();
+//
+//	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
+//}
 
 
 void testTwo(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
 {
-	static size_t index = 0;
-
-	// 5 rows b/c we being called every two samples with 10 total
-
-	// offset of first timestamp (forced), number timestamps, time,
-	double result[5][3] =
-	{
-	{ 0,  1, 0.0},
-	{ 1,  1, 0.3, },
-	{ -1, 0, 0.3, },
-	{ 0,  2, 0.6, },
-	{ 1,  1, 0.9, }
-	};
-
-	double *test = result[index];
-
-	BOOST_CHECK_EQUAL(test[0], that->calc_timestamp_offset(timestamp_data[0].offset, timestamp_buffer_correction) );
-	BOOST_CHECK_EQUAL(test[1], timestamp_size );
-	BOOST_CHECK_EQUAL(test[2], timestamp_data[0].get_frac_secs() );
-
-	// bump index for next time we are called
-	index++;
+//	static size_t index = 0;
+//
+//	// 5 rows b/c we being called every two samples with 10 total
+//
+//	// offset of first timestamp (forced), number timestamps, time,
+//	double result[5][3] =
+//	{
+//	{ 0,  1, 0.0},
+//	{ 1,  1, 0.3, },
+//	{ -1, 0, 0.3, },
+//	{ 0,  2, 0.6, },
+//	{ 1,  1, 0.9, }
+//	};
+//
+//	double *test = result[index];
+//
+//	BOOST_CHECK_EQUAL(test[0], that->calc_timestamp_offset(timestamp_data[0].offset, timestamp_buffer_correction) );
+//	BOOST_CHECK_EQUAL(test[1], timestamp_size );
+//	BOOST_CHECK_EQUAL(test[2], timestamp_data[0].get_frac_secs() );
+//
+//	// bump index for next time we are called
+//	index++;
 }
 
 void testThree(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
 {
-	static size_t index = 0;
-
-	// 3 rows b/c we being called every three samples with 10 total (last sample is never sent to us)
-
-	// offset of first timestamp (forced), number timestamps, time,
-	double result[3][3] =
-	{
-	{ 0,  1, 0.0},
-	{ 0,  1, 0.3, },
-	{ 0,  2, 0.6, },
-	};
-
-	double *test = result[index];
-
-	BOOST_CHECK_EQUAL(test[0], that->calc_timestamp_offset(timestamp_data[0].offset, timestamp_buffer_correction) );
-	BOOST_CHECK_EQUAL(test[1], timestamp_size );
-	BOOST_CHECK_EQUAL(test[2], timestamp_data[0].get_frac_secs() );
-
-	// bump index for next time we are called
-	index++;
+//	static size_t index = 0;
+//
+//	// 3 rows b/c we being called every three samples with 10 total (last sample is never sent to us)
+//
+//	// offset of first timestamp (forced), number timestamps, time,
+//	double result[3][3] =
+//	{
+//	{ 0,  1, 0.0},
+//	{ 0,  1, 0.3, },
+//	{ 0,  2, 0.6, },
+//	};
+//
+//	double *test = result[index];
+//
+//	BOOST_CHECK_EQUAL(test[0], that->calc_timestamp_offset(timestamp_data[0].offset, timestamp_buffer_correction) );
+//	BOOST_CHECK_EQUAL(test[1], timestamp_size );
+//	BOOST_CHECK_EQUAL(test[2], timestamp_data[0].get_frac_secs() );
+//
+//	// bump index for next time we are called
+//	index++;
 }
 
 BOOST_AUTO_TEST_CASE( timestamp_staggering )
@@ -582,39 +577,6 @@ BOOST_AUTO_TEST_CASE( timestamp_staggering )
 
 }
 
-// test the timestamp_offsets_in_order()
-BOOST_AUTO_TEST_CASE( timestamp_timestamp_offsets_in_order )
-{
-	// note that we just have a source with no sink
-	PopTestSourceOne source;
-
-	// put in 5 samples with offset starting from 0
-	source.send_both(5, 5);
-	BOOST_CHECK( source.timestamp_offsets_in_order(5) );
-
-	// put in another with offset starting from 0
-	source.send_manual_offset(0);
-	BOOST_CHECK( source.timestamp_offsets_in_order(6) );
-
-	// put in another 5
-	source.send_both(5, 5);
-	BOOST_CHECK( source.timestamp_offsets_in_order(11) );
-
-	// put in a bag egg
-	// the reason this is bad is because we added 1 sample, but gave an offset of 1 which points at the second sample (which we didn't insert)
-	source.send_manual_offset(1);
-//	source.debug_print_timestamp_buffer();
-
-	// put in another another 5 to make the 'bad egg' bad. This will cause an error because we give an offset of 0, which makes the previous out of bounds insertion clear
-	source.send_both(5, 5);
-	BOOST_CHECK(! source.timestamp_offsets_in_order(16) );
-
-	//	source.debug_print_timestamp_buffer();
-
-	// but things still look good if we only look back for 5 samples
-	BOOST_CHECK(source.timestamp_offsets_in_order(5) );
-}
-
 
 BOOST_AUTO_TEST_CASE( timestamp_divide_by_zero_with_no_time )
 {
@@ -654,6 +616,7 @@ BOOST_AUTO_TEST_CASE( file_readback )
 	// sink -> source to disk
 	PopTestSourceOne source;
 	PopDumpToFile<PopTestMsg> fileSink(filename);
+	fileSink.flush_immediately = true;  // required because we are reading the file off the disk so soon after writing it that it's contents don't exist yet
 	source.connect(fileSink);
 	source.send_both(test_object_count, 0);
 
