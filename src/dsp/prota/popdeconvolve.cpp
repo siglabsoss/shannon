@@ -457,18 +457,6 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 		throw PopException("size does not match filter");
 
 
-//	for(size_t i = 0; i < timestamp_size; i++ )
-//	{
-////		timestampOut[i] = PopTimestamp(timestamp_data[i], calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) * factor );
-//
-//		cout << "got timestamp with raw index " << timestamp_data[i].offset << " and adjustment " << timestamp_buffer_correction << " which adjusts to " << calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) << endl;
-////		cout << "got timestamp with raw index " << timestampOut[i].offset << " and ... " << endl;
-//	}
-
-//	cout << "  got " << timestamp_size << " timestamps for " << len << " samples." << endl;
-//	cout << "  with indices " << timestamp_data[0].offset_adjusted(timestamp_buffer_correction) << " and " << timestamp_data[timestamp_size-1].offset_adjusted(timestamp_buffer_correction) << endl;
-
-
 	complex<double>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
 
 	// copy new host data into device memory
@@ -564,45 +552,13 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 			const PopTimestamp *prev = &timestamp_data[(int)floor(sincTimeIndex)];
 			const PopTimestamp *next = &timestamp_data[(int)floor(sincTimeIndex)+1];
 
-//
-//			// loop through every timestamp except for the last one and set the prev/next pointers to timestamps surrounding sincTimeIndex
-//			for( size_t j = 0; j < timestamp_size - 1; j++ )
-//			{
-//				// grab the indices for j and j+1 (won't overflow because we never do the last iteration of the loop)
-//				double currentIndex = timestamp_data[ j ].offset_adjusted(timestamp_buffer_correction);
-//				double nextIndex    = timestamp_data[j+1].offset_adjusted(timestamp_buffer_correction);
-//
-//				//			cout << "    " << currentIndex;
-//
-//
-//
-//				// true when the loop is pointing at a timestamp with an largest index that is less than sincTimeIndex (assuming timestamps are in order)
-//				if( nextIndex >= sincTimeIndex && prev == 0)
-//				{
-//					prev = timestamp_data + j; // set the pointer to this timestamp because the next is past
-//					next = timestamp_data + j + 1; // set the pointer to the next timestamp because we just detected that it's past
-//					break;
-//				}
-//
-//				//			if( currentIndex > sincTimeIndex )
-//				//			{
-//				//				indexNext = std::min(indexNext, currentIndex);
-//				//				cout << "n";
-//				//			}
-//
-//				//			cout << endl;
-//			}
-//
-//			//		cout << "    found min, max indexes of " << indexPrev << " // " << indexNext << endl;
-//			//		cout << "    found min, max indexes of " << prev->offset_adjusted(timestamp_buffer_correction) << " /-/ " << next->offset_adjusted(timestamp_buffer_correction) << endl;
-
 			// create mutable copy
 			PopTimestamp timeDifference = PopTimestamp(*next);
 
 			// calculate difference using -= overload (which should be most accurate)
 			timeDifference -= *prev;
 
-			double timePerSample = timeDifference.get_real_secs();// / (  next->offset_adjusted(timestamp_buffer_correction) - prev->offset_adjusted(timestamp_buffer_correction) );
+			double timePerSample = timeDifference.get_real_secs();
 
 			//		cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
 

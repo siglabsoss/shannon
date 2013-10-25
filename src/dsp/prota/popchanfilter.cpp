@@ -114,8 +114,6 @@ namespace pop
 
 		for(size_t m = 0; m < CHAN_SIZE; m++ )
 		{
-//			timestampOut[i] = PopTimestamp(timestamp_data[i], calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) * factor );
-
 			a = fmod( factor * m, 1.0 );
 
 			i1 = floor(factor * m);
@@ -127,26 +125,11 @@ namespace pop
 			ts1 *= (1-a);
 			ts2 *= (a);
 
-//			secs = (1-a) * timestamp_data[i1].get_real_secs() + a * timestamp_data[i2].get_real_secs();
-
-//			cout << "m = " << m << " secs = " << boost::lexical_cast<string>(secs) << endl;
-
 			// final result is stored in ts1
 			ts1 += ts2;
 
 			timestampOut[m] = ts1;
-
-
-
-//			cout << "got timestamp with raw index " << timestamp_data[i].offset << " and adjustment " << timestamp_buffer_correction << " which adjusts to " << calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) << endl;
-//			cout << "got timestamp with raw index " << timestampOut[i].offset << " and ... " << endl;
 		}
-//
-
-//		cout << "got " << timestamp_size << " timestamps for " << len << " samples." << endl;
-//		cout << "with indices " << timestamp_data[0].offset_adjusted(timestamp_buffer_correction) << " and " << timestamp_data[timestamp_size-1].offset_adjusted(timestamp_buffer_correction) << endl;
-
-
 
 
 		// process data
