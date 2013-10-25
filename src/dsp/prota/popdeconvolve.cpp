@@ -439,7 +439,7 @@ boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbin
 
 
 
-void PopProtADeconvolve::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+void PopProtADeconvolve::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 
 //	cout << "in deconv with " << len << " samples and " << timestamp_size << " stamps " << endl;

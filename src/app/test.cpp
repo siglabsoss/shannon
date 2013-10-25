@@ -167,15 +167,15 @@ class PopTestSinkTwo : public PopSink<PopTestMsg>
 {
 public:
 
-	void (*fp)(PopSink<PopTestMsg>*, const PopTestMsg*, size_t, const PopTimestamp*, size_t, size_t);
+	void (*fp)(PopSink<PopTestMsg>*, const PopTestMsg*, size_t, const PopTimestamp*, size_t);
 
 	PopTestSinkTwo() : PopSink<PopTestMsg>("PopTestSinkTwo", BITE_SIZE), fp(0) { }
     void init() { }
 
 
-    void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+    void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
-        fp(this, data, size, timestamp_data, timestamp_size, timestamp_buffer_correction);
+        fp(this, data, size, timestamp_data, timestamp_size);
     }
 
 };
@@ -193,7 +193,7 @@ public:
 
 	PopTestSinkOne() : PopSink<PopTestMsg>("PopTestSinkOne", 0), verbose(0), verboseVerbose(0), m_lastData(0), m_lastSize(0) { }
 	void init() { }
-	void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+	void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
 		m_lastData = data;
 		m_lastSize = size;
@@ -238,7 +238,7 @@ public:
 
 	PopTestSinkThree() : PopSink<PopTestMsg>("PopTestSinkThree", 10), verbose(0) { }
 	void init() { }
-	void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+	void process(const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
 
 
@@ -469,7 +469,7 @@ BOOST_AUTO_TEST_CASE( timestamp_plus_overloads )
 //}
 
 
-void testTwo(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+void testTwo(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 //	static size_t index = 0;
 //
@@ -495,7 +495,7 @@ void testTwo(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, con
 //	index++;
 }
 
-void testThree(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+void testThree(PopSink<PopTestMsg>* that, const PopTestMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 //	static size_t index = 0;
 //

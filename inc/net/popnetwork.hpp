@@ -125,7 +125,7 @@ public:
 	{
 	}
 
-	void process(const DATA_TYPE* data, size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+	void process(const DATA_TYPE* data, size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
 		if( timestamp_size != 0 )
 			cout << "This networking class drops all outgoing timestamps" << endl;

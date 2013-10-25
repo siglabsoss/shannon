@@ -46,7 +46,7 @@ namespace pop
 		PopSource<PopSymbol> maxima;
 
 	private:
-		void process(const std::complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction);
+		void process(const std::complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<double>* cfc,

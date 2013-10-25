@@ -118,7 +118,7 @@ public:
             // If there's no specific length requested then send all available.
             if( 0 == req_samples_from_sink )
             {
-                (*it)->unblock(m_buf.m_bufPtr + sink_idx_into_buffer, uncopied_pts, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_uncopied_pts, sink_idx_into_buffer);
+                (*it)->unblock(m_buf.m_bufPtr + sink_idx_into_buffer, uncopied_pts, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_uncopied_pts);
 
                 sink_idx_into_buffer += uncopied_pts;
                 sink_idx_into_buffer %= m_buf.m_sizeBuf;
@@ -136,7 +136,7 @@ public:
 //            	cout << "timestamp_req_samples_from_sink in " << get_name() << " is " << timestamp_req_samples_from_sink << endl;
 
 
-            	(*it)->unblock( m_buf.m_bufPtr + sink_idx_into_buffer, req_samples_from_sink, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_req_samples_from_sink, 0 );
+            	(*it)->unblock( m_buf.m_bufPtr + sink_idx_into_buffer, req_samples_from_sink, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_req_samples_from_sink );
 
             	// modify and wrap sink pointer
             	sink_idx_into_buffer += req_samples_from_sink;

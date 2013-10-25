@@ -26,7 +26,7 @@ public:
 
     }
     void init() {}
-    void process(const DATA_TYPE* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+    void process(const DATA_TYPE* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
     	if( timestamp_size != 1 )
     	{

@@ -79,7 +79,7 @@ namespace pop
 	/**
 	 * Process data.
 	 */
-	void PopChanFilter::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+	void PopChanFilter::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
 		//size_t chan_buf_len;
 		ptime t1, t2;
