@@ -32,6 +32,8 @@ using namespace boost::posix_time;
 namespace pop
 {
 
+PopTimestamp last;
+
 
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
 #define PEAK_SINC_NEIGHBORS (8)     // how many samples to add to either side of a local maxima for sinc interpolate
@@ -194,7 +196,7 @@ complex<double>* h_cfc;
 
 void PopProtADeconvolve::init()
 {
-	
+	last = PopTimestamp(0,0);
 
 	// Init CUDA
  	int deviceCount = 0;
@@ -413,38 +415,35 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<double>* data, in
 
 
 
-
-// only flips in one direction
+// assumes input has not been shifted and is in the form of [m -> h][l -> m] where the center half is bad data
 // assumes spreadLength to be 2x the number of valid samples
-// returns a sample as if the padding were on the sides from a sample that has padding in the center
-double flipPad(double sample, int spreadLength, int fbins)
-{
-	double mod = fmod( sample, spreadLength );
-	if( mod < spreadLength / 4)
-		return sample + spreadLength / 4;
-	if( mod >= (3*spreadLength) / 4)
-		return sample - spreadLength / 4;
-	return -1; // undefined
-}
-
-// assumes input has not been flipped (between padding / data in center / edges)
-// assumes spreadLength to be 2x the number of valid samples, (and chops of first and last 4th)
 // returns a pair ( time , bin )
 boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbins)
 {
-	sample = flipPad(sample, spreadLength, fbins);
-	double time = fmod(sample, spreadLength) - spreadLength / 4;
-	int bin = floor(sample / spreadLength);  // integer math will floor
-	return boost::tuple<double,int>(time,bin);
+	double timeIndex;
+	int fbin;
+
+	// add half of spread length to offset us to the center, then mod
+	// this leaves us with [l -> m][m -> h] where the first and last quarters are bad data
+	timeIndex = fmod( sample + (spreadLength/2), spreadLength );
+
+	// subtract 1 quarter to shift the good data into the first half.
+	// this ranges the timeIndex from (0 - spreadLength/2)
+	timeIndex -= (spreadLength / 4);
+
+	fbin = floor(sample / spreadLength);
+
+	return boost::tuple<double,int>(timeIndex,fbin);
 }
 
 
 
 
-
-
-void PopProtADeconvolve::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+void PopProtADeconvolve::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
+
+//	cout << "in deconv with " << len << " samples and " << timestamp_size << " stamps " << endl;
+
 	unsigned n;
 	double h_peak[10];
 
@@ -456,18 +455,6 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 	if( len != SPREADING_LENGTH )
 		throw PopException("size does not match filter");
-
-
-//	for(size_t i = 0; i < timestamp_size; i++ )
-//	{
-////		timestampOut[i] = PopTimestamp(timestamp_data[i], calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) * factor );
-//
-//		cout << "got timestamp with raw index " << timestamp_data[i].offset << " and adjustment " << timestamp_buffer_correction << " which adjusts to " << calc_timestamp_offset(timestamp_data[i].offset, timestamp_buffer_correction) << endl;
-////		cout << "got timestamp with raw index " << timestampOut[i].offset << " and ... " << endl;
-//	}
-
-//	cout << "  got " << timestamp_size << " timestamps for " << len << " samples." << endl;
-//	cout << "  with indices " << timestamp_data[0].offset_adjusted(timestamp_buffer_correction) << " and " << timestamp_data[timestamp_size-1].offset_adjusted(timestamp_buffer_correction) << endl;
 
 
 	complex<double>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
@@ -541,6 +528,7 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 		if( localMaximaPeaks.size() != 0 )
 			maximaOut = maxima.get_buffer( localMaximaPeaks.size() );
 
+//		cout << "got " << localMaximaPeaks.size() << " peaks!" << endl;
 
 
 		for( unsigned i = 0; i < localMaximaPeaks.size(); i++ )
@@ -561,40 +549,8 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 //			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
 
-			const PopTimestamp *prev = 0;
-			const PopTimestamp *next = 0;
-
-
-			// loop through every timestamp except for the last one and set the prev/next pointers to timestamps surrounding sincTimeIndex
-			for( size_t j = 0; j < timestamp_size - 1; j++ )
-			{
-				// grab the indices for j and j+1 (won't overflow because we never do the last iteration of the loop)
-				double currentIndex = timestamp_data[ j ].offset_adjusted(timestamp_buffer_correction);
-				double nextIndex    = timestamp_data[j+1].offset_adjusted(timestamp_buffer_correction);
-
-				//			cout << "    " << currentIndex;
-
-
-
-				// true when the loop is pointing at a timestamp with an largest index that is less than sincTimeIndex (assuming timestamps are in order)
-				if( nextIndex >= sincTimeIndex && prev == 0)
-				{
-					prev = timestamp_data + j; // set the pointer to this timestamp because the next is past
-					next = timestamp_data + j + 1; // set the pointer to the next timestamp because we just detected that it's past
-					break;
-				}
-
-				//			if( currentIndex > sincTimeIndex )
-				//			{
-				//				indexNext = std::min(indexNext, currentIndex);
-				//				cout << "n";
-				//			}
-
-				//			cout << endl;
-			}
-
-			//		cout << "    found min, max indexes of " << indexPrev << " // " << indexNext << endl;
-			//		cout << "    found min, max indexes of " << prev->offset_adjusted(timestamp_buffer_correction) << " /-/ " << next->offset_adjusted(timestamp_buffer_correction) << endl;
+			const PopTimestamp *prev = &timestamp_data[(int)floor(sincTimeIndex)];
+			const PopTimestamp *next = &timestamp_data[(int)floor(sincTimeIndex)+1];
 
 			// create mutable copy
 			PopTimestamp timeDifference = PopTimestamp(*next);
@@ -602,7 +558,7 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 			// calculate difference using -= overload (which should be most accurate)
 			timeDifference -= *prev;
 
-			double timePerSample = timeDifference.get_real_secs() / (  next->offset_adjusted(timestamp_buffer_correction) - prev->offset_adjusted(timestamp_buffer_correction) );
+			double timePerSample = timeDifference.get_real_secs();
 
 			//		cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
 
@@ -612,13 +568,26 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 
 			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
 
-			exactTimestamp += timePerSample * ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+			exactTimestamp += timePerSample * ( sincTimeIndex - floor(sincTimeIndex) );
 
-//			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << endl;
+			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << " with mag " << sqrt(magnitude2(h_cts[localMaximaPeaks[i]])) << endl;
 
-			//		cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
-//			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
-			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+//					cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
+			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+//			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+
+
+			if( i == 0 )
+			{
+				PopTimestamp delta = exactTimestamp;
+
+				delta -= last;
+
+				cout << "    delt time is " << boost::lexical_cast<string>(delta.get_full_secs()) << "   -   " << boost::lexical_cast<string>(delta.get_frac_secs()) << endl;
+
+
+				last = exactTimestamp;
+			}
 
 
 			// pointer to current maxima in the source buffer

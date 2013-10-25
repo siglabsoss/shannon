@@ -53,7 +53,7 @@ public:
 
 
 
-	void process(const PopSymbol* data, size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+	void process(const PopSymbol* data, size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
 		for( size_t i = 0; i < data_size; i++ )
 		{

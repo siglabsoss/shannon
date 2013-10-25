@@ -29,17 +29,12 @@ public:
 	/*!
 	 * Copy constructor from time_spec_t type
 	 */
-	PopTimestamp(uhd::time_spec_t copy, double off) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(off) {}
-
-	/*!
-	 * Copy constructor from PopTimestamp with explicit setter for new offset
-	 */
-	PopTimestamp(PopTimestamp copy, double off) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(off) {}
+	PopTimestamp(uhd::time_spec_t copy) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()) {}
 
 	/*!
 	 * Traditional copy constructor
 	 */
-	PopTimestamp(const PopTimestamp &copy) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()), offset(copy.offset) {}
+	PopTimestamp(const PopTimestamp &copy) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()) {}
 
 	/*!
 	 * Get the system time in time_spec_t format.
@@ -126,14 +121,14 @@ public:
 	//! Implement subtractable interface
 	PopTimestamp &operator-=(const PopTimestamp &);
 
+	//! Implement subtractable interface
+	PopTimestamp &operator*=(const double &);
+
 	//public time storage details
 
 	// time stuff
 	time_t _full_secs;
 	double _frac_secs;
-
-	// which sample does this apply to
-	double offset;
 
 	//	//! Implement equality_comparable interface
 	//	UHD_API bool operator==(const time_spec_t &, const time_spec_t &);
@@ -147,10 +142,6 @@ public:
 
 	double get_frac_secs(void) const{
 		return _frac_secs;
-	}
-
-	double offset_adjusted(double o) const{
-		return offset - o;
 	}
 
 

@@ -88,7 +88,7 @@ public:
 
         // make sure that timestamp buffer is always allocated
         // this is because there is too much math below which assumes that m_sizeBuf is non 0
-        if( m_timestamp_buf.m_sizeBuf < (1 * sizeof(PopTimestamp) * POPSOURCE_NUM_BUFFERS) )
+        if( m_timestamp_buf.m_sizeBuf < (1 * POPSOURCE_NUM_BUFFERS) )
         	m_timestamp_buf.resize_buffer(1);
 
         // If the data is from an external array then copy data into buffer.
@@ -98,7 +98,6 @@ public:
         m_timestamp_buf.fill_data(timestamp_data, num_new_timestamp_pts);
 
         // change the index values for each timestamp we just copied in
-        correct_timestamp_indices(m_buf, m_timestamp_buf, num_new_timestamp_pts);
 
 
         /* iterate through list of sinks and determine how many times
@@ -119,7 +118,7 @@ public:
             // If there's no specific length requested then send all available.
             if( 0 == req_samples_from_sink )
             {
-                (*it)->unblock(m_buf.m_bufPtr + sink_idx_into_buffer, uncopied_pts, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_uncopied_pts, sink_idx_into_buffer);
+                (*it)->unblock(m_buf.m_bufPtr + sink_idx_into_buffer, uncopied_pts, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_uncopied_pts);
 
                 sink_idx_into_buffer += uncopied_pts;
                 sink_idx_into_buffer %= m_buf.m_sizeBuf;
@@ -131,49 +130,13 @@ public:
             else while ( uncopied_pts >= req_samples_from_sink )
             {
 
+            	// bound this number because we might not have timestamps for every sample
+            	size_t timestamp_req_samples_from_sink = std::min(timestamp_uncopied_pts, req_samples_from_sink);
 
-            	//                    std::cout << "there are " << timestamp_uncopied_pts << " uncopied stamps" << std::endl;
-            	//                    std::cout << "asking for " << req_samples_from_sink << " samples at a time" << std::endl;
-
-            	size_t start = (size_t)-1;
-            	size_t end = 0;
-
-            	// loop through all the timestamps that we have not sent to the source yet
-            	for( size_t i = 0; i < timestamp_uncopied_pts; i++ )
-            	{
-            		size_t offset = m_timestamp_buf.m_bufPtr[i+timestamp_sink_idx_into_buffer].offset;
-            		//                    	std::cout << "  looking at offset #" << offset << std::endl;
-
-            		// if the timestamp offest applies to data we are about to call unblock() with, record start and end
-            		if( offset >= sink_idx_into_buffer || offset <= (sink_idx_into_buffer+req_samples_from_sink) )
-            		{
-            			start = std::min(start,i);
-            			end = std::max(end,i);
-            		}
-            	}
-
-            	// at this point start/end point to the first and last time samples that are relevant
-            	// (this is awk because if (end - start) = 0, but this actually means 1 sample)
-            	size_t timestamp_samples = (end-start)+1;
-
-            	//                    std::cout << "    start: " << start << " end: " << end << std::endl;
+//            	cout << "timestamp_req_samples_from_sink in " << get_name() << " is " << timestamp_req_samples_from_sink << endl;
 
 
-            	size_t zero_timestamps_are_valid = 0;
-
-
-            	// if start and end were never set, the loop above never matched conditions
-            	if( start == (size_t)-1 && end == 0 )
-            	{
-            		// copy in 0 timestamps
-            		timestamp_samples = 0;
-
-            		// in this special case, we want to call unblock with the 3rd param pointing at the most recent timestamp, and the 4th being a 0
-            		// the tail of the circular buffer is pointing at uninitialized space, so 'zero_timestamps_are_valid' bumps us back one, to the most recent valid timestamp
-            		zero_timestamps_are_valid = 1;
-            	}
-
-            	(*it)->unblock( m_buf.m_bufPtr + sink_idx_into_buffer, req_samples_from_sink, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer - zero_timestamps_are_valid, timestamp_samples, sink_idx_into_buffer );
+            	(*it)->unblock( m_buf.m_bufPtr + sink_idx_into_buffer, req_samples_from_sink, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_req_samples_from_sink );
 
             	// modify and wrap sink pointer
             	sink_idx_into_buffer += req_samples_from_sink;
@@ -181,9 +144,9 @@ public:
             	uncopied_pts -= req_samples_from_sink;
 
             	// modify and wrap sink timestamp pointer
-            	timestamp_sink_idx_into_buffer += timestamp_samples;
+            	timestamp_sink_idx_into_buffer += timestamp_req_samples_from_sink;
             	timestamp_sink_idx_into_buffer %= m_timestamp_buf.m_sizeBuf;
-            	timestamp_uncopied_pts -= timestamp_samples;
+            	timestamp_uncopied_pts -= timestamp_req_samples_from_sink;
             }
 
             // check for overflow
@@ -251,7 +214,10 @@ public:
     {
         // automatically grow buffer if needed
         if( sink.sink_size() * POPSOURCE_NUM_BUFFERS >m_buf.m_sizeBuf )
+        {
         	m_buf.resize_buffer(sink.sink_size());
+        	m_timestamp_buf.resize_buffer(sink.sink_size());
+        }
 
         // set read indices
         sink.m_sourceBufIdx = m_buf.m_bufIdx;
@@ -282,35 +248,6 @@ public:
 
     	cout << endl;
     }
-
-    // returns: Are all the offsets for the timestamps in this buffer in order (only checks the first N)?
-    bool timestamp_offsets_in_order(size_t count)
-    {
-    	bool in_order = true;
-
-    	size_t last_offset = (size_t)-1; // WARNING: this is a weird way to get the maximum value for size_t
-
-    	for(size_t i = 0; i < count; i++)
-    	{
-    		// the sample we want is the tail minus i, minus one.  (minus one because the tail always points to the next to be written object)
-    		size_t offset = m_timestamp_buf.m_bufPtr[m_timestamp_buf.m_bufIdx-i-1].offset;
-
-    		// skip the first check
-    		// we are running backwards through the last N samples
-    		// therefor if this offset is greater than or equal to the previous, set flag and break
-    		if(offset >= last_offset)
-    		{
-    			in_order = false;
-    			break;
-    		}
-
-    		last_offset = offset;
-    	}
-
-    	return in_order;
-    }
-
-
 
     // Joel's magical circular buffer
     template <typename BUFFER_TYPE>
@@ -505,21 +442,6 @@ public:
     	return get_buffer(sizeBuf, m_timestamp_buf);
     }
 
-
-
-private:
-    void correct_timestamp_indices(PopSource::PopSourceBuffer<OUT_TYPE> &buf, PopSource::PopSourceBuffer<PopTimestamp> &tbuf, size_t new_stamps)
-    {
-    	// nothing to do
-    	if( buf.m_bufIdx == 0 )
-    		return;
-
-
-    	for(size_t i = 0; i < new_stamps; i++)
-    	{
-    		tbuf.m_bufPtr[i+tbuf.m_bufIdx].offset += buf.m_bufIdx;
-    	}
-    }
 
 private:
 

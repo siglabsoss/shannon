@@ -23,6 +23,7 @@
 #include "core/config.hpp"
 #include "net/popnetwork.hpp"
 #include "mdl/popsymbol.hpp"
+#include "core/poptimestampinterpolate.hpp"
 
 #include "dsp/common/poputils.hpp"
 
@@ -108,7 +109,12 @@ int main(int argc, char *argv[])
 	// Initialize Decimator
 	//PopDecimate<complex<float> > decimate(64);
 
-	popuhd.connect(chanfilter);
+	// Setup timestamp interpolate block.  This number is hardcoded.. how can we grab it from popuhd?
+	PopTimestampInterpolation<complex<double> > timestampInterpolation(507);
+
+	popuhd.connect(timestampInterpolation);
+
+	timestampInterpolation.connect(chanfilter);
 
 	PopProtADeconvolve deconvolve;
 	deconvolve.start_thread();

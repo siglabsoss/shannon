@@ -96,17 +96,17 @@ PopTimestamp PopTimestamp::get_system_time(void){
 //    return (long long)(x + 0.5); // assumption of non-negativity
 //}
 //
-PopTimestamp::PopTimestamp(double secs): offset(0)
+PopTimestamp::PopTimestamp(double secs)
 {
 	time_spec_init(0, secs);
 }
 
-PopTimestamp::PopTimestamp(time_t full_secs, double frac_secs): offset(0)
+PopTimestamp::PopTimestamp(time_t full_secs, double frac_secs)
 {
 	time_spec_init(full_secs, frac_secs);
 }
 
-PopTimestamp::PopTimestamp(time_t full_secs, long tick_count, double tick_rate): offset(0)
+PopTimestamp::PopTimestamp(time_t full_secs, long tick_count, double tick_rate)
 {
     const double frac_secs = tick_count/tick_rate;
     time_spec_init(full_secs, frac_secs);
@@ -168,6 +168,38 @@ PopTimestamp &PopTimestamp::operator-=(const PopTimestamp &rhs){
     );
     return *this;
 }
+
+PopTimestamp &PopTimestamp::operator*=(const double &rhs){
+
+	// this function calculates ( full + frac ) * rhs
+	// by breaking into full * rhs + frac * rhs
+
+	// multiply seconds part
+	double stepOne = this->get_full_secs() * rhs;
+
+	// extract fraction of result
+	double stepOneFrac = fmod(stepOne, 1.0);
+
+	// extract full seconds of result
+	time_t stepOneFull = round(stepOne - stepOneFrac);
+
+	// make a timestamp
+	PopTimestamp step1 = PopTimestamp( stepOneFull, stepOneFrac );
+
+	// multiply fraction part and build stamp, we use the Constructor because this shouldn't lose any precision
+	PopTimestamp step2 = PopTimestamp( this->get_frac_secs() * rhs );
+
+	// add them
+	step1 += step2;
+
+	// assign to our stamp
+    time_spec_init(
+        step1.get_full_secs(),
+        step1.get_frac_secs()
+    );
+    return *this;
+}
+
 
 bool operator==(const PopTimestamp &lhs, const PopTimestamp &rhs){
     return

@@ -31,10 +31,9 @@ struct buffer_read_pointer
 
     const PopTimestamp* timestamp_data;
     size_t timestamp_len;
-    size_t timestamp_buffer_correction;
 
-    buffer_read_pointer(const T* d, size_t l, const PopTimestamp* td, size_t tl, size_t tbc) : data(d), len(l), timestamp_data(td), timestamp_len(tl), timestamp_buffer_correction(tbc) {}
-    buffer_read_pointer() : data(0), len(0), timestamp_data(0), timestamp_len(0), timestamp_buffer_correction(0) {}
+    buffer_read_pointer(const T* d, size_t l, const PopTimestamp* td, size_t tl) : data(d), len(l), timestamp_data(td), timestamp_len(tl) {}
+    buffer_read_pointer() : data(0), len(0), timestamp_data(0), timestamp_len(0) {}
 };
 
 
@@ -71,7 +70,7 @@ protected:
     /**
      * Needs to be implemented by child class to handle incoming data.
      */
-    virtual void process(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size, size_t timestamp_buffer_correction) = 0;
+    virtual void process(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size) = 0;
 
     /**
      * Needs to be implemented by child class to initialize anything
@@ -100,12 +99,6 @@ public:
         return m_reqBufSize;
     }
 
-    // calculates and returns an offset to the passed in timestamp
-    static inline const double calc_timestamp_offset(double timestamp, size_t timestamp_buffer_correction)
-    {
-    	return timestamp - timestamp_buffer_correction;
-    }
-
 private:
     /**
      * Thread loop.
@@ -122,14 +115,14 @@ private:
         {
             wait_and_pop( buf );
 
-            process( buf.data, buf.len, buf.timestamp_data, buf.timestamp_len, buf.timestamp_buffer_correction );
+            process( buf.data, buf.len, buf.timestamp_data, buf.timestamp_len );
         }
     }
 
     /**
      * Called by connecting block to unblock data.
      */
-    void unblock(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size, size_t timestamp_buffer_correction )
+    void unblock(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size )
     {
         // check to for a valid amount of input samples
         if( 0 != m_reqBufSize )
@@ -140,9 +133,9 @@ private:
             throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
 
         if( m_pThread )
-            push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size, timestamp_buffer_correction) );
+            push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size ) );
         else
-            process( in, size, timestamp_in, timestamp_size, timestamp_buffer_correction );
+            process( in, size, timestamp_in, timestamp_size );
     }
 
     /**

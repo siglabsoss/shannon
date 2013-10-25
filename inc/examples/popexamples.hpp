@@ -69,7 +69,7 @@ class PopBob : public PopSink<PopMsg>
 public:
     PopBob() : PopSink<PopMsg>("PopBob", 100) { }
     void init() { }
-    void process(const PopMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+    void process(const PopMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
         printf("received %lu PopBob(s)\r\n", size);
 //        for( size_t i = 0; i < size; i++ )
@@ -165,9 +165,9 @@ public:
 
     		PopTimestamp t[4];
     		t[0] = PopTimestamp(3.3);
-    		t[0].offset = 0;
+//    		t[0].offset = 0;
     		t[1] = PopTimestamp(4.0);
-    		t[1].offset = chunk-1;
+//    		t[1].offset = chunk-1;
 
 //
 //    		std::cout << "time was " << t[0].get_full_secs() << std::endl;
@@ -237,7 +237,7 @@ class PopPrintCharStream : public PopSink<char>
 public:
 	PopPrintCharStream() : PopSink<char>("PopPrintCharStream") { }
     void init() { }
-    void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size, size_t timestamp_buffer_correction)
+    void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
     	std::cout << data << std::endl;
     }
@@ -398,7 +398,9 @@ template <typename T>
 class PopDumpToFile : public PopSink<T>
 {
 public:
+	bool flush_immediately;
     PopDumpToFile(const char* file_name = "dump.raw") : PopSink<T>("PopDumpToFile"),
+    	flush_immediately(false),
         m_fileName(file_name)
     {
         printf("%s - created %s file\r\n", PopSink<T>::get_name(), m_fileName);
@@ -412,11 +414,14 @@ private:
     void init()
     {
     }
-    void process(const T* in, size_t size, const pop::PopTimestamp *t, size_t tt, size_t timestamp_buffer_correction)
+    void process(const T* in, size_t size, const pop::PopTimestamp *t, size_t tt)
     {
         printf("+");
         size_t bytes = size * sizeof(T);
         m_fs.write((const char*)in, bytes);
+
+        if( flush_immediately )
+        	  flush(m_fs);
     }
     std::ofstream m_fs;
     const char* m_fileName;
