@@ -63,4 +63,14 @@ unsigned bsf_channel_fbin_high(unsigned c)
 	return round( bsf_channel_fbin_high_exact(c) );
 }
 
+unsigned bsf_zero_shift_channel_fbin_low(unsigned c)
+{
+	return (bsf_channel_fbin_low(c) + (FFT_SIZE/2)) % FFT_SIZE;
+}
+
+unsigned bsf_zero_shift_channel_fbin_high(unsigned c)
+{
+	return (bsf_channel_fbin_high(c) + (FFT_SIZE/2)) % FFT_SIZE;
+}
+
 #endif

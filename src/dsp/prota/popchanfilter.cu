@@ -77,57 +77,80 @@ extern "C"
 	popComplex* d_datad;
 	cufftHandle plan1;
 	cufftHandle plan2;
-	size_t g_len_chan; ///< length of time series in samples
-	size_t g_len_fft; ///< length of fft in samples
-	size_t g_start_chan;
+	cufftHandle many_plan;
+	size_t g_len_chan; ///< length of time series in samples (CHAN_SIZE)
+	size_t g_len_fft; ///< length of fft in samples (FFT_SIZE)
+//	size_t g_start_chan;
 
 
 	size_t gpu_channel_split(const complex<double> *h_data, complex<double> *out)
 	{
 		//double ch_start, ch_end, ch_ctr;
 
-		g_start_chan = bsf_channel_fbin_low(9);
+
+		// copy new host data into device memory for fft (this is for all data and all channels)
+		cudaMemcpy(d_dataa, h_data, g_len_fft * sizeof(popComplex), cudaMemcpyHostToDevice);
+		cudaThreadSynchronize();
+
+		// perform FFT on entire spectrum
+		cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_dataa, (cufftDoubleComplex*)d_datab, CUFFT_FORWARD);
+		cudaThreadSynchronize();
+
+
+
 
 /*		ch_start = 903626953 + (3200000 / (double)g_len_fft * (double)g_start_chan) - 1600000;
 		ch_end = 903626953 + (3200000 / (double)g_len_fft * ((double)g_start_chan + 1040)) - 1600000;
 		ch_ctr = (ch_start + ch_end) / 2.0;*/
 		//printf("channel start: %f (%llu), end: %f, ctr: %f\r\n", ch_start, g_start_chan, ch_end, ch_ctr);
 
-		// shift zero-frequency component to center of spectrum
-		unsigned small_bin_start = (g_start_chan + (g_len_fft/2)) % g_len_fft;
 
-		// calculate small bin side-band size
+
+		// calculate small bin side-band size (same for every channel)
 		unsigned small_bin_sideband = g_len_chan / 2;
 
-		// copy new host data into device memory
-		cudaMemcpy(d_dataa, h_data, g_len_fft * sizeof(popComplex), cudaMemcpyHostToDevice);
-		cudaThreadSynchronize();
 
-		// perform FFT on spectrum
-		cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_dataa, (cufftDoubleComplex*)d_datab, CUFFT_FORWARD);
-		cudaThreadSynchronize();
 
+
+		// do 50 cuda mem copies
+		for( int c = 0; c < 50; c++ )
+		{
+			// shift zero-frequency component to center of spectrum ( calculate the bin in which the fft starts adjusting for the fact that the complex fft has 0 freq in the center)
+			unsigned small_bin_start = bsf_zero_shift_channel_fbin_low(c); //(g_start_chan + (g_len_fft/2)) % g_len_fft;
+
+			//FIXME: start memory in d_datac at 0
+
+			// chop spectrum up into 50 spreading channels low side-band
+			cudaMemcpy(d_datac + small_bin_start,
+					   d_datab + small_bin_start + small_bin_sideband,
+
+					   small_bin_sideband * sizeof(popComplex),
+					   cudaMemcpyDeviceToDevice);
+			// chop spectrum up into 50 spreading channels high side-band
+			cudaMemcpy(d_datac + small_bin_start + small_bin_sideband,
+					   d_datab + small_bin_start,
+
+					   small_bin_sideband * sizeof(popComplex),
+					   cudaMemcpyDeviceToDevice);
+
+		}
 		
-		// chop spectrum up into 50 spreading channels low side-band
-		cudaMemcpy(d_datac,
-			       d_datab + small_bin_start + small_bin_sideband,
-			       small_bin_sideband * sizeof(popComplex),
-			       cudaMemcpyDeviceToDevice);
-		// chop spectrum up into 50 spreading channels high side-band
-		cudaMemcpy(d_datac + small_bin_sideband,
-			       d_datab + small_bin_start,
-			       small_bin_sideband * sizeof(popComplex),
-			       cudaMemcpyDeviceToDevice);
 		cudaThreadSynchronize();
 
 
 		// put back into time domain
-		cufftExecZ2Z(plan2, (cufftDoubleComplex*)d_datac, (cufftDoubleComplex*)d_datad, CUFFT_INVERSE);
+		cufftExecZ2Z(many_plan, (cufftDoubleComplex*)d_datac, (cufftDoubleComplex*)d_datad, CUFFT_INVERSE);
+		checkCudaErrors(cudaGetLastError());
 		cudaThreadSynchronize();
   		checkCudaErrors(cudaGetLastError());
 
+		unsigned channel = 9;
+
+  		unsigned data_range_low = bsf_zero_shift_channel_fbin_low(channel);
+  		unsigned data_length = bsf_zero_shift_channel_fbin_low(channel);
+
   		// Copy results to host
-		cudaMemcpy(out, d_datad, g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost);
+		cudaMemcpy(out, d_datad + data_range_low, g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost);
 		cudaThreadSynchronize();
 		
   		return 0;
@@ -155,6 +178,14 @@ extern "C"
 	    cufftPlan1d(&plan1, g_len_fft, CUFFT_Z2Z, 1);
 	    cufftPlan1d(&plan2, g_len_chan, CUFFT_Z2Z, 1);
 
+	    // Setup multiple FFT plan
+	    int dimension_size[1];
+	    dimension_size[0] = g_len_chan; // how big is the first dimension of the transform
+
+//	    http://docs.nvidia.com/cuda/cufft/#function-cufftplanmany
+	    cufftPlanMany(&many_plan, 1, dimension_size, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_Z2Z, 50);
+
+
 	    printf("\n[Popwi::popprotadespread]: init deconvolve complete \n");
 	}
 
@@ -164,6 +195,7 @@ extern "C"
 	void cleanup() {
 	  cufftDestroy(plan1);
 	  cufftDestroy(plan2);
+	  cufftDestroy(many_plan);
 	  checkCudaErrors(cudaFree(d_dataa));
 	  checkCudaErrors(cudaFree(d_datab));
 	  checkCudaErrors(cudaFree(d_datac));

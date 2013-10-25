@@ -17,6 +17,8 @@ extern double bsf_channel_fbin_low_exact(unsigned c);
 extern double bsf_channel_fbin_high_exact(unsigned c);
 extern unsigned bsf_channel_fbin_low(unsigned c);
 extern unsigned bsf_channel_fbin_high(unsigned c);
+extern unsigned bsf_zero_shift_channel_fbin_low(unsigned c);
+extern unsigned bsf_zero_shift_channel_fbin_high(unsigned c);
 
 
 #ifdef __cplusplus
