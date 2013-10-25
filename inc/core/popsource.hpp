@@ -131,7 +131,7 @@ public:
             {
 
             	// bound this number because we might not have timestamps for every sample
-            	size_t timestamp_req_samples_from_sink = std::min(timestamp_uncopied_pts, req_samples_from_sink);
+            	timestamp_req_samples_from_sink = std::min(timestamp_uncopied_pts, req_samples_from_sink);
 
 //            	cout << "timestamp_req_samples_from_sink in " << get_name() << " is " << timestamp_req_samples_from_sink << endl;
 
