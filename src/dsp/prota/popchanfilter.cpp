@@ -85,21 +85,13 @@ namespace pop
 		time_duration td, tLast;
 		t1 = microsec_clock::local_time();
 
-		complex<double> *out = get_buffer(CHAN_SIZE);
+//		complex<double> *out = get_buffer(CHAN_SIZE);
 
 		complex<double> (*out_strided)[50] = strided.get_buffer(CHAN_SIZE); // grab 50 channels worth of memory
 
 //		//cudaProfilerStart();
 //		// call the GPU to process work
 		gpu_channel_split(in, out_strided);
-
-		unsigned channel = 9;
-
-		// de-stripe on cpu for debug testing output to deconvolve
-		for( int i = 0; i < CHAN_SIZE; i++ )
-		{
-			out[i] = out_strided[i][channel];
-		}
 
 
 		// in comes FFT_SIZE (65K) samples, and out goes CHAN_SIZE (1040)
@@ -113,7 +105,6 @@ namespace pop
 		double factor = (double) FFT_SIZE / CHAN_SIZE;
 
 		double a;
-//		double secs;
 
 		// index of two timestamps to interpolate between
 		size_t i1, i2;
@@ -140,9 +131,8 @@ namespace pop
 			timestampOut[m] = ts1;
 		}
 
-
 		// process data
-		PopSource<complex<double> >::process(out, CHAN_SIZE, timestampOut, CHAN_SIZE);
+//		PopSource<complex<double> >::process(out, CHAN_SIZE, timestampOut, CHAN_SIZE);
 
 		strided.process(out_strided, CHAN_SIZE, timestampOut, CHAN_SIZE);
 

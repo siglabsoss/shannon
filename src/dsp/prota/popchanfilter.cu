@@ -78,6 +78,7 @@ extern "C"
 	cufftHandle plan1;
 	cufftHandle plan2;
 	cufftHandle many_plan;
+	cudaStream_t chan_filter_stream;
 	size_t g_len_chan; ///< length of time series in samples (CHAN_SIZE)
 	size_t g_len_fft; ///< length of fft in samples (FFT_SIZE)
 //	size_t g_start_chan;
@@ -89,12 +90,10 @@ extern "C"
 
 
 		// copy new host data into device memory for fft (this is for all data and all channels)
-		cudaMemcpy(d_dataa, h_data, g_len_fft * sizeof(popComplex), cudaMemcpyHostToDevice);
-		cudaThreadSynchronize();
+		cudaMemcpyAsync(d_dataa, h_data, g_len_fft * sizeof(popComplex), cudaMemcpyHostToDevice, chan_filter_stream);
 
 		// perform FFT on entire spectrum
 		cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_dataa, (cufftDoubleComplex*)d_datab, CUFFT_FORWARD);
-		cudaThreadSynchronize();
 
 
 
@@ -122,37 +121,29 @@ extern "C"
 			unsigned output_bin_start = bsf_fbins_per_channel() * c;
 
 			// copy 1 channel's low side-band
-			cudaMemcpy(d_datac + output_bin_start,
-					   d_datab + small_bin_start + small_bin_sideband,
+			cudaMemcpyAsync(d_datac + output_bin_start,
+					        d_datab + small_bin_start + small_bin_sideband,
 
-					   small_bin_sideband * sizeof(popComplex),
-					   cudaMemcpyDeviceToDevice);
+					        small_bin_sideband * sizeof(popComplex),
+					        cudaMemcpyDeviceToDevice, chan_filter_stream);
 			// chop spectrum up into 50 spreading channels high side-band
-			cudaMemcpy(d_datac + output_bin_start + small_bin_sideband,
-					   d_datab + small_bin_start,
+			cudaMemcpyAsync(d_datac + output_bin_start + small_bin_sideband,
+					        d_datab + small_bin_start,
 
-					   small_bin_sideband * sizeof(popComplex),
-					   cudaMemcpyDeviceToDevice);
+					        small_bin_sideband * sizeof(popComplex),
+					        cudaMemcpyDeviceToDevice, chan_filter_stream);
 
 		}
-		
-		cudaThreadSynchronize();
-
 
 		// put back into time domain
 		cufftExecZ2Z(many_plan, (cufftDoubleComplex*)d_datac, (cufftDoubleComplex*)d_datad, CUFFT_INVERSE);
-		checkCudaErrors(cudaGetLastError());
-		cudaThreadSynchronize();
-  		checkCudaErrors(cudaGetLastError());
-
-//		unsigned channel = 9;
-//
-//  		unsigned data_range_low = bsf_fbins_per_channel() * channel;
 
   		// Copy results to host
-		cudaMemcpy(out, d_datad, 50 * g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost);
-		cudaThreadSynchronize();
+		cudaMemcpyAsync(out, d_datad, 50 * g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost, chan_filter_stream);
 		
+		// block till all actions on this stream have completed
+		cudaStreamSynchronize(chan_filter_stream);
+
   		return 0;
 	}
 
@@ -161,6 +152,9 @@ extern "C"
 	{
 		g_len_chan = len_chan;
 		g_len_fft = len_fft;
+
+		// create CUDA stream
+		checkCudaErrors(cudaStreamCreate(&chan_filter_stream));
 
 		// allocate CUDA memory
 		checkCudaErrors(cudaMalloc(&d_dataa, g_len_fft * sizeof(popComplex)));
@@ -212,6 +206,10 @@ extern "C"
 	    		dimension_size, 50, 1,
 	    		CUFFT_Z2Z, 50);
 
+	    // Set the stream for each of the FFT plans
+	    cufftSafeCall(cufftSetStream(plan1,     chan_filter_stream));
+	    cufftSafeCall(cufftSetStream(many_plan, chan_filter_stream));
+
 	    printf("\n[Popwi::popprotadespread]: init deconvolve complete \n");
 	}
 
@@ -222,6 +220,7 @@ extern "C"
 	  cufftDestroy(plan1);
 	  cufftDestroy(plan2);
 	  cufftDestroy(many_plan);
+	  cudaStreamDestroy(chan_filter_stream);
 	  checkCudaErrors(cudaFree(d_dataa));
 	  checkCudaErrors(cudaFree(d_datab));
 	  checkCudaErrors(cudaFree(d_datac));
@@ -233,7 +232,7 @@ extern "C"
 	{
 		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
 		rolling_scalar_multiply<<<fbins * 16, len / 16>>>(in, cfc, out, len);
-		cudaThreadSynchronize();
+//		cudaThreadSynchronize();
 	}
 
 
