@@ -32,7 +32,7 @@ using namespace boost::posix_time;
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" size_t gpu_channel_split(const complex<double> *h_data, complex<double> *out);
+extern "C" size_t gpu_channel_split(const complex<double> *h_data, complex<double> (*out)[50]);
 extern "C" void init_deconvolve(size_t len_fft, size_t len_chan);
 extern "C" void cleanup();
 
@@ -91,7 +91,15 @@ namespace pop
 
 //		//cudaProfilerStart();
 //		// call the GPU to process work
-		gpu_channel_split(in, out);
+		gpu_channel_split(in, out_strided);
+
+		unsigned channel = 9;
+
+		// de-stripe on cpu for debug testing output to deconvolve
+		for( int i = 0; i < CHAN_SIZE; i++ )
+		{
+			out[i] = out_strided[i][channel];
+		}
 
 
 		// in comes FFT_SIZE (65K) samples, and out goes CHAN_SIZE (1040)

@@ -83,7 +83,7 @@ extern "C"
 //	size_t g_start_chan;
 
 
-	size_t gpu_channel_split(const complex<double> *h_data, complex<double> *out)
+	size_t gpu_channel_split(const complex<double> *h_data, complex<double> (*out)[50])
 	{
 		//double ch_start, ch_end, ch_ctr;
 
@@ -145,12 +145,12 @@ extern "C"
 		cudaThreadSynchronize();
   		checkCudaErrors(cudaGetLastError());
 
-		unsigned channel = 9;
-
-  		unsigned data_range_low = bsf_fbins_per_channel() * channel;
+//		unsigned channel = 9;
+//
+//  		unsigned data_range_low = bsf_fbins_per_channel() * channel;
 
   		// Copy results to host
-		cudaMemcpy(out, d_datad + data_range_low, g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost);
+		cudaMemcpy(out, d_datad, 50 * g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost);
 		cudaThreadSynchronize();
 		
   		return 0;
@@ -179,15 +179,38 @@ extern "C"
 	    cufftPlan1d(&plan2, g_len_chan, CUFFT_Z2Z, 1);
 
 	    // Setup multiple FFT plan
+	    //	    http://docs.nvidia.com/cuda/cufft/#function-cufftplanmany
+	    //	    http://docs.nvidia.com/cuda/cufft/index.html#advanced-data-layout
+
+	    // This is the size of the fft
 	    int dimension_size[1];
 	    dimension_size[0] = g_len_chan; // how big is the first dimension of the transform
 
-//	    http://docs.nvidia.com/cuda/cufft/#function-cufftplanmany
+
+	    // the two middle lines of the cufftPlanMany() specify memory striding for the inverse fft.
+	    // the first parameter is the dimension of the input/output and is not ignored even though the docs say so ( "The inembed[0] or onembed[0] corresponds to the most significant (that is, the outermost) dimension and is effectively ignored since the idist or odist parameter provides this information instead" )
+	    // the tricky params are these:
+	    //  inembed, istride, idist
+	    //  onembed, ostride, odist
+
+	    // the memory is accessed according to this formula:
+
+	    // input [ x * istride + b * idist ]
+	    // output[ x * ostride + b * odist ]
+
+	    // where x is the number of the sample (or bin) and b is the batch (aka the specific fft we are on)
+
+	    // we have 1040 samples per channel, and 50 channels
+
+	    // for the input the data is sequential, so we stride forward 1 sample at a time for the next bin for a single fft, and then move forward 1040 samples for the next fft
+	    // for the output the data is striped, so we stride forward 50 samples at a time for the next bin, and then move forward 1 sample for the next fft
+
+	    // the final paramater is 50 which means we are doing 50 fft's
+
 	    cufftPlanMany(&many_plan, 1, dimension_size,
 	    		dimension_size, 1, g_len_chan,
-	    		dimension_size, 1, g_len_chan,
+	    		dimension_size, 50, 1,
 	    		CUFFT_Z2Z, 50);
-
 
 	    printf("\n[Popwi::popprotadespread]: init deconvolve complete \n");
 	}
