@@ -40,7 +40,7 @@ namespace pop
 {
 
 	PopChanFilter::PopChanFilter(): PopSink<complex<double> >( "PopChanFilter", FFT_SIZE ),
-		PopSource<complex<double> >( "PopChanFilter" ), mp_demod_func(0)
+		PopSource<complex<double> >( "PopChanFilter" ), strided ("PopChanFilter[50] Strided source"),  mp_demod_func(0)
 	{
 	}
 
@@ -86,6 +86,8 @@ namespace pop
 		t1 = microsec_clock::local_time();
 
 		complex<double> *out = get_buffer(CHAN_SIZE);
+
+		complex<double> (*out_strided)[50] = strided.get_buffer(CHAN_SIZE); // grab 50 channels worth of memory
 
 //		//cudaProfilerStart();
 //		// call the GPU to process work

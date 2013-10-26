@@ -183,7 +183,7 @@ extern "C"
 	    dimension_size[0] = g_len_chan; // how big is the first dimension of the transform
 
 //	    http://docs.nvidia.com/cuda/cufft/#function-cufftplanmany
-	    cufftPlanMany(&many_plan, 1, dimension_size, NULL, NULL, NULL, NULL, NULL, NULL, CUFFT_Z2Z, 50);
+	    cufftPlanMany(&many_plan, 1, dimension_size, 0, 0, 0, 0, 0, 0, CUFFT_Z2Z, 50);
 
 
 	    printf("\n[Popwi::popprotadespread]: init deconvolve complete \n");

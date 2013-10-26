@@ -39,6 +39,8 @@ namespace pop
 		static size_t channel_fbin_low(unsigned c);
 		static size_t channel_fbin_high(unsigned c);
 
+		PopSource<std::complex<double>[50]> strided;
+
 	private:
 		void process(const std::complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
