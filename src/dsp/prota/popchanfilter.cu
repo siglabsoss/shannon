@@ -71,10 +71,10 @@ __device__ unsigned FloatFlip(unsigned f)
 
 extern "C"
 {	
-	popComplex* d_dataa;
-	popComplex* d_datab;
-	popComplex* d_datac;
-	popComplex* d_datad;
+	popComplex* d_dataa; // device copy of host memory
+	popComplex* d_datab; // full spectrum fft
+	popComplex* d_datac; // 50 0-centered channels in frequency domain
+	popComplex* d_datad; // 50 channels in time domain
 	cufftHandle plan1;
 	cufftHandle plan2;
 	cufftHandle many_plan;
@@ -112,22 +112,23 @@ extern "C"
 
 
 
-		// do 50 cuda mem copies
+		// do 50 cuda mem copies in upper and lower halves so that the inverse fft's are zero centered
 		for( int c = 0; c < 50; c++ )
 		{
 			// shift zero-frequency component to center of spectrum ( calculate the bin in which the fft starts adjusting for the fact that the complex fft has 0 freq in the center)
 			unsigned small_bin_start = bsf_zero_shift_channel_fbin_low(c); //(g_start_chan + (g_len_fft/2)) % g_len_fft;
 
-			//FIXME: start memory in d_datac at 0
+			// output bins start from array index 0
+			unsigned output_bin_start = bsf_fbins_per_channel() * c;
 
-			// chop spectrum up into 50 spreading channels low side-band
-			cudaMemcpy(d_datac + small_bin_start,
+			// copy 1 channel's low side-band
+			cudaMemcpy(d_datac + output_bin_start,
 					   d_datab + small_bin_start + small_bin_sideband,
 
 					   small_bin_sideband * sizeof(popComplex),
 					   cudaMemcpyDeviceToDevice);
 			// chop spectrum up into 50 spreading channels high side-band
-			cudaMemcpy(d_datac + small_bin_start + small_bin_sideband,
+			cudaMemcpy(d_datac + output_bin_start + small_bin_sideband,
 					   d_datab + small_bin_start,
 
 					   small_bin_sideband * sizeof(popComplex),
@@ -146,8 +147,7 @@ extern "C"
 
 		unsigned channel = 9;
 
-  		unsigned data_range_low = bsf_zero_shift_channel_fbin_low(channel);
-  		unsigned data_length = bsf_zero_shift_channel_fbin_low(channel);
+  		unsigned data_range_low = bsf_fbins_per_channel() * channel;
 
   		// Copy results to host
 		cudaMemcpy(out, d_datad + data_range_low, g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost);
@@ -165,8 +165,8 @@ extern "C"
 		// allocate CUDA memory
 		checkCudaErrors(cudaMalloc(&d_dataa, g_len_fft * sizeof(popComplex)));
 		checkCudaErrors(cudaMalloc(&d_datab, g_len_fft * sizeof(popComplex)));
-		checkCudaErrors(cudaMalloc(&d_datac, g_len_fft * sizeof(popComplex)));
-		checkCudaErrors(cudaMalloc(&d_datad, g_len_fft * sizeof(popComplex)));
+		checkCudaErrors(cudaMalloc(&d_datac, g_len_fft * sizeof(popComplex))); // this can be reduced to 50 * bsf_fbins_per_channel()
+		checkCudaErrors(cudaMalloc(&d_datad, g_len_fft * sizeof(popComplex))); // this can be reduced to 50 * bsf_fbins_per_channel()
 
 		// initialize CUDA memory
 		checkCudaErrors(cudaMemset(d_dataa, 0, g_len_fft * sizeof(popComplex)));
