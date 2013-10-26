@@ -709,6 +709,34 @@ BOOST_AUTO_TEST_CASE( test_channel_frequency )
 BOOST_AUTO_TEST_SUITE_END()
 
 
+class PopTestSourceTwo : public PopSource<PopTestMsg[50]>
+{
+public:
+	PopTestSourceTwo() : PopSource<PopTestMsg[50]>("PopTestSourceTwo Array") { }
+
+
+    void send_both(size_t count, size_t stamps, double start_time = -1, double time_inc_divisor = -1)
+    {
+
+    	PopTestMsg (*buff)[50] = get_buffer(10);
+
+    	process();
+
+    }
+
+};
+
+
+BOOST_AUTO_TEST_SUITE( lump_random )
+
+BOOST_AUTO_TEST_CASE( basic_array_sink_source )
+{
+	PopTestSourceTwo arraySource();
+
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 
 
 #endif // UNIT_TEST
