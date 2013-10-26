@@ -37,7 +37,7 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopProtADeconvolve : public PopSink<std::complex<double> >
+	class PopProtADeconvolve : public PopSink<std::complex<double>[50] >
 	{
 	public:
 		PopProtADeconvolve();
@@ -46,7 +46,7 @@ namespace pop
 		PopSource<PopSymbol> maxima;
 
 	private:
-		void process(const std::complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void process(const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<double>* cfc,
@@ -56,6 +56,7 @@ namespace pop
 	private:
 		cufftHandle plan_fft;
 		cufftHandle plan_deconvolve;
+		cufftHandle many_plan_fft;
 		popComplex* d_sts; // sampled time series
 		popComplex* d_sfs; // sampled fourier series
 		popComplex* d_cfs; // convoluted frequency swept series

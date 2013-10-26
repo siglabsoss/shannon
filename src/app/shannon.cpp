@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 	PopProtADeconvolve deconvolve;
 	deconvolve.start_thread();
 
-	chanfilter.connect(deconvolve);
+	chanfilter.strided.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
 
 	// Open Network Connection to our designated s3p

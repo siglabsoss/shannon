@@ -46,7 +46,7 @@ extern "C" void thrust_peak_detection(popComplex* in, thrust::device_vector<doub
 extern "C" void init_popdeconvolve(thrust::device_vector<double>** d_mag_vec, size_t size);
 
 
-PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<double> >( "PopProtADeconvolve", SPREADING_LENGTH ),
+PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<double>[50] >( "PopProtADeconvolve", SPREADING_LENGTH ),
 		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima")
 {
 
@@ -55,6 +55,7 @@ PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<double> >( "PopProtAD
 PopProtADeconvolve::~PopProtADeconvolve()
 {
 	cufftDestroy(plan_fft);
+	cufftDestroy(many_plan_fft);
 	cufftDestroy(plan_deconvolve);
 	checkCudaErrors(cudaFree(d_sts));
 	checkCudaErrors(cudaFree(d_sfs));
@@ -216,13 +217,20 @@ void PopProtADeconvolve::init()
     cudaSetDevice(0);
 
     // setup FFT plans
+
+    int dimension_size = SPREADING_LENGTH * 2;
+
+    cufftPlanMany(&many_plan_fft, 1, &dimension_size,
+    		&dimension_size, 50, 1,
+    		&dimension_size, 1, SPREADING_LENGTH * 2,
+    		CUFFT_Z2Z, 50); // pad
+
     cufftPlan1d(&plan_fft, SPREADING_LENGTH * 2, CUFFT_Z2Z, 1); // pad
-    int rank_size = SPREADING_LENGTH * 2;
-    cufftPlanMany(&plan_deconvolve, 1, &rank_size, 0, 1, 0, 0, 1, 0, CUFFT_Z2Z, SPREADING_BINS);
+    cufftPlanMany(&plan_deconvolve, 1, &dimension_size, 0, 1, 0, 0, 1, 0, CUFFT_Z2Z, SPREADING_BINS);
 
     // allocate device memory
-    checkCudaErrors(cudaMalloc(&d_sts, SPREADING_LENGTH * 2 * sizeof(popComplex)));
-    checkCudaErrors(cudaMalloc(&d_sfs, SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMalloc(&d_sts, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMalloc(&d_sfs, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex)));
     // host has an array of pointers which will point to d_cfc's.  after this cuda malloc we aren't quit done yet
     checkCudaErrors(cudaMalloc(&d_cfc[0], SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(popComplex)));
     checkCudaErrors(cudaMalloc(&d_cfs, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
@@ -232,8 +240,8 @@ void PopProtADeconvolve::init()
 
 
     // initialize device memory
-    checkCudaErrors(cudaMemset(d_sts, 0, SPREADING_LENGTH * 2 * sizeof(popComplex)));
-    checkCudaErrors(cudaMemset(d_sfs, 0, SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMemset(d_sts, 0, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMemset(d_sfs, 0, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_cfc[0], 0, SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_cfs, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
@@ -439,7 +447,7 @@ boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbin
 
 
 
-void PopProtADeconvolve::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopProtADeconvolve::process(const complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 
 //	cout << "in deconv with " << len << " samples and " << timestamp_size << " stamps " << endl;
@@ -460,19 +468,21 @@ void PopProtADeconvolve::process(const complex<double>* in, size_t len, const Po
 	complex<double>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
 
 	// copy new host data into device memory
-	cudaMemcpy(d_sts, in - SPREADING_LENGTH, SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_sts, in - SPREADING_LENGTH, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyHostToDevice);
 	cudaThreadSynchronize();
 
-	// perform FFT on spectrum
-	cufftExecZ2Z(plan_fft, (cufftDoubleComplex*)d_sts, (cufftDoubleComplex*)d_sfs, CUFFT_FORWARD);
+	// perform 50 FFTs on each channel
+	cufftExecZ2Z(many_plan_fft, (cufftDoubleComplex*)d_sts, (cufftDoubleComplex*)d_sfs, CUFFT_FORWARD);
 	cudaThreadSynchronize();
 
 
 	for(int spreading_code = 0; spreading_code < SPREADING_CODES; spreading_code++ )
 	{
 
+		size_t channel_offset = SPREADING_LENGTH * 2 * 9;
+
 		// rolling dot product
-		gpu_rolling_dot_product(d_sfs, d_cfc[spreading_code], d_cfs, SPREADING_LENGTH * 2, SPREADING_BINS);
+		gpu_rolling_dot_product(d_sfs + channel_offset, d_cfc[spreading_code], d_cfs, SPREADING_LENGTH * 2, SPREADING_BINS);
 		cudaThreadSynchronize();
 
 

@@ -144,6 +144,8 @@ namespace pop
 		// process data
 		PopSource<complex<double> >::process(out, CHAN_SIZE, timestampOut, CHAN_SIZE);
 
+		strided.process(out_strided, CHAN_SIZE, timestampOut, CHAN_SIZE);
+
 		// while( chan_buf_len >= PN_SIZE)
 		// {
 		// 	complex<double> *out = get_buffer(PN_SIZE);
