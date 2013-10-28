@@ -228,10 +228,10 @@ extern "C"
 	}
 
 
-	void gpu_rolling_dot_product(popComplex *in, popComplex *cfc, popComplex *out, int len, int fbins)
+	void gpu_rolling_dot_product(popComplex *in, popComplex *cfc, popComplex *out, int len, int fbins, cudaStream_t* stream )
 	{
 		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
-		rolling_scalar_multiply<<<fbins * 16, len / 16>>>(in, cfc, out, len);
+		rolling_scalar_multiply<<<fbins * 16, len / 16, 0, *stream>>>(in, cfc, out, len);
 //		cudaThreadSynchronize();
 	}
 

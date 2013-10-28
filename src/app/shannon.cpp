@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
 
 	// Setup timestamp interpolate block.  This number is hardcoded.. how can we grab it from popuhd?
 	PopTimestampInterpolation<complex<double> > timestampInterpolation(507);
+	timestampInterpolation.start_thread();
 
 	popuhd.connect(timestampInterpolation);
 
@@ -118,6 +119,8 @@ int main(int argc, char *argv[])
 
 	PopProtADeconvolve deconvolve;
 	deconvolve.start_thread();
+
+	chanfilter.strided.debug_free_buffers = true;
 
 	chanfilter.strided.connect(deconvolve);
 	//chanfilter.connect(popnetwork);

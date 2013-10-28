@@ -47,6 +47,7 @@ namespace pop
 
 	private:
 		void process(const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void deconvolve_channel(unsigned channel, const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<double>* cfc,
@@ -57,6 +58,7 @@ namespace pop
 		cufftHandle plan_fft;
 		cufftHandle plan_deconvolve;
 		cufftHandle many_plan_fft;
+		cudaStream_t deconvolve_stream;
 		popComplex* d_sts; // sampled time series
 		popComplex* d_sfs; // sampled fourier series
 		popComplex* d_cfs; // convoluted frequency swept series
@@ -65,6 +67,8 @@ namespace pop
 		popComplex* d_cfc[SPREADING_LENGTH]; // convolution filter coefficients
 		int*       d_peaks; // array of indices of detected peaks
 		unsigned int*  	   d_peaks_len; // index of last detected peak
+		int*       d_maxima_peaks; // array of indices of detected peaks that are local maxima
+		unsigned int*  	   d_maxima_peaks_len; // index of last detected peak that is a local maxima
 		std::complex<double>* d_sinc_yp; // samples for sinc interpolation around detected peak
 
 		friend class blahtest;

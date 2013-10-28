@@ -70,12 +70,12 @@ extern "C"
 {	
 
 
-	void gpu_threshold_detection(popComplex* d_in, int* d_out, unsigned int *d_outLen, int outLenMax, double threshold, int len, int fbins)
+	void gpu_threshold_detection(popComplex* d_in, int* d_out, unsigned int *d_outLen, int outLenMax, double threshold, int len, int fbins, cudaStream_t* stream)
 	{
 		// reset this index of the largest detected peak to 0
-		checkCudaErrors(cudaMemset(d_outLen, 0, sizeof(int)));
+		checkCudaErrors(cudaMemsetAsync(d_outLen, 0, sizeof(int), *stream));
 
-		threshold_detection<<<fbins * 16, len / 16>>>(d_in, d_out, d_outLen, outLenMax, (threshold*threshold), len, fbins);
+		threshold_detection<<<fbins * 16, len / 16, 0, *stream>>>(d_in, d_out, d_outLen, outLenMax, (threshold*threshold), len, fbins);
 //
 //		checkCudaErrors(cudaThreadSynchronize());
 //
