@@ -7,6 +7,8 @@
 #include "core/basestationfreq.h"
 #include <math.h>
 
+unsigned const bsf_channel_sequence[CHANNEL_COUNT] = CHANNEL_SEQUENCE;
+
 double bsf_fbin_size()
 {
 	return 1.0 / ((double)FFT_SIZE / POP_PROTA_BLOCK_A_WIDTH);
