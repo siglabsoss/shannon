@@ -1,12 +1,12 @@
 
 #include "poptypes.cuh"
 
-__device__ double magnitude2( const popComplex& in )
+__host__ __device__ double magnitude2( const popComplex& in )
 {
 	return in.re * in.re + in.im * in.im;
 }
 
-__device__ popComplex operator*(const popComplex& a, const popComplex& b)
+__host__ __device__ popComplex operator*(const popComplex& a, const popComplex& b)
 {
 	popComplex r;
 	r.re = b.re*a.re - b.im*a.im;
@@ -14,7 +14,7 @@ __device__ popComplex operator*(const popComplex& a, const popComplex& b)
 	return r;
 }
 
-__device__ popComplex operator+(const popComplex& a, const popComplex& b)
+__host__ __device__ popComplex operator+(const popComplex& a, const popComplex& b)
 {
 	popComplex r;
 	r.re = a.re + b.re;

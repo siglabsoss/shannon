@@ -67,7 +67,6 @@ PopProtADeconvolve::~PopProtADeconvolve()
 	checkCudaErrors(cudaFree(d_peaks));
 	checkCudaErrors(cudaFree(d_peaks_len));
 	checkCudaErrors(cudaFree(d_maxima_peaks));
-	checkCudaErrors(cudaFree(d_maxima_peaks_neighbors));
 	checkCudaErrors(cudaFree(d_maxima_peaks_len));
 }
 
@@ -250,7 +249,6 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
     checkCudaErrors(cudaMalloc(&d_peaks_len, sizeof(unsigned int)));
     checkCudaErrors(cudaMalloc(&d_maxima_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
-    checkCudaErrors(cudaMalloc(&d_maxima_peaks_neighbors, MAX_SIGNALS_PER_SPREAD * (1+PEAK_SINC_NEIGHBORS+PEAK_SINC_NEIGHBORS) * sizeof(popComplex) ));
     checkCudaErrors(cudaMalloc(&d_maxima_peaks_len, sizeof(unsigned int)));
 
 
@@ -262,7 +260,6 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_peaks, 0, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
     checkCudaErrors(cudaMemset(d_maxima_peaks, 0, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
-    checkCudaErrors(cudaMemset(d_maxima_peaks_neighbors, 0, MAX_SIGNALS_PER_SPREAD * (1+PEAK_SINC_NEIGHBORS+PEAK_SINC_NEIGHBORS) * sizeof(popComplex)));
 
     // malloc host memory
     d_sinc_yp = (complex<double>*)malloc(PEAK_SINC_SAMPLES * sizeof(complex<double>));
@@ -351,11 +348,11 @@ bool sampleIsLocalMaxima(const complex<double>* data, int sample, int spreadLeng
 }
 
 
-double PopProtADeconvolve::sincInterpolateMaxima(const complex<double>* data, int sample, int neighbors )
+double PopProtADeconvolve::sincInterpolateMaxima(popComplex* data, int sample, int neighbors )
 {
 	size_t osl; // osl oversampled symbol length
 	osl = PEAK_SINC_SAMPLES; // should be one hundred thousand
-	const complex<double>* y = data; // rename this symbol
+	const complex<double>* y = (complex<double>*)data; // rename this symbol
 
 	// offset to first symbol
 	y += sample - neighbors;
@@ -392,8 +389,7 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<double>* data, in
 			else
 			{
 				// required to keep things in double
-				complex<double> holder(y[n].real(), y[n].imag());
-				yp[m] += sin(a) / a * holder;
+				yp[m] += sin(a) / a * y[n];
 			}
 		}
 
@@ -521,27 +517,21 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 
 		double threshold = rbx::Config::get<double>("basestation_threshhold");
 
-		// threshold detection
-		gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, d_maxima_peaks, d_maxima_peaks_len, d_maxima_peaks_neighbors, PEAK_SINC_NEIGHBORS, MAX_SIGNALS_PER_SPREAD, threshold, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
 
-		int h_maxima_peaks[MAX_SIGNALS_PER_SPREAD];
-		unsigned int h_maxima_peaks_len;
-		complex<double> h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL ];
+		popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL ];
+		unsigned h_maxima_peaks[MAX_SIGNALS_PER_SPREAD];
 
-		cudaMemcpyAsync(h_maxima_peaks, d_maxima_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int), cudaMemcpyDeviceToHost, deconvolve_stream);
-		cudaMemcpyAsync(&h_maxima_peaks_len, d_maxima_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost, deconvolve_stream);
-		cudaMemcpyAsync(h_cts, d_maxima_peaks_neighbors, MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL * sizeof(popComplex), cudaMemcpyDeviceToHost, deconvolve_stream);
+		unsigned h_maxima_peaks_len;
+
+		// threshold detection copies final data results to host
+		gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, d_maxima_peaks, d_maxima_peaks_len, PEAK_SINC_NEIGHBORS, MAX_SIGNALS_PER_SPREAD, h_cts, h_maxima_peaks, &h_maxima_peaks_len, threshold, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
+
+//		unsigned int h_peaks_len;
+//		cudaMemcpyAsync(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost, deconvolve_stream);
 
 		// at this point h_cts an array that contains d_cts samples in chunks of PEAK_SINC_SAMPLES_TOTAL (17) samples at a time.
 		// these chunks surround peaks.  The array isn't sparse, but it represents sparse data
 
-		// block till all actions on this stream have completed
-		cudaStreamSynchronize(deconvolve_stream);
-
-
-//		if( channel == 9 && h_maxima_peaks_len != 0 )
-//			cout << "found " << h_maxima_peaks_len << " peaks! ::" << endl;
-		//		 at this point magnitudes have been detected that aren't in the padding
 
 		// Grab a buffer from our second source in prepration for outputting local maxima peaks
 
@@ -561,7 +551,6 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 //						cout << endl;
 //						cout << endl;
 //
-//						cout << i << endl;
 
 			// calculate the center sample (peak) of the h_cts array for this peak
 			unsigned h_cts_peak_index = PEAK_SINC_NEIGHBORS + PEAK_SINC_SAMPLES_TOTAL * i;
@@ -572,7 +561,7 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 
 			sincIndex = sincIndex - PEAK_SINC_NEIGHBORS + h_maxima_peaks[i];
 
-//			cout << "sincIndex " << boost::lexical_cast<string>(sincIndex) << endl;
+			cout << "sincIndex " << boost::lexical_cast<string>(sincIndex) << endl;
 
 			double sincTimeIndex;
 			int sincTimeBin;
@@ -581,7 +570,7 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 			boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
 
 			//			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
-
+//
 			const PopTimestamp *prev = &timestamp_data[(int)floor(sincTimeIndex)];
 			const PopTimestamp *next = &timestamp_data[(int)floor(sincTimeIndex)+1];
 
@@ -593,17 +582,17 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 
 			double timePerSample = timeDifference.get_real_secs();
 
-			//		cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
+					cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
 
 			PopTimestamp exactTimestamp = PopTimestamp(*prev);
 
-
-
-			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
-
+//
+//
+//			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+//
 			exactTimestamp += timePerSample * ( sincTimeIndex - floor(sincTimeIndex) );
 
-			cout << "code " << spreading_code << " peak number " << i << " found in bin " << sincTimeBin << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
+			cout << "code " << spreading_code << " peak number " << i << " found on channel " << channel << " in bin " << sincTimeBin << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
 
 			//					cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
 			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
@@ -616,7 +605,7 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 
 				delta -= last;
 
-				cout << "    delt time is " << boost::lexical_cast<string>(delta.get_full_secs()) << "   -   " << boost::lexical_cast<string>(delta.get_frac_secs()) << endl;
+				cout << "    delt time is " << boost::lexical_cast<string>(delta.get_full_secs()) << "   -   " << boost::lexical_cast<string>(delta.get_frac_secs()) << endl << endl << endl;
 
 
 				last = exactTimestamp;

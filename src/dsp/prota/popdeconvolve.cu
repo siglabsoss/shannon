@@ -74,7 +74,7 @@ __global__ void threshold_detection(popComplex *in, int *out, unsigned int *outL
 // out is an array of detected local maxima pkeas
 // outLen is the number of detected local maxima peaks
 
-__global__ void local_maxima_detection(popComplex *data, int *in, unsigned int *inLen, int *out, unsigned int *outLen, popComplex* d_maxima_peaks_neighbors, unsigned peak_sinc_neighbors, int outLenMax, int spreadLength, int fbins)
+__global__ void local_maxima_detection(popComplex *data, int *in, unsigned int *inLen, int *out, unsigned int *outLen, unsigned peak_sinc_neighbors, int outLenMax, int spreadLength, int fbins)
 {
 	// detectedPeakIndex is the index into in[] which this thread is looking at
 	int detectedPeakIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -115,7 +115,6 @@ __global__ void local_maxima_detection(popComplex *data, int *in, unsigned int *
 	if ( magnitude2(data[sampleIndex]) <= surroundingMax )
 		return;
 
-
 	// atomicInc increments the variable at the pointer only if the second param is larger than the stored variable
 	// this variable always starts at 0 (set before the kernel launch)
 	// the "old" value at the pointer location is returned, which is this thread's unique index into the output buffer
@@ -127,11 +126,6 @@ __global__ void local_maxima_detection(popComplex *data, int *in, unsigned int *
 
 	// save the index of our detection to the array
 	out[ourUniqueIndex] = sampleIndex;
-
-	// copy neighbors into this array;
-	// we copy peak_sinc_neighbors (8) samples on either side for a total of (17) samples
-	// after this kernel is done the host can do a single memcopy and get all the needed information for sinc interpolation
-	memcpy(d_maxima_peaks_neighbors, data+sampleIndex-peak_sinc_neighbors, (1+peak_sinc_neighbors+peak_sinc_neighbors)*sizeof(popComplex) );
 }
 
 #undef CHECK_POINTS
@@ -143,17 +137,34 @@ extern "C"
 // d_out is an array of samples which are above the threshold with size outLenMax
 // d_outLen is the length of valid samples in the d_out array (with a value of no more than outLenMax)
 // d_maxima_out is an array of samples which have passed the local maxima test
-	void gpu_threshold_detection(popComplex* d_in, int* d_out, unsigned int *d_outLen, int* d_maxima_out, unsigned int *d_maxima_outLen, popComplex* d_maxima_peaks_neighbors, unsigned peak_sinc_neighbors, int outLenMax, double threshold, int len, int fbins, cudaStream_t* stream)
+	void gpu_threshold_detection(popComplex* d_in, int* d_out, unsigned int *d_outLen, int* d_maxima_out, unsigned int *d_maxima_outLen, unsigned peak_sinc_neighbors, int outLenMax, popComplex* h_cts, unsigned *h_maxima_peaks, unsigned *h_maxima_peaks_len, double threshold, int len, int fbins, cudaStream_t* stream)
 	{
 		// reset this index of the largest detected peak to 0
-		checkCudaErrors(cudaMemsetAsync(d_outLen, 0, sizeof(int), *stream));
+		checkCudaErrors(cudaMemsetAsync(d_outLen, 0, sizeof(unsigned int), *stream));
 
 		threshold_detection<<<fbins * 16, len / 16, 0, *stream>>>(d_in, d_out, d_outLen, outLenMax, (threshold*threshold), len, fbins);
 
-		checkCudaErrors(cudaMemsetAsync(d_maxima_outLen, 0, sizeof(int), *stream));
+		checkCudaErrors(cudaMemsetAsync(d_maxima_outLen, 0, sizeof(unsigned int), *stream));
 
-		local_maxima_detection<<<1, outLenMax, 0, *stream>>>(d_in, d_out, d_outLen, d_maxima_out, d_maxima_outLen, d_maxima_peaks_neighbors, peak_sinc_neighbors, outLenMax, len, fbins);
+		local_maxima_detection<<<1, outLenMax, 0, *stream>>>(d_in, d_out, d_outLen, d_maxima_out, d_maxima_outLen, peak_sinc_neighbors, outLenMax, len, fbins);
 
+		// copy the results back to the host
+		cudaMemcpyAsync(h_maxima_peaks_len, d_maxima_outLen, sizeof(unsigned int), cudaMemcpyDeviceToHost, *stream);
+		cudaMemcpyAsync(h_maxima_peaks, d_maxima_out, sizeof(unsigned int) * outLenMax, cudaMemcpyDeviceToHost, *stream);
+
+		// block till all actions on this stream have completed
+		cudaStreamSynchronize(*stream);
+
+		int totalSamples = (1+peak_sinc_neighbors+peak_sinc_neighbors);
+
+		// loop through results and copy neighboring samples back to host
+		for(unsigned i = 0; i < *h_maxima_peaks_len; i++)
+		{
+			cudaMemcpyAsync(h_cts + i*totalSamples, d_in + h_maxima_peaks[i] - peak_sinc_neighbors, sizeof(popComplex) * totalSamples, cudaMemcpyDeviceToHost, *stream);
+		}
+
+		// block till all actions on this stream have completed
+		cudaStreamSynchronize(*stream);
 	}
 
 
