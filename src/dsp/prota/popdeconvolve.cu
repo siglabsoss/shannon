@@ -28,6 +28,8 @@
 
 #include <dsp/prota/popchanfilter.cuh>
 
+#include <cublas_v2.h>
+
 using namespace std;
 
 

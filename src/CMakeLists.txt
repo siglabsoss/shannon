@@ -58,6 +58,7 @@ add_executable(shannon ${all_SOURCES} ${dsp_SOURCES} app/shannon.cpp)
     
 target_link_libraries(shannon ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
 CUDA_ADD_CUFFT_TO_TARGET( shannon )
+CUDA_ADD_CUBLAS_TO_TARGET( shannon )
 
 
 
