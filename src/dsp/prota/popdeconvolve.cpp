@@ -349,6 +349,29 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<double>* data, in
 	oslClipMin = floor((double)(osl/2) - pixelSize);
 	oslClipMax = ceil((double)(osl/2) + pixelSize);
 
+	static double sina_a[PEAK_SINC_SAMPLES][PEAK_SINC_NEIGHBORS+PEAK_SINC_NEIGHBORS+1];
+	static bool computed = false;
+
+	// compute sin(a)/a matrix only first time
+	// NOTE: This means this function cannot be called with neighbors != PEAK_SINC_NEIGHBORS
+	if( !computed )
+	{
+		for( m = oslClipMin; m < oslClipMax; m++ )
+		{
+			for( n = 0; n < ncs; n++ )
+			{
+				a = M_PI * ( (double)m / (double)osl * (double)ncs - (double)n );
+				if( 0 == a )
+					sina_a[m][n] = 0.0;
+				else
+					sina_a[m][n] = sin(a) / a;
+			}
+		}
+
+		computed = true;
+	}
+
+
 
 	// rename member variable that was mallocd during init
 	// Note that because we are only looking in the clipped region but using real offsets into the output array, we are mallocing a bunch of extra memory that is never used
@@ -368,7 +391,7 @@ double PopProtADeconvolve::sincInterpolateMaxima(const complex<double>* data, in
 			{
 				// required to keep things in double
 				complex<double> holder(y[n].real(), y[n].imag());
-				yp[m] += sin(a) / a * holder;
+				yp[m] += sina_a[m][n] * holder;
 			}
 		}
 
