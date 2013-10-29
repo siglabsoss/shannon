@@ -152,11 +152,12 @@ public:
             // if this debug option is set, this prints how many free buffers are avaliable
             static int iii = 0;
             using namespace std;
+            int free_buffers = POPSOURCE_NUM_BUFFERS - (*it)->queue_size();
             if( debug_free_buffers )
             {
             	// only report every N times to reduce spam
             	if( iii++ % 15 == 0 )
-            		cout << get_name() << " free buffers: " << POPSOURCE_NUM_BUFFERS - (*it)->queue_size() << endl;
+            		cout << get_name() << " free buffers: " << free_buffers << endl;
             }
 
             // check for overflow

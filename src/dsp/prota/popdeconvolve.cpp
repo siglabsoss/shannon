@@ -486,7 +486,7 @@ void PopProtADeconvolve::process(const complex<double> (*in)[50], size_t len, co
 //	cudaThreadSynchronize();
 
 
-	for( int channel = 0; channel < 9; channel++ )
+	for( int channel = 0; channel < 8; channel++ )
 	{
 		deconvolve_channel(bsf_channel_sequence[channel], in, len, timestamp_data, timestamp_size);
 	}
@@ -556,64 +556,64 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 			unsigned h_cts_peak_index = PEAK_SINC_NEIGHBORS + PEAK_SINC_SAMPLES_TOTAL * i;
 
 			// calculate the fractional sample which the peak occured in relative to the linear sample
-			double sincIndex = sincInterpolateMaxima(h_cts, h_cts_peak_index, PEAK_SINC_NEIGHBORS);
-
-
-			sincIndex = sincIndex - PEAK_SINC_NEIGHBORS + h_maxima_peaks[i];
-
-			cout << "sincIndex " << boost::lexical_cast<string>(sincIndex) << endl;
-
-			double sincTimeIndex;
-			int sincTimeBin;
-
-			// convert this linear sample into a range of (0 - SPREADING_LENGTH) samples which represents real time
-			boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
-
-			//			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
-//
-			const PopTimestamp *prev = &timestamp_data[(int)floor(sincTimeIndex)];
-			const PopTimestamp *next = &timestamp_data[(int)floor(sincTimeIndex)+1];
-
-			// create mutable copy
-			PopTimestamp timeDifference = PopTimestamp(*next);
-
-			// calculate difference using -= overload (which should be most accurate)
-			timeDifference -= *prev;
-
-			double timePerSample = timeDifference.get_real_secs();
-
-					cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
-
-			PopTimestamp exactTimestamp = PopTimestamp(*prev);
-
+//			double sincIndex = sincInterpolateMaxima(h_cts, h_cts_peak_index, PEAK_SINC_NEIGHBORS);
 //
 //
-//			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+//			sincIndex = sincIndex - PEAK_SINC_NEIGHBORS + h_maxima_peaks[i];
 //
-			exactTimestamp += timePerSample * ( sincTimeIndex - floor(sincTimeIndex) );
-
-			cout << "code " << spreading_code << " peak number " << i << " found on channel " << channel << " in bin " << sincTimeBin << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
-
-			//					cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
-			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
-			//			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
-
-
-			if( i == 0 )
-			{
-				PopTimestamp delta = exactTimestamp;
-
-				delta -= last;
-
-				cout << "    delt time is " << boost::lexical_cast<string>(delta.get_full_secs()) << "   -   " << boost::lexical_cast<string>(delta.get_frac_secs()) << endl << endl << endl;
-
-
-				last = exactTimestamp;
-			}
-
-
-			// pointer to current maxima in the source buffer
-			currentMaxima = maximaOut+i;
+////			cout << "sincIndex " << boost::lexical_cast<string>(sincIndex) << endl;
+//
+//			double sincTimeIndex;
+//			int sincTimeBin;
+//
+//			// convert this linear sample into a range of (0 - SPREADING_LENGTH) samples which represents real time
+//			boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
+//
+//			//			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
+////
+//			const PopTimestamp *prev = &timestamp_data[(int)floor(sincTimeIndex)];
+//			const PopTimestamp *next = &timestamp_data[(int)floor(sincTimeIndex)+1];
+//
+//			// create mutable copy
+//			PopTimestamp timeDifference = PopTimestamp(*next);
+//
+//			// calculate difference using -= overload (which should be most accurate)
+//			timeDifference -= *prev;
+//
+//			double timePerSample = timeDifference.get_real_secs();
+//
+//					cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
+//
+//			PopTimestamp exactTimestamp = PopTimestamp(*prev);
+//
+////
+////
+////			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+////
+//			exactTimestamp += timePerSample * ( sincTimeIndex - floor(sincTimeIndex) );
+//
+			cout << "code " << spreading_code << " peak number " << i << " found on channel " << channel << " in bin " << h_maxima_peaks[i] << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
+//
+//			//					cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
+//			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+//			//			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
+//
+//
+//			if( i == 0 )
+//			{
+//				PopTimestamp delta = exactTimestamp;
+//
+//				delta -= last;
+//
+//				cout << "    delt time is " << boost::lexical_cast<string>(delta.get_full_secs()) << "   -   " << boost::lexical_cast<string>(delta.get_frac_secs()) << endl << endl << endl;
+//
+//
+//				last = exactTimestamp;
+//			}
+//
+//
+//			// pointer to current maxima in the source buffer
+//			currentMaxima = maximaOut+i;
 
 //			*currentMaxima = pop::PopSymbol(spreading_code, sqrt(magnitude2(h_cts[localMaximaPeaks[i]])), sincTimeBin, 0, rbx::Config::get<double>("basestation_id"), exactTimestamp);
 		}
