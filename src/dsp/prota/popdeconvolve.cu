@@ -156,11 +156,22 @@ extern "C"
 		cudaStreamSynchronize(*stream);
 
 		int totalSamples = (1+peak_sinc_neighbors+peak_sinc_neighbors);
+		int up = 0;
+		int center = totalSamples;
+		int down = totalSamples*2;
+
 
 		// loop through results and copy neighboring samples back to host
 		for(unsigned i = 0; i < *h_maxima_peaks_len; i++)
 		{
-			cudaMemcpyAsync(h_cts + i*totalSamples, d_in + h_maxima_peaks[i] - peak_sinc_neighbors, sizeof(popComplex) * totalSamples, cudaMemcpyDeviceToHost, *stream);
+			// copy left and right neighbors on the previous fbin
+			cudaMemcpyAsync(h_cts + up + i*(totalSamples*3),     d_in - len + h_maxima_peaks[i] - peak_sinc_neighbors, sizeof(popComplex) * totalSamples, cudaMemcpyDeviceToHost, *stream);
+
+			// copy left and right neighbors on the fbin with detected local maxima peak
+			cudaMemcpyAsync(h_cts + center + i*(totalSamples*3), d_in + h_maxima_peaks[i] - peak_sinc_neighbors, sizeof(popComplex) * totalSamples, cudaMemcpyDeviceToHost, *stream);
+
+			// copy left and right neighbors on the next fbin
+			cudaMemcpyAsync(h_cts + down + i*(totalSamples*3),   d_in + len + h_maxima_peaks[i] - peak_sinc_neighbors, sizeof(popComplex) * totalSamples, cudaMemcpyDeviceToHost, *stream);
 		}
 
 		// block till all actions on this stream have completed

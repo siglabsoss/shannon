@@ -518,7 +518,8 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 		double threshold = rbx::Config::get<double>("basestation_threshhold");
 
 
-		popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL ];
+		// allocate data in a rectangle which is +- neighbor samples and +- 1 fbin (which gives us *3)
+		popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL * 3 ];
 		unsigned h_maxima_peaks[MAX_SIGNALS_PER_SPREAD];
 
 		unsigned h_maxima_peaks_len;
@@ -544,6 +545,9 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 
 		//		cout << "got " << localMaximaPeaks.size() << " peaks!" << endl;
 
+		int up = 0;
+		int center = PEAK_SINC_SAMPLES_TOTAL;
+		int down   = PEAK_SINC_SAMPLES_TOTAL*2;
 
 		for( unsigned int i = 0; i < std::min((unsigned)MAX_SIGNALS_PER_SPREAD, h_maxima_peaks_len); i++ )
 		{
@@ -553,7 +557,7 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 //
 
 			// calculate the center sample (peak) of the h_cts array for this peak
-			unsigned h_cts_peak_index = PEAK_SINC_NEIGHBORS + PEAK_SINC_SAMPLES_TOTAL * i;
+			unsigned h_cts_peak_index = PEAK_SINC_NEIGHBORS + (PEAK_SINC_SAMPLES_TOTAL*3) * i + center;
 
 			// calculate the fractional sample which the peak occured in relative to the linear sample
 //			double sincIndex = sincInterpolateMaxima(h_cts, h_cts_peak_index, PEAK_SINC_NEIGHBORS);
