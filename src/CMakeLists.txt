@@ -20,6 +20,7 @@ set(all_SOURCES
 	mdl/popradio.cpp
 	mdl/poptimestamp.cpp
 	mdl/popsymbol.cpp
+	mdl/poppeak.cpp
 	core/popassert.c
 	core/basestationfreq.c
 	core/popsource.cpp

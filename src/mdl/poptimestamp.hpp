@@ -9,7 +9,7 @@
 namespace pop
 {
 
-class PopTimestamp
+class __attribute__ ((__packed__)) PopTimestamp
 {
 	/*!
 	 * A time_spec_t holds a seconds and a fractional seconds time value.

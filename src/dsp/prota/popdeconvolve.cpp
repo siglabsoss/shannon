@@ -16,6 +16,7 @@
 #include "boost/tuple/tuple.hpp"
 #include <boost/lexical_cast.hpp>
 #include "core/config.hpp"
+#include "mdl/poppeak.hpp"
 
 #include "dsp/utils.hpp"
 
@@ -23,7 +24,7 @@
 
 #include <dsp/prota/popchanfilter.cuh>
 #include <dsp/prota/popdeconvolve.cuh>
-#include "popdeconvolve.hpp"
+#include "dsp/prota/popdeconvolve.hpp"
 #include "core/basestationfreq.h"
 
 //#define DEBUG_POPDECONVOLVE_TIME
@@ -37,10 +38,7 @@ namespace pop
 PopTimestamp last;
 
 
-#define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
-#define PEAK_SINC_NEIGHBORS (8)     // how many samples to add to either side of a local maxima for sinc interpolate
-#define PEAK_SINC_SAMPLES_TOTAL (PEAK_SINC_NEIGHBORS+PEAK_SINC_NEIGHBORS+1) // how many total samples are needed for sinc interpolation
-#define PEAK_SINC_SAMPLES (100000)  // how many samples to sinc interpolate around detected peaks
+
 
 extern "C" void gpu_rolling_dot_product(popComplex *in, popComplex *cfc, popComplex *out, int len, int fbins, cudaStream_t* stream );
 extern "C" void gpu_peak_detection(popComplex* in, double* peak, int len, int fbins);
