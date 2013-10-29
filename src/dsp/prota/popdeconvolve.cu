@@ -80,7 +80,7 @@ __global__ void local_maxima_detection(popComplex *data, int *in, unsigned int *
 	int detectedPeakIndex = blockIdx.x * blockDim.x + threadIdx.x;
 
 	// don't process if this thread is looking at a peak that wasn't detected
-	if( detectedPeakIndex > *inLen )
+	if( detectedPeakIndex >= *inLen )
 		return;
 
 	// sample is the index into data which we are considering for a local maxima
