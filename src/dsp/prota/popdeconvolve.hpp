@@ -68,6 +68,7 @@ namespace pop
 		int*       d_peaks; // array of indices of detected peaks
 		unsigned int*  	   d_peaks_len; // index of last detected peak
 		int*       d_maxima_peaks; // array of indices of detected peaks that are local maxima
+		popComplex*       d_maxima_peaks_neighbors; // array of raw data peaks and neighbors required for sinc interpolation
 		unsigned int*  	   d_maxima_peaks_len; // index of last detected peak that is a local maxima
 		std::complex<double>* d_sinc_yp; // samples for sinc interpolation around detected peak
 
