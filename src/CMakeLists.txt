@@ -58,7 +58,7 @@ add_custom_target(runtest COMMAND test DEPENDS test WORKING_DIRECTORY ${CMAKE_SO
 # For target shannon
 add_executable(shannon ${all_SOURCES} ${dsp_SOURCES} app/shannon.cpp)
     
-target_link_libraries(shannon ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
+target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
 CUDA_ADD_CUFFT_TO_TARGET( shannon )
 
 
@@ -70,7 +70,7 @@ endif() # if CUDA_FOUND
 
 # For target s3p
 add_executable(s3p ${all_SOURCES} app/s3p.cpp)
-target_link_libraries(s3p ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} uhd)
+target_link_libraries(s3p ${Boost_LIBRARIES} uhd)
 	
 
 

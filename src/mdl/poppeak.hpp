@@ -45,7 +45,7 @@ public:
 	uint8_t channel;
 
 	// basestation's id
-	uint16_t basestaion;
+	uint16_t basestation;
 
 	data_point_t data[PEAK_SINC_SAMPLES_TOTAL*3];
 

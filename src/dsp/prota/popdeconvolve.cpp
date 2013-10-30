@@ -621,7 +621,7 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 			// finish this PopPeak
 			currentPeak->channel = channel;
 			currentPeak->symbol = spreading_code;
-			currentPeak->basestaion = rbx::Config::get<double>("basestation_id");
+			currentPeak->basestation = rbx::Config::get<double>("basestation_id");
 
 
 
