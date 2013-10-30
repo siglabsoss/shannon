@@ -35,7 +35,7 @@ public:
 	// the symbol of this detected peak
 	uint8_t symbol;
 
-	// the upper left fbin represented by this class (fbin+1 is the detected peak's fbin).  this value is the smallest fbin represented by this peak
+	// the detected peak's fbin
 	uint8_t fbin;
 
 	// left most sample's x which is a rolling number.  this value is the smallest sample_x represented by this peak
@@ -47,7 +47,7 @@ public:
 	// basestation's id
 	uint16_t basestation;
 
-	data_point_t data[PEAK_SINC_SAMPLES_TOTAL*3];
+	data_point_t data[PEAK_SINC_SAMPLES_TOTAL];
 
 //	void debug_print();
 };

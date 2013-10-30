@@ -568,9 +568,12 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 
 		// only get_buffer if we are going to write into it
 		if( h_maxima_peaks_len != 0 )
+		{
 			peaksOut = peaks.get_buffer( h_maxima_peaks_len );
+			cout << "got " << h_maxima_peaks_len << " peaks!" << endl;
+		}
 
-		//		cout << "got " << localMaximaPeaks.size() << " peaks!" << endl;
+
 
 		int up = 0;
 		int center = PEAK_SINC_SAMPLES_TOTAL;
@@ -589,8 +592,8 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 			double timeIndex;
 			int timeBin;
 
-			// loop through each sample on the previous, deceted, and next fbins
-			for( unsigned int sample = 0; sample < PEAK_SINC_SAMPLES_TOTAL*3; sample++ )
+			// loop through detected fbins (ignore previous and next)
+			for( unsigned int sample = PEAK_SINC_SAMPLES_TOTAL; sample < PEAK_SINC_SAMPLES_TOTAL*2; sample++ )
 			{
 				// h_cts is sparse, this index is the original index into the d_cts array
 				int d_cts_index = h_maxima_peaks[i] - PEAK_SINC_NEIGHBORS + (sample % PEAK_SINC_SAMPLES_TOTAL);
@@ -606,8 +609,9 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 //				cout << "i = " << i << " sample = " << sample << " timeIndex = " << timeIndex << " timeBin = " << timeBin << endl;
 
 				// set the data point and timestamp for this specific sample
-				currentPeak->data[sample].sample = h_cts[sample];
-				currentPeak->data[sample].timestamp = get_timestamp_for_index(timeIndex, timestamp_data);
+				// but offset so the PopPeak array only contains data for the detected fbin
+				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].sample = h_cts[sample];
+				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].timestamp = get_timestamp_for_index(timeIndex, timestamp_data);
 
 				// all the positional data in the PopPeak object is related to the upper left sample
 				// if we are on the first iteration of the loop, set this stuff now
@@ -626,7 +630,7 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 
 
 
-			cout << "code " << spreading_code << " peak number " << i << " found on channel " << channel << " in bin " << h_maxima_peaks[i] << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
+//			cout << "code " << spreading_code << " peak number " << i << " found on channel " << channel << " in bin " << h_maxima_peaks[i] << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
 //
 //			//					cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
 //			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
