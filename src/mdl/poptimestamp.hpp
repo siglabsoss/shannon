@@ -150,6 +150,9 @@ public:
 
 extern bool operator==(const PopTimestamp &lhs, const PopTimestamp &rhs);
 
+//! Implement printable interface
+std::ostream& operator << (std::ostream &o, const PopTimestamp &t);
+
 
 
 } // namespace pop
