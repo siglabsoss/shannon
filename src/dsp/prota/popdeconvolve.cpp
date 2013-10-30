@@ -16,7 +16,7 @@
 #include "boost/tuple/tuple.hpp"
 #include <boost/lexical_cast.hpp>
 #include "core/config.hpp"
-#include "mdl/poppeak.hpp"
+
 
 #include "dsp/utils.hpp"
 
@@ -47,7 +47,7 @@ extern "C" void init_popdeconvolve(thrust::device_vector<double>** d_mag_vec, si
 
 
 PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<double>[50] >( "PopProtADeconvolve", SPREADING_LENGTH ),
-		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima")
+		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima"), peaks ("PopProtADeconvolvePeaks")
 {
 
 }
@@ -458,10 +458,13 @@ boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbin
 
 
 
-void PopProtADeconvolve::process(const complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopProtADeconvolve::process(const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 
 //	cout << "in deconv with " << len << " samples and " << timestamp_size << " stamps " << endl;
+
+	// this is a running counter which represents the x-offset of the first valid sample (without padding) that will be unique for a long time
+	static size_t running_counter = 0;
 
 	unsigned n;
 	double h_peak[10];
@@ -486,8 +489,10 @@ void PopProtADeconvolve::process(const complex<double> (*in)[50], size_t len, co
 
 	for( int channel = 0; channel < 8; channel++ )
 	{
-		deconvolve_channel(bsf_channel_sequence[channel], in, len, timestamp_data, timestamp_size);
+		deconvolve_channel(bsf_channel_sequence[channel], running_counter, in, len, timestamp_data, timestamp_size);
 	}
+
+	running_counter += SPREADING_LENGTH;
 
 	t2 = microsec_clock::local_time();
 	td = t2 - t1;
@@ -495,8 +500,32 @@ void PopProtADeconvolve::process(const complex<double> (*in)[50], size_t len, co
 
 }
 
+PopTimestamp get_timestamp_for_index(double index, const PopTimestamp* timestamp_data)
+{
+	const PopTimestamp *prev = &timestamp_data[(int)floor(index)];
+	const PopTimestamp *next = &timestamp_data[(int)floor(index)+1];
 
-void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+	// create mutable copy
+	PopTimestamp timeDifference = PopTimestamp(*next);
+
+	// calculate difference using -= overload (which should be most accurate)
+	timeDifference -= *prev;
+
+	double timePerSample = timeDifference.get_real_secs();
+
+//	cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
+
+	PopTimestamp exactTimestamp = PopTimestamp(*prev);
+
+	//			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
+	//
+	exactTimestamp += timePerSample * ( index - floor(index) );
+
+	return exactTimestamp;
+}
+
+
+void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_counter, const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 //	complex<double>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
 
@@ -534,12 +563,12 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 
 		// Grab a buffer from our second source in prepration for outputting local maxima peaks
 
-		PopSymbol* maximaOut;
-		PopSymbol* currentMaxima;
+		PopPeak* peaksOut;
+		PopPeak* currentPeak;
 
 		// only get_buffer if we are going to write into it
 		if( h_maxima_peaks_len != 0 )
-			maximaOut = maxima.get_buffer( h_maxima_peaks_len );
+			peaksOut = peaks.get_buffer( h_maxima_peaks_len );
 
 		//		cout << "got " << localMaximaPeaks.size() << " peaks!" << endl;
 
@@ -549,51 +578,54 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 
 		for( unsigned int i = 0; i < std::min((unsigned)MAX_SIGNALS_PER_SPREAD, h_maxima_peaks_len); i++ )
 		{
-//						cout << endl;
-//						cout << endl;
-//						cout << endl;
-//
+			// pointer to current maxima in the source buffer
+			currentPeak = peaksOut+i;
 
-			// calculate the center sample (peak) of the h_cts array for this peak
+
+			// calculate the center sample (peak) in units of the sparse h_cts array for this peak
+			// remember h_cts is a sparse array with 3 runs of PEAK_SINC_SAMPLES_TOTAL samples on the previous, detected, and next fbins
 			unsigned h_cts_peak_index = PEAK_SINC_NEIGHBORS + (PEAK_SINC_SAMPLES_TOTAL*3) * i + center;
 
-			// calculate the fractional sample which the peak occured in relative to the linear sample
-//			double sincIndex = sincInterpolateMaxima(h_cts, h_cts_peak_index, PEAK_SINC_NEIGHBORS);
-//
-//
-//			sincIndex = sincIndex - PEAK_SINC_NEIGHBORS + h_maxima_peaks[i];
-//
-////			cout << "sincIndex " << boost::lexical_cast<string>(sincIndex) << endl;
-//
-//			double sincTimeIndex;
-//			int sincTimeBin;
-//
-//			// convert this linear sample into a range of (0 - SPREADING_LENGTH) samples which represents real time
-//			boost::tie(sincTimeIndex, sincTimeBin) = linearToBins(sincIndex, SPREADING_LENGTH * 2, SPREADING_BINS);
-//
-//			//			cout << "sincTimeIndex " << sincTimeIndex << " ( " << 100 * sincTimeIndex / (SPREADING_LENGTH * 2) << "% )" << " sincTimeBin " << sincTimeBin << endl;
-////
-//			const PopTimestamp *prev = &timestamp_data[(int)floor(sincTimeIndex)];
-//			const PopTimestamp *next = &timestamp_data[(int)floor(sincTimeIndex)+1];
-//
-//			// create mutable copy
-//			PopTimestamp timeDifference = PopTimestamp(*next);
-//
-//			// calculate difference using -= overload (which should be most accurate)
-//			timeDifference -= *prev;
-//
-//			double timePerSample = timeDifference.get_real_secs();
-//
-//					cout << "    with time per sample of " << boost::lexical_cast<string>(timePerSample) << endl;
-//
-//			PopTimestamp exactTimestamp = PopTimestamp(*prev);
-//
-////
-////
-////			//		cout << "    number of samples diff " << ( sincTimeIndex - prev->offset_adjusted(timestamp_buffer_correction) );
-////
-//			exactTimestamp += timePerSample * ( sincTimeIndex - floor(sincTimeIndex) );
-//
+			double timeIndex;
+			int timeBin;
+
+			// loop through each sample on the previous, deceted, and next fbins
+			for( unsigned int sample = 0; sample < PEAK_SINC_SAMPLES_TOTAL*3; sample++ )
+			{
+				// h_cts is sparse, this index is the original index into the d_cts array
+				int d_cts_index = h_maxima_peaks[i] - PEAK_SINC_NEIGHBORS + (sample % PEAK_SINC_SAMPLES_TOTAL);
+
+				// use integer division math to bump us to the correct fbin
+				int fbin_bump = (sample / PEAK_SINC_SAMPLES_TOTAL) * SPREADING_LENGTH * 2;
+
+				d_cts_index += fbin_bump;
+
+
+				boost::tie(timeIndex, timeBin) = linearToBins(d_cts_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+
+//				cout << "i = " << i << " sample = " << sample << " timeIndex = " << timeIndex << " timeBin = " << timeBin << endl;
+
+				// set the data point and timestamp for this specific sample
+				currentPeak->data[sample].sample = h_cts[sample];
+				currentPeak->data[sample].timestamp = get_timestamp_for_index(timeIndex, timestamp_data);
+
+				// all the positional data in the PopPeak object is related to the upper left sample
+				// if we are on the first iteration of the loop, set this stuff now
+				if( sample == 0 )
+				{
+					currentPeak->sample_x = running_counter + timeIndex;
+					currentPeak->fbin = timeBin;
+				}
+			}
+
+			// finish this PopPeak
+			currentPeak->channel = channel;
+			currentPeak->symbol = spreading_code;
+			currentPeak->basestaion = rbx::Config::get<double>("basestation_id");
+
+
+
+
 			cout << "code " << spreading_code << " peak number " << i << " found on channel " << channel << " in bin " << h_maxima_peaks[i] << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
 //
 //			//					cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
@@ -612,17 +644,11 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, const complex<doub
 //
 //				last = exactTimestamp;
 //			}
-//
-//
-//			// pointer to current maxima in the source buffer
-//			currentMaxima = maximaOut+i;
 
-//			*currentMaxima = pop::PopSymbol(spreading_code, sqrt(magnitude2(h_cts[localMaximaPeaks[i]])), sincTimeBin, 0, rbx::Config::get<double>("basestation_id"), exactTimestamp);
 		}
 
-		// call process and send out all detected maxima.  If this is 0 nothing happens (ie it's handled correctly internally)
-//		maxima.process(localMaximaPeaks.size());
-
+		// call process and send out all detected peaks.  If this is 0 nothing happens (ie it's handled correctly internally)
+		peaks.process(h_maxima_peaks_len);
 	}
 
 }

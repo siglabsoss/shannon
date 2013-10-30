@@ -22,6 +22,7 @@
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "net/popnetwork.hpp"
+#include "mdl/poppeak.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
@@ -115,13 +116,14 @@ int main(int argc, char *argv[])
 
 	Config::loadFromDisk();
 
+	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
-
-	PopNetwork<PopSymbol> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
+	PopNetwork<PopPeak> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
 	PopTokenizer tokenizer;
 
 	basestationConnection.connect(tokenizer);
+	basestationConnection.connect(dump);
 
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();

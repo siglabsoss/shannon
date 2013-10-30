@@ -84,11 +84,13 @@ public:
 
 	void wakeup()
 	{
-		cout << "awake" << endl;
+
 
 		// if there is a source connected to us
 		if( this->m_rgSource != NULL )
 		{
+			cout << PopSink<DATA_TYPE>::get_name() << " is awake and ready to send." << endl;
+
 			// We assume these were set correctly in the constructor
 			outgoing_endpoint_.address(ip::address::from_string(outgoing_ip_));
 			outgoing_endpoint_.port(outgoing_port_);
@@ -99,6 +101,8 @@ public:
 		// if there is a sink connected to us
 		if( this->m_rgSinks.size() != 0 )
 		{
+			cout << PopSource<DATA_TYPE>::get_name() << " is awake and listening on port " << incoming_port_ << "."<< endl;
+
 			// open the udp port.
 			// How is this different than the socket_ constructor in this class's constructor?
 			incoming_endpoint_.port(incoming_port_);

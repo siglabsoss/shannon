@@ -17,6 +17,8 @@
 #include <core/popsource.hpp>
 #include <core/popsink.hpp>
 #include <mdl/popsymbol.hpp>
+#include <mdl/poppeak.hpp>
+
 
 #include <cufft.h>
 
@@ -33,10 +35,6 @@ using namespace boost::posix_time;
 #define SPREADING_CODES  (2)
 
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
-#define PEAK_SINC_NEIGHBORS (7)     // how many samples to add to either side of a local maxima for sinc interpolate
-#define PEAK_SINC_SAMPLES_TOTAL (PEAK_SINC_NEIGHBORS+PEAK_SINC_NEIGHBORS+1) // how many total samples are needed for sinc interpolation
-#define PEAK_SINC_SAMPLES (100000)  // how many samples to sinc interpolate around detected peaks
-
 
 
 
@@ -49,10 +47,11 @@ namespace pop
 		~PopProtADeconvolve();
 		PopSource<std::complex<double> > cts;
 		PopSource<PopSymbol> maxima;
+		PopSource<PopPeak> peaks;
 
 	private:
 		void process(const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
-		void deconvolve_channel(unsigned channel, const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void deconvolve_channel(unsigned channel, size_t running_counter, const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<double>* cfc,

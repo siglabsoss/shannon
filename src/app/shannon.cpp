@@ -120,15 +120,15 @@ int main(int argc, char *argv[])
 	PopProtADeconvolve deconvolve;
 	deconvolve.start_thread();
 
-	chanfilter.strided.debug_free_buffers = true;
+//	chanfilter.strided.debug_free_buffers = true;
 
 	chanfilter.strided.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
 
 	// Open Network Connection to our designated s3p
-	PopNetwork<PopSymbol> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"));
+	PopNetwork<PopPeak> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
 
-	deconvolve.maxima.connect(s3pConnection);
+	deconvolve.peaks.connect(s3pConnection);
 
 	// call this after connecting all sources or sinks
 	s3pConnection.wakeup();

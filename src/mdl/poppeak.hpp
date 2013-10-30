@@ -1,11 +1,18 @@
 #ifndef __POP_PEAK_H_
 #define __POP_PEAK_H_
 
-
-#include "dsp/prota/popdeconvolve.hpp"
 #include "mdl/poptimestamp.hpp"
-
+#include <dsp/common/poptypes.h>
 #include <stdint.h>
+
+
+#define PEAK_SINC_NEIGHBORS (7)     // how many samples to add to either side of a local maxima for sinc interpolate
+#define PEAK_SINC_SAMPLES_TOTAL (PEAK_SINC_NEIGHBORS+PEAK_SINC_NEIGHBORS+1) // how many total samples are needed for sinc interpolation
+#define PEAK_SINC_SAMPLES (100000)  // how many samples to sinc interpolate around detected peaks
+
+
+
+
 
 
 
@@ -28,11 +35,11 @@ public:
 	// the symbol of this detected peak
 	uint8_t symbol;
 
-	// the upper left fbin represented by this class (fbin+1 is the detected peak's fbin)
+	// the upper left fbin represented by this class (fbin+1 is the detected peak's fbin).  this value is the smallest fbin represented by this peak
 	uint8_t fbin;
 
-	// left most sample's x which is a rolling number
-	uint16_t sample_x;
+	// left most sample's x which is a rolling number.  this value is the smallest sample_x represented by this peak
+	size_t sample_x;
 
 	// channel of this peak
 	uint8_t channel;
