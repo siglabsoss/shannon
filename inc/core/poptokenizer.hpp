@@ -55,7 +55,7 @@ using namespace std;
 #define PIPELINE_DELAY (1)
 
 // length of pipeline in memory in seconds
-#define PIPELINE_LENGTH (4)
+#define PIPELINE_LENGTH (32)
 
 #define PIPELINE_BINS (BIN_COUNT * PIPELINE_LENGTH)
 
@@ -176,7 +176,7 @@ public:
 		{
 
 			// debug force to base_station 1
-			comb(last_comb, 0);
+			comb(last_comb, 1);
 //			cout << "comb at " << count << endl;
 
 			last_comb++;
@@ -196,18 +196,18 @@ public:
 //			cout << "comb at " << count << endl;
 //		}
 
-		// magic number launch
-		if( count == 7156 )
-		{
-//			tokenize();
+//		// magic number launch
+//		if( count == 7156 )
+//		{
+////			tokenize();
+////
+////			debug_print(0);
+////			comb(26975, 1);
+////while(1){};
 //
-//			debug_print(0);
-//			comb(26975, 1);
-//while(1){};
-
-			exit(0);
-
-		}
+//			exit(0);
+//
+//		}
 
 
 	}
