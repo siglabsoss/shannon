@@ -111,21 +111,11 @@ public:
 			const PopPeak &peak = data[0];
 
 			// debug skip
-			if( peak.basestation == 0 )
-				continue;
+//			if( peak.basestation == 0 )
+//				continue;
 
 			// remember that the actual timestamp we want is the center sample
 			const PopTimestamp &peak_timestamp = peak.data[PEAK_SINC_NEIGHBORS+1].timestamp;
-
-			// check to see if this timestamp is the newest we've ever seen
-			// note this check uses the inaccurate get_real_secs() however this is ok for just a check
-			if( peak_timestamp.get_real_secs() > newest_time.get_real_secs() )
-			{
-				newest_time = peak_timestamp;
-//				cout << "newer time" << endl;
-			}
-
-
 
 			// create mutable copy
 			PopTimestamp difference = PopTimestamp(peak_timestamp);
@@ -141,6 +131,14 @@ public:
 
 //				cout << " trying to use too large of a bin, stopping..." << endl;
 				continue;
+			}
+
+			// check to see if this timestamp is the newest we've ever seen
+			// note this check uses the inaccurate get_real_secs() however this is ok for just a check
+			if( peak_timestamp.get_real_secs() > newest_time.get_real_secs() )
+			{
+				newest_time = peak_timestamp;
+				//				cout << "newer time" << endl;
 			}
 
 
@@ -178,7 +176,7 @@ public:
 		{
 
 			// debug force to base_station 1
-			comb(last_comb, 1);
+			comb(last_comb, 0);
 //			cout << "comb at " << count << endl;
 
 			last_comb++;
@@ -186,7 +184,7 @@ public:
 
 		}
 
-		cout << "newest_sample_bin: " << newest_sample_bin << " largest_combable_bin: " << largest_combable_bin << endl;
+//		cout << "newest_sample_bin: " << newest_sample_bin << " largest_combable_bin: " << largest_combable_bin << endl;
 
 
 
@@ -203,10 +201,11 @@ public:
 		{
 //			tokenize();
 //
-//			debug_print(1);
+//			debug_print(0);
 //			comb(26975, 1);
 //while(1){};
 
+			exit(0);
 
 		}
 
@@ -239,6 +238,8 @@ public:
 
 		unsigned tally = 0;
 
+//		cout << "comb from " << start << " to " << start + sizeof(PHY_MSG_HELO) * 8 * EXPECTED_BIN_SEPARATION << endl;
+
 		for(unsigned i = 0; i < sizeof(PHY_MSG_HELO) * 8 * EXPECTED_BIN_SEPARATION ; i += EXPECTED_BIN_SEPARATION )
 		{
 			if( s[ start + i ].get<0>() != 0 || s[ start + i + 1].get<0>() != 0 )
@@ -247,9 +248,12 @@ public:
 			}
 		}
 
-		if( tally >= 80 )
+
+
+
+		if( tally >= 10 )
 		{
-//			cout << "the comb says it takes " << tally << " bits to get to the center of the pop message" << endl;
+			cout << "the comb says it takes " << tally << " bits to get to the center of the pop message" << endl;
 			print_message( start, bs );
 			cout << endl << endl;
 		}
@@ -263,22 +267,29 @@ public:
 
 		unsigned tally = 0;
 
-		debug_print(1);
+//		debug_print(1);
 
 		cout << "Message at (" << start << ") ------- " << endl;
 
 		for(unsigned i = 0; i < sizeof(PHY_MSG_HELO) * 8 * EXPECTED_BIN_SEPARATION ; i += EXPECTED_BIN_SEPARATION )
 		{
+//			boost::tuple<unsigned short, const PopPeak*> cur = symbols[bs][i+start];
+
 			if( s[ start + i ].get<0>() != 0 )
 			{
-				cout << "  " << s[ start + i ].get<1>() << endl;
+				cout << "  " << (int) s[ start + i ].get<1>()->symbol << endl;
 				continue;
 			}
 
+//			boost::tuple<unsigned short, const PopPeak*> nxt = symbols[bs][i+start];
+
 			if( s[ start + i + 1].get<0>() != 0 )
 			{
-//				cout << "  " << (int) s[ start + i + 1].get<1>().symbol << endl;
+				cout << "  " << (int) s[ start + i + 1].get<1>()->symbol << endl;
+				continue;
 			}
+
+			cout << "   x" << endl;
 		}
 	}
 
