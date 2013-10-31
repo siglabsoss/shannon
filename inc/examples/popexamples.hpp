@@ -444,10 +444,16 @@ public:
 
 	void read(size_t count = 16)
 	{
-		printf("~");
 		T* memory = PopSource<T>::get_buffer(count);
 		size_t bytes = count * sizeof(T);
 		m_fs.read((char*)memory, bytes);
+
+		if( m_fs.eof() )
+		{
+//			printf("END OF FILE \r\n");
+			return;
+		}
+		printf("~");
 
 		PopSource<T>::process();  // because we just called get_buffer, we can use this overload with no params
 	}
