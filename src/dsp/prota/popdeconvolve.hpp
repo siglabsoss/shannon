@@ -30,8 +30,8 @@ using namespace boost::posix_time;
 
 
 
-#define SPREADING_LENGTH (4096)
-#define SPREADING_BINS   (400)
+#define SPREADING_LENGTH (512)
+#define SPREADING_BINS   (200)
 #define SPREADING_CODES  (2)
 
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks

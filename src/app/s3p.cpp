@@ -116,6 +116,8 @@ int main(int argc, char *argv[])
 
 	Config::loadFromDisk();
 
+//	PopReadFromFile<PopPeak> file ("incoming_packets.raw");
+
 	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
 	PopNetwork<PopPeak> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
@@ -128,8 +130,11 @@ int main(int argc, char *argv[])
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();
 
+//	file.connect(tokenizer);
 
 	char c;
+
+	int i = 0;
 
 	// Run Control Loop
 	while(1)
@@ -141,6 +146,11 @@ int main(int argc, char *argv[])
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
 		boost::posix_time::microseconds workTime(10);
 		boost::this_thread::sleep(workTime);
+
+//		if( i % 1000 == 0)
+//			file.read(1);
+
+		i++;
 	}
 
     return ret;
