@@ -18,6 +18,8 @@
 #include <core/popassert.h>
 #include <core/config.hpp>
 #include "examples/popexamples.hpp"
+#include "core/popsourcegpu.hpp"
+#include "core/popsinkgpu.hpp"
 
 // include raw cpp files
 #include <core/config.cpp>
@@ -732,6 +734,74 @@ BOOST_AUTO_TEST_SUITE( lump_random )
 BOOST_AUTO_TEST_CASE( basic_array_sink_source )
 {
 	PopTestSourceTwo arraySource();
+
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+class PopTestGpuSourceOne : public PopSourceGpu<float>
+{
+public:
+	PopTestGpuSourceOne() : PopSourceGpu<float>("PopTestGpuSourceOne") { }
+
+
+    void send_both(size_t count, size_t stamps, double start_time = -1, double time_inc_divisor = -1)
+    {
+
+//    	PopTestMsg (*buff)[50] = get_buffer(10);
+
+//    	process();
+
+    }
+
+};
+
+class PopTestGpuSinkOne : public PopSinkGpu<float>
+{
+public:
+
+	PopTestGpuSinkOne() : PopSinkGpu<float>("PopTestGpuSinkOne", 3) { }
+	void init() { }
+	void process(const float* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+	{
+//		m_lastData = data;
+//		m_lastSize = size;
+//
+//		if(verbose || verboseVerbose) printf("received %lu PopMsg(s)\r\n", size);
+//
+//		if(verboseVerbose)
+//		{
+//			for( size_t i = 0; i < size; i++ )
+//			{
+//				printf("Data was '%s'\r\n", (data+i)->origin);
+//			}
+//		}
+//
+//		if(verbose || verboseVerbose) printf("received %lu timestamps(s)\r\n", timestamp_size);
+//		for( size_t i = 0; i < timestamp_size; i++ )
+//		{
+//			if(verbose || verboseVerbose)
+//			{
+////				cout << "offset [" << timestamp_data[i].offset << "]" << endl;
+//				std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
+//				std::cout << "frac was " << timestamp_data[i].get_frac_secs() << std::endl;
+//			}
+//		}
+
+	}
+
+};
+
+
+
+BOOST_AUTO_TEST_SUITE( sink_source_gpu )
+
+BOOST_AUTO_TEST_CASE( basic_gpu_sink_source )
+{
+	PopTestGpuSourceOne source;
+	PopTestGpuSinkOne sink;
+
+	source.connect(sink);
 
 }
 
