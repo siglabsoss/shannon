@@ -69,38 +69,53 @@ public:
     	m_timestamp_buf.free_circular_buffer(m_timestamp_buf.m_bytesAllocated);
     }
 
+    void debug_print()
+    {
+    	using namespace std;
+    	char h_data[m_buf.m_bytesAllocated];
+
+    	cudaMemcpy(h_data, m_buf.m_d_bufPtr, m_buf.m_bytesAllocated * sizeof(char), cudaMemcpyDeviceToHost);
+
+    	cout << "data: " << endl << " ";
+    	for( int i = 0; i < m_buf.m_bytesAllocated; i++)
+    	{
+    		if( h_data[i] == 0 )
+    			cout << "0";
+    		else
+    			cout << h_data[i];
+
+    	}
+
+    	cout << endl;
+    }
+
     /**
      * Processes new source data and calls any connected sinks.
      */
-    void process(const OUT_TYPE* data, size_t num_new_pts, const PopTimestamp* timestamp_data, size_t num_new_timestamp_pts)
+    void process()
     {
+
+    	size_t num_new_pts = m_reqBufSize;
 
         typename std::vector<PopSinkGpu<OUT_TYPE>* >::iterator it;
         size_t uncopied_pts, timestamp_uncopied_pts;
         size_t req_samples_from_sink, timestamp_req_samples_from_sink;
 
         // if no data is passed then do nothing
-        if( 0 == num_new_pts )
-        	return;
+//        if( 0 == num_new_pts )
+//        	return;
 
 //        // make sure that timestamp buffer is always allocated
 //        // this is because there is too much math below which assumes that m_sizeBuf is non 0
 //        if( m_timestamp_buf.m_sizeBuf < (1 * DOUBLE_POPSOURCE_GPU_NUM_BUFFERS) )
 //        	m_timestamp_buf.resize_buffer(1);
 
-//        // If the data is from an external array then copy data into buffer.
-//        bool data_ok = m_buf.data_is_ok(data, num_new_pts);
-//
-//        if( !data_ok )
-//        	return;
-
-        // at this point we know that data == (m_d_bufPtr + m_bufIdx)
 
         OUT_TYPE* data_head = m_buf.m_d_bufPtr + m_buf.source_idx();
 
 
         // copy data to upper mirror
-		cudaMemcpy(data_head, data_head + (m_buf.m_bytesAllocated/2), 2 * sizeof(float), cudaMemcpyDeviceToDevice);
+		cudaMemcpy(data_head + m_buf.m_sizeBuf, data_head, num_new_pts * sizeof(OUT_TYPE), cudaMemcpyDeviceToDevice);
 
         // do it again for the timestamp buffer
 //        m_timestamp_buf.fill_data(timestamp_data, num_new_timestamp_pts);
@@ -147,7 +162,7 @@ public:
 
 
 //            	(*it)->unblock( m_buf.m_d_bufPtr + sink_idx_into_buffer, req_samples_from_sink, m_timestamp_buf.m_d_bufPtr + timestamp_sink_idx_into_buffer, timestamp_req_samples_from_sink );
-//            	(*it)->unblock( m_buf.m_d_bufPtr + m_buf.sink_idx(sink_idx_into_buffer), req_samples_from_sink, (PopTimestamp*)(void*)0, 0 );
+            	(*it)->unblock( m_buf.m_d_bufPtr + m_buf.sink_idx(sink_idx_into_buffer), req_samples_from_sink, (PopTimestamp*)(void*)0, 0 );
 
             	// modify and wrap sink pointer
             	sink_idx_into_buffer += req_samples_from_sink;
@@ -229,13 +244,19 @@ public:
 
     	PopSourceBufferGpu(const char* name, size_t source_size) : PopObject(name), m_bufIdx(0), m_d_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_reqBufSize(source_size) {}
 
+    	// the index that the source keeps starts at 0, and wraps at m_sizeBuf
+    	// This function calculates the offset into the data array for pointer arithmetic
+    	// The source starts at 1/4 of the buffer up to 1/2, and then loops from 0 to 1/4
     	size_t source_idx()
     	{
     		size_t val;
-    		val = (m_sizeBuf/2 + m_bufIdx) % m_reqBufSize;
+    		val = (m_sizeBuf/2 + m_bufIdx) % m_sizeBuf;
     		return val;
     	}
 
+    	// the index that the sink keeps starts at 0, and wraps at m_sizeBuf
+    	// This function calculates the offset into the data array for pointer arithmetic.  The parameter is the sinks's 0-based index
+    	// The sink starts at 1/4 of the buffer up to 3/4 in a contiguous segment before modulousing
     	size_t sink_idx(size_t idx)
     	{
     		size_t val;
@@ -244,36 +265,7 @@ public:
     	}
 
 
-    	/**
-    	 * This code used to be inside process(), extracted here for DRY
-    	 * Called from within process(); this optionally copies data into the buffer if it is from an external array
-    	 */
-    	bool data_is_ok(const BUFFER_TYPE* data, size_t& num_new_pts)
-    	{
-    		// If the data is from an external array then copy data into buffer.
-    		if( data != (m_d_bufPtr + m_bufIdx) )
-    		{
-    			printf(RED "Error: dropping pointer given to process() that was not created by get_buffer() for object %s" RESETCOLOR "\n", get_name());
-    			return false;
-//
-//    			// Automatically grow the buffer if there is not enough space.
-//    			if( num_new_pts * DOUBLE_POPSOURCE_GPU_NUM_BUFFERS > m_sizeBuf )
-//    				resize_buffer(num_new_pts);
-//
-//    			// Copy data into buffer
-////    			memcpy(m_bufPtr + m_bufIdx, data, num_new_pts * sizeof(BUFFER_TYPE));
-    		}
-    		else
-    		{
-    			// check to see how much data has been received. (m_lastReqSize is the same as m_reqBufSize)
-    			if( num_new_pts > m_reqBufSize )
-    			{
-    				throw PopException(msg_too_much_data);
-    				return false;
-    			}
-    		}
-    		return true;
-    	}
+
 
     	/**
     	 * Guaranteed to give the next page size multiple for a requested buffer
@@ -299,15 +291,15 @@ public:
     	 * Guarentee that buffer is evenly divisible by 4 such that double buffering will work
     	 * with integer math.
     	 */
-    	size_t calc_buffer_size( size_t size, size_t datatype_size )
+    	size_t calc_buffer_size( size_t size, size_t datatype_size, size_t sink_chunk_size )
     	{
     		size_t lcm;
 
     		// one quarter of the entire memory space in samples
     		size_t quarter_in_samples = (size / datatype_size) / 4;
 
-    		// one quarter of the memory space must be divisible by two
-    		lcm = boost::math::lcm<size_t>(2, quarter_in_samples);
+    		// one quarter of the memory space must be divisible by the sink's data size
+    		lcm = boost::math::lcm<size_t>(sink_chunk_size, quarter_in_samples);
 
     		// we also need an lcm between the sink and sources sample sizes
     		// m_lastReqSize is the same as m_reqBufSize
@@ -325,52 +317,25 @@ public:
     	/**
     	 * Create a circular buffer at least memSize bytes long.
     	 */
-    	void* create_circular_buffer(size_t& bytes_allocated, size_t datatype_size)
+    	void* create_circular_buffer(size_t& bytes_allocated, size_t datatype_size, size_t sink_chunk_size)
     	{
     		void* temp_buf;
     		void* actual_buf;
     		void* mirror_buf;
     		int ret;
 
-//    		printf(GREEN);
+    		printf(GREEN);
     		printf(msg_create_new_circ_buf, get_name());
     		printf(msg_create_new_circ_buf_dbg_1, datatype_size, bytes_allocated);
+    		printf(RESETCOLOR "\r\n");
 
     		// calculate how many pages required.  Note bytes_allocated is a reference so this also affects m_bytesAllocated
-    		bytes_allocated = calc_buffer_size( bytes_allocated, datatype_size );
+    		bytes_allocated = calc_buffer_size( bytes_allocated, datatype_size, sink_chunk_size );
 
     		checkCudaErrors(cudaMalloc(&actual_buf, bytes_allocated));
 
-//    		printf(msg_create_new_circ_buf_dbg_2, bytes_allocated);
-//    		printf(RESETCOLOR "\r\n");
-//
-//    		/* Temporarily allocate thrice the memory to make sure we have a
-//    	           contiguous cirular buffer address space. This is a bit wasteful
-//    	           but it's currently the only way to ensure contiguous space. Remember
-//    	           if you use this method to make sure to unmap the proper amount of
-//    	           memory (i.e. bytes_allocated * 3) ! */
-//    		temp_buf = mmap(0, bytes_allocated * 3, PROT_READ | PROT_WRITE,
-//    				MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-//
-//    		// map actual buffer (second third of address space) into first third of memory map
-//    		actual_buf = ((uint8_t*)temp_buf) + bytes_allocated;
-//    		ret = remap_file_pages(actual_buf, bytes_allocated, 0, 0, 0);
-//
-//    		if( ret )
-//    			throw PopException( "#1 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
-//
-//    		// map mirror buffer (third third of address space) into first third of memory map
-//    		mirror_buf = ((uint8_t*)temp_buf) + (2 * bytes_allocated);
-//    		ret = remap_file_pages(mirror_buf, bytes_allocated, 0, 0, 0);
-//
-//    		if( ret )
-//    			throw PopException( "#2 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
-//
-//    		// shrink the memory map back down to it's necessary size
-//    		// TODO: don't know if this works as expected. are my original higher remappings
-//    		// maintained? Who knows! Would be nice to use 66% less memory. BTW, if you
-//    		// put this line back in, make sure to change the munmap size!!
-//    		//mremap(temp_buf, bytes_allocated * 3, bytes_allocated, MREMAP_FIXED, temp_buf);
+    		// allocates all bytes in buffer to 0
+    		checkCudaErrors(cudaMemset(actual_buf, 0, bytes_allocated));
 
     		return actual_buf;
     	}
@@ -394,8 +359,9 @@ public:
     	 * Resize buffer. Make sure to call this before get_buffer to make sure
     	 * there's enough space.
     	 * @param sizeBuf Total buffer size in number of samples.
+    	 * @param sink_chunk_size Requested chunk size by the sink in number of samples
     	 */
-    	void resize_buffer(size_t sizeBuf)
+    	void resize_buffer(size_t sizeBuf, size_t sink_chunk_size = 1)
     	{
 //    		// TODO: resize circular buffer instead of destroy
     		free_circular_buffer(m_bytesAllocated);
@@ -403,7 +369,7 @@ public:
 
     		m_bytesAllocated = sizeBuf * sizeof(BUFFER_TYPE) * DOUBLE_POPSOURCE_GPU_NUM_BUFFERS;
 
-    		m_d_bufPtr = (BUFFER_TYPE*)create_circular_buffer( m_bytesAllocated, sizeof(BUFFER_TYPE) );
+    		m_d_bufPtr = (BUFFER_TYPE*)create_circular_buffer( m_bytesAllocated, sizeof(BUFFER_TYPE), sink_chunk_size );
 
     		// calculate the size of the buffer compensating for the fact that m_bytesAllocated is double
     		m_sizeBuf = m_bytesAllocated / ( sizeof(BUFFER_TYPE) * 2 );
@@ -439,7 +405,7 @@ private:
 //    	buf.m_lastReqSize = sizeBuf;
 
     	// automatically grow buffer if needed
-    	if( sizeBuf * DOUBLE_POPSOURCE_GPU_NUM_BUFFERS > buf.m_sizeBuf )
+    	if( sizeBuf * POPSOURCE_GPU_NUM_BUFFERS > buf.m_sizeBuf ) // don't use double macro here
     		buf.resize_buffer(sizeBuf);
 
     	// only called if no size requested and no sinks are connected

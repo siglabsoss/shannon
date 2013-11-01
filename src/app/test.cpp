@@ -742,21 +742,23 @@ BOOST_AUTO_TEST_SUITE_END()
 class PopTestGpuSourceOne : public PopSourceGpu<char>
 {
 public:
-	PopTestGpuSourceOne() : PopSourceGpu<char>("PopTestGpuSourceOne", 1) { }
+	PopTestGpuSourceOne() : PopSourceGpu<char>("PopTestGpuSourceOne", 2) { }
 
 
     void send_both(size_t count)
     {
-    	char h_buff[2];
-    	h_buff[0] = 'a';
-    	h_buff[1] = h_buff[0]+1;
+    	static char c = 'a';
+    	char h_buff[3];
+    	h_buff[0] = c++;
+    	h_buff[1] = c++;
+//    	h_buff[2] = c++;
 
     	char* d_buff = get_buffer();
 
 
     	cudaMemcpy(d_buff, h_buff, 2 * sizeof(char), cudaMemcpyHostToDevice);
 
-    	process(d_buff, 1, NULL, 0);
+    	process();
 
 
 
@@ -779,6 +781,12 @@ public:
 	void init() { }
 	void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
+		cout << "    process called with " << size << " samples" << endl;
+
+		char h_buff[3];
+
+		cudaMemcpy(h_buff, data, 3 * sizeof(char), cudaMemcpyDeviceToHost);
+
 //		m_lastData = data;
 //		m_lastSize = size;
 //
@@ -786,10 +794,10 @@ public:
 //
 //		if(verboseVerbose)
 //		{
-//			for( size_t i = 0; i < size; i++ )
-//			{
-//				printf("Data was '%s'\r\n", (data+i)->origin);
-//			}
+			for( size_t i = 0; i < size; i++ )
+			{
+				printf("Data was '%c'\r\n", h_buff[i]);
+			}
 //		}
 //
 //		if(verbose || verboseVerbose) printf("received %lu timestamps(s)\r\n", timestamp_size);
@@ -818,10 +826,16 @@ BOOST_AUTO_TEST_CASE( basic_gpu_sink_source )
 
 	source.connect(sink);
 
+	cout << endl << "starting pos source_idx() = " << source.m_buf.source_idx() << " sink_idx()= " << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
+
+	source.debug_print();
+
 	for( int i = 0; i < 15; i++ )
 	{
 		source.send_both(0);
-		cout << endl << "after call " << i << " source_idx() = " << source.m_buf.source_idx() << " sink_idx()" << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
+		cout << endl << "after call " << i << " source_idx() = " << source.m_buf.source_idx() << " sink_idx()= " << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
+
+		source.debug_print();
 	}
 
 
