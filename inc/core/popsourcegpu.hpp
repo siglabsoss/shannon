@@ -33,11 +33,11 @@ using namespace boost::posix_time;
 namespace pop
 {
 
-/* Guaranteed minimum number of buffers for both sink and source. May be much
-   larger than this due to memory page alignment. */
-#define POPSOURCE_GPU_NUM_BUFFERS 1
+/* Guaranteed minimum number of buffers for both sink and source. Must
+ * be an even number or memory corruption */
+#define POPSOURCE_GPU_NUM_BUFFERS 2
 
-/* This class uses a single mirror, but the memory is real unlike PopSource.
+/* This class uses a single mirror, but the memory is real unlike mmap'd memory of PopSource.
  * This value is how many buffers the gpu sees
  */
 #define DOUBLE_POPSOURCE_GPU_NUM_BUFFERS (POPSOURCE_GPU_NUM_BUFFERS*2)
@@ -55,8 +55,8 @@ public:
      * @param sizeBuf The default length of the output buffer in samples. If
      * set to zero then no output buffer is allocated.
      */
-	PopSourceGpu(const char* name = "PopSource") :
-        PopObject(name), m_buf(name), m_timestamp_buf(name), debug_free_buffers(0), m_rgSink(0)
+	PopSourceGpu(const char* name, size_t nInBuf) :
+        PopObject(name), m_buf(name, nInBuf), m_timestamp_buf(name, nInBuf), debug_free_buffers(0), m_rgSink(0), m_reqBufSize(nInBuf)
     {
     }
 
@@ -75,97 +75,113 @@ public:
     void process(const OUT_TYPE* data, size_t num_new_pts, const PopTimestamp* timestamp_data, size_t num_new_timestamp_pts)
     {
 
-//        typename std::vector<PopSink<OUT_TYPE>* >::iterator it;
-//        size_t uncopied_pts, timestamp_uncopied_pts;
-//        size_t req_samples_from_sink, timestamp_req_samples_from_sink;
-//
-//        // if no data is passed then do nothing
-//        if( 0 == num_new_pts )
-//        	return;
-//
+        typename std::vector<PopSinkGpu<OUT_TYPE>* >::iterator it;
+        size_t uncopied_pts, timestamp_uncopied_pts;
+        size_t req_samples_from_sink, timestamp_req_samples_from_sink;
+
+        // if no data is passed then do nothing
+        if( 0 == num_new_pts )
+        	return;
+
 //        // make sure that timestamp buffer is always allocated
 //        // this is because there is too much math below which assumes that m_sizeBuf is non 0
-//        if( m_timestamp_buf.m_sizeBuf < (1 * POPSOURCE_NUM_BUFFERS) )
+//        if( m_timestamp_buf.m_sizeBuf < (1 * DOUBLE_POPSOURCE_GPU_NUM_BUFFERS) )
 //        	m_timestamp_buf.resize_buffer(1);
-//
+
 //        // If the data is from an external array then copy data into buffer.
-//        m_buf.fill_data(data, num_new_pts);
+//        bool data_ok = m_buf.data_is_ok(data, num_new_pts);
 //
-//        // do it again for the timestamp buffer
+//        if( !data_ok )
+//        	return;
+
+        // at this point we know that data == (m_d_bufPtr + m_bufIdx)
+
+        OUT_TYPE* data_head = m_buf.m_d_bufPtr + m_buf.source_idx();
+
+
+        // copy data to upper mirror
+		cudaMemcpy(data_head, data_head + (m_buf.m_bytesAllocated/2), 2 * sizeof(float), cudaMemcpyDeviceToDevice);
+
+        // do it again for the timestamp buffer
 //        m_timestamp_buf.fill_data(timestamp_data, num_new_timestamp_pts);
-//
-//        // change the index values for each timestamp we just copied in
-//
-//
+
+        // epic hack
+        std::vector<PopSinkGpu<OUT_TYPE>* > m_rgSinks;
+
+        m_rgSinks.push_back(m_rgSink);
+
 //        /* iterate through list of sinks and determine how many times
 //           to call them. */
-//        for( it = m_rgSinks.begin(); it != m_rgSinks.end(); it++ )
-//        {
-//            // get source buffer index and number of uncopied points
-//            size_t &sink_idx_into_buffer = (*it)->m_sourceBufIdx;
-//            req_samples_from_sink = (*it)->sink_size();
-//            uncopied_pts = ((m_buf.m_bufIdx+m_buf.m_sizeBuf) - sink_idx_into_buffer) % m_buf.m_sizeBuf + num_new_pts;
-//
-//            // get source buffer index and number of uncopied points
-//            // 'sink_idx_into_buffer' is a reference to the current sinks 'sourceBufIdx'
-//            size_t &timestamp_sink_idx_into_buffer = (*it)->m_timestampSourceBufIdx;
+        for( it = m_rgSinks.begin(); it != m_rgSinks.end(); it++ )
+        {
+            // get source buffer index and number of uncopied points
+            size_t &sink_idx_into_buffer = (*it)->m_sourceBufIdx;
+            req_samples_from_sink = (*it)->sink_size();
+            uncopied_pts = ((m_buf.m_bufIdx+m_buf.m_sizeBuf) - sink_idx_into_buffer) % m_buf.m_sizeBuf + num_new_pts;
+
+            // get source buffer index and number of uncopied points
+            // 'sink_idx_into_buffer' is a reference to the current sinks 'sourceBufIdx'
+            size_t &timestamp_sink_idx_into_buffer = (*it)->m_timestampSourceBufIdx;
 //            timestamp_uncopied_pts = ((m_timestamp_buf.m_bufIdx+m_timestamp_buf.m_sizeBuf) - timestamp_sink_idx_into_buffer) % m_timestamp_buf.m_sizeBuf + num_new_timestamp_pts;
-//
-//
-//            // If there's no specific length requested then send all available.
-//            if( 0 == req_samples_from_sink )
-//            {
-//                (*it)->unblock(m_buf.m_bufPtr + sink_idx_into_buffer, uncopied_pts, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_uncopied_pts);
+
+
+            // If there's no specific length requested then send all available.
+            if( 0 == req_samples_from_sink )
+            {
+            	printf(RED "Error: Gpu sink with 0 requested samples (assumption is violated) for object %s" RESETCOLOR "\n", (*it)->get_name());
+
+//                (*it)->unblock(m_buf.m_d_bufPtr + sink_idx_into_buffer, uncopied_pts, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_uncopied_pts);
 //
 //                sink_idx_into_buffer += uncopied_pts;
 //                sink_idx_into_buffer %= m_buf.m_sizeBuf;
 //
 //                timestamp_sink_idx_into_buffer += timestamp_uncopied_pts;
 //                timestamp_sink_idx_into_buffer %= m_timestamp_buf.m_sizeBuf;
-//            }
-//            // Otherwise send req_samples_from_sink samples at a time.
-//            else while ( uncopied_pts >= req_samples_from_sink )
-//            {
-//
-//            	// bound this number because we might not have timestamps for every sample
-//            	timestamp_req_samples_from_sink = std::min(timestamp_uncopied_pts, req_samples_from_sink);
-//
-//
-//            	(*it)->unblock( m_buf.m_bufPtr + sink_idx_into_buffer, req_samples_from_sink, m_timestamp_buf.m_bufPtr + timestamp_sink_idx_into_buffer, timestamp_req_samples_from_sink );
-//
-//            	// modify and wrap sink pointer
-//            	sink_idx_into_buffer += req_samples_from_sink;
-//            	sink_idx_into_buffer %= m_buf.m_sizeBuf;
-//            	uncopied_pts -= req_samples_from_sink;
-//
-//            	// modify and wrap sink timestamp pointer
+            }
+            // Otherwise send req_samples_from_sink samples at a time.
+            else while ( uncopied_pts >= req_samples_from_sink )
+            {
+
+            	// bound this number because we might not have timestamps for every sample
+            	timestamp_req_samples_from_sink = std::min(timestamp_uncopied_pts, req_samples_from_sink);
+
+
+//            	(*it)->unblock( m_buf.m_d_bufPtr + sink_idx_into_buffer, req_samples_from_sink, m_timestamp_buf.m_d_bufPtr + timestamp_sink_idx_into_buffer, timestamp_req_samples_from_sink );
+//            	(*it)->unblock( m_buf.m_d_bufPtr + m_buf.sink_idx(sink_idx_into_buffer), req_samples_from_sink, (PopTimestamp*)(void*)0, 0 );
+
+            	// modify and wrap sink pointer
+            	sink_idx_into_buffer += req_samples_from_sink;
+            	sink_idx_into_buffer %= m_buf.m_sizeBuf;
+            	uncopied_pts -= req_samples_from_sink;
+
+            	// modify and wrap sink timestamp pointer
 //            	timestamp_sink_idx_into_buffer += timestamp_req_samples_from_sink;
 //            	timestamp_sink_idx_into_buffer %= m_timestamp_buf.m_sizeBuf;
 //            	timestamp_uncopied_pts -= timestamp_req_samples_from_sink;
-//            }
-//
-//            // if this debug option is set, this prints how many free buffers are avaliable
-//            static int iii = 0;
-//            using namespace std;
-//            int free_buffers = POPSOURCE_NUM_BUFFERS - (*it)->queue_size();
-//            if( debug_free_buffers )
-//            {
-//            	// only report every N times to reduce spam
-//            	if( iii++ % 15 == 0 )
-//            		cout << get_name() << " free buffers: " << free_buffers << endl;
-//            }
-//
-//            // check for overflow
-//            if( (*it)->queue_size() >= POPSOURCE_NUM_BUFFERS )
-//                throw PopException(msg_object_overflow, get_name(),
-//                    (*it)->get_name());
-//        }
-//
-//        // advance buffer pointer
-//        m_buf.m_bufIdx += num_new_pts;
-//        m_buf.m_bufIdx %= m_buf.m_sizeBuf;
-//
-//        // advance timestamp buffer pointer
+            }
+
+            // if this debug option is set, this prints how many free buffers are avaliable
+            static int iii = 0;
+            using namespace std;
+            int free_buffers = POPSOURCE_GPU_NUM_BUFFERS - (*it)->queue_size();
+            if( debug_free_buffers )
+            {
+            	// only report every N times to reduce spam
+            	if( iii++ % 15 == 0 )
+            		cout << get_name() << " free buffers: " << free_buffers << endl;
+            }
+
+            // check for overflow
+            if( (*it)->queue_size() >= POPSOURCE_GPU_NUM_BUFFERS )
+                throw PopException(msg_object_overflow, get_name(),
+                    (*it)->get_name());
+        }
+
+        // advance buffer pointer
+        m_buf.m_bufIdx += num_new_pts;
+        m_buf.m_bufIdx %= m_buf.m_sizeBuf;
+
+        // advance timestamp buffer pointer
 //        m_timestamp_buf.m_bufIdx += num_new_timestamp_pts;
 //        m_timestamp_buf.m_bufIdx %= m_timestamp_buf.m_sizeBuf;
 
@@ -211,32 +227,53 @@ public:
     {
     public:
 
-    	PopSourceBufferGpu(const char* name) : PopObject(name), m_bufIdx(0), m_d_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_lastReqSize(0) {}
+    	PopSourceBufferGpu(const char* name, size_t source_size) : PopObject(name), m_bufIdx(0), m_d_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_reqBufSize(source_size) {}
+
+    	size_t source_idx()
+    	{
+    		size_t val;
+    		val = (m_sizeBuf/2 + m_bufIdx) % m_reqBufSize;
+    		return val;
+    	}
+
+    	size_t sink_idx(size_t idx)
+    	{
+    		size_t val;
+    		val = m_sizeBuf/2 + idx;
+    		return val;
+    	}
+
 
     	/**
     	 * This code used to be inside process(), extracted here for DRY
     	 * Called from within process(); this optionally copies data into the buffer if it is from an external array
     	 */
-//    	void fill_data(const BUFFER_TYPE* data, size_t& num_new_pts)
-//    	{
-//    		// If the data is from an external array then copy data into buffer.
-//    		if( data != (m_bufPtr + m_bufIdx) )
-//    		{
+    	bool data_is_ok(const BUFFER_TYPE* data, size_t& num_new_pts)
+    	{
+    		// If the data is from an external array then copy data into buffer.
+    		if( data != (m_d_bufPtr + m_bufIdx) )
+    		{
+    			printf(RED "Error: dropping pointer given to process() that was not created by get_buffer() for object %s" RESETCOLOR "\n", get_name());
+    			return false;
+//
 //    			// Automatically grow the buffer if there is not enough space.
-//    			if( num_new_pts * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
+//    			if( num_new_pts * DOUBLE_POPSOURCE_GPU_NUM_BUFFERS > m_sizeBuf )
 //    				resize_buffer(num_new_pts);
 //
 //    			// Copy data into buffer
-//    			// TODO: make this a SSE2 memcpy
-//    			memcpy(m_bufPtr + m_bufIdx, data, num_new_pts * sizeof(BUFFER_TYPE));
-//    		}
-//    		else
-//    		{
-//    			// check to see how much data has been received.
-//    			if( num_new_pts > m_lastReqSize )
-//    				throw PopException(msg_too_much_data);
-//    		}
-//    	}
+////    			memcpy(m_bufPtr + m_bufIdx, data, num_new_pts * sizeof(BUFFER_TYPE));
+    		}
+    		else
+    		{
+    			// check to see how much data has been received. (m_lastReqSize is the same as m_reqBufSize)
+    			if( num_new_pts > m_reqBufSize )
+    			{
+    				throw PopException(msg_too_much_data);
+    				return false;
+    			}
+    		}
+    		return true;
+    	}
 
     	/**
     	 * Guaranteed to give the next page size multiple for a requested buffer
@@ -266,15 +303,19 @@ public:
     	{
     		size_t lcm;
 
-    		// we need to be able to divide the buffer into 4
-    		size_t four = 4;
+    		// one quarter of the entire memory space in samples
+    		size_t quarter_in_samples = (size / datatype_size) / 4;
 
-    		// simply calculating lcm between size (in bytes) and four is not enough
-    		// we need to get the lcm of size (in samples) and four
-    		lcm = boost::math::lcm<size_t>(four, size / datatype_size);
+    		// one quarter of the memory space must be divisible by two
+    		lcm = boost::math::lcm<size_t>(2, quarter_in_samples);
+
+    		// we also need an lcm between the sink and sources sample sizes
+    		// m_lastReqSize is the same as m_reqBufSize
+    		// and it also must be divisible by the sources data chunk
+    		lcm = boost::math::lcm<size_t>(lcm, m_reqBufSize);
 
     		// convert back to size (bytes)
-    		lcm *= datatype_size;
+    		lcm *= datatype_size * 4;
 
     		return lcm;
     	}
@@ -380,33 +421,32 @@ public:
     	/// Total amount of memory (in bytes) allocated for Out Buffer
     	size_t m_bytesAllocated;
 
-    	/// Last requested buffer size
-    	size_t m_lastReqSize;
+    	/// The size of the buffer ( this the same as m_reqBufSize of the PopSourceGpu)
+    	size_t m_reqBufSize;
 
     }; //PopSourceBufferGpu
+
+public:
+
+
 
 private:
 
     template <typename BUFFER_TYPE>
     BUFFER_TYPE* get_buffer(size_t sizeBuf, PopSourceBufferGpu<BUFFER_TYPE> &buf)
     {
-//    	// remember allocated size for process() helper function
+    	// remember allocated size for process() helper function (this shouldn't ever change as it's locked by the PopSourceGpu constructor
 //    	buf.m_lastReqSize = sizeBuf;
-//
-//        /* If requested size is 0 samples then allocate minimum (1 sample) to
-//           prevent null pointers from causing arithmetic errors. */
-//        if( 0 == sizeBuf ) sizeBuf = 1;
-//
-//    	// automatically grow buffer if needed
-//    	if( sizeBuf * POPSOURCE_NUM_BUFFERS > buf.m_sizeBuf )
-//    		buf.resize_buffer(sizeBuf);
-//
-//    	// only called if no size requested and no sinks are connected
-//    	if( 0 == buf.m_bufPtr )
-//    		throw PopException(msg_no_buffer_allocated, get_name());
-//
-//    	return buf.m_bufPtr + buf.m_bufIdx;
-    	return buf;
+
+    	// automatically grow buffer if needed
+    	if( sizeBuf * DOUBLE_POPSOURCE_GPU_NUM_BUFFERS > buf.m_sizeBuf )
+    		buf.resize_buffer(sizeBuf);
+
+    	// only called if no size requested and no sinks are connected
+    	if( 0 == buf.m_d_bufPtr )
+    		throw PopException(msg_no_buffer_allocated, get_name());
+
+    	return buf.m_d_bufPtr + buf.source_idx();
     }
 
 
@@ -417,18 +457,18 @@ public:
      * Get next buffer. This is an efficient way of writing directly into
      * the objects data structure to avoid having to make a copy of the data.
      */
-    OUT_TYPE* get_buffer(size_t sizeBuf)
+    OUT_TYPE* get_buffer()
     {
-    	return get_buffer(sizeBuf, m_buf);
+    	return get_buffer(m_reqBufSize, m_buf);
     }
 
-    PopTimestamp* get_timestamp_buffer(size_t sizeBuf)
+    PopTimestamp* get_timestamp_buffer()
     {
-    	return get_buffer(sizeBuf, m_timestamp_buf);
+    	return get_buffer(m_reqBufSize, m_timestamp_buf);
     }
 
 
-private:
+//private: // fixme remove
 
     // buffer for main data
     PopSourceBufferGpu<OUT_TYPE> m_buf;
@@ -442,6 +482,9 @@ protected:
 
     /// Attached Sink Class
     PopSinkGpu<OUT_TYPE>* m_rgSink;
+
+    /// Out Buffer size in number of samples. Calling get_buffer always returns this many samples
+    size_t m_reqBufSize;
 
 };
 

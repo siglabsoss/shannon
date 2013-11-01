@@ -153,6 +153,7 @@ private:
     size_t m_reqBufSize;
 
     /// In Buffer index in respective PopSource
+public: //fixme
     size_t m_sourceBufIdx;
 
     /// In timestamp Buffer index in respective PopSource

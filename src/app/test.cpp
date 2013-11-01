@@ -739,14 +739,29 @@ BOOST_AUTO_TEST_CASE( basic_array_sink_source )
 
 BOOST_AUTO_TEST_SUITE_END()
 
-class PopTestGpuSourceOne : public PopSourceGpu<float>
+class PopTestGpuSourceOne : public PopSourceGpu<char>
 {
 public:
-	PopTestGpuSourceOne() : PopSourceGpu<float>("PopTestGpuSourceOne") { }
+	PopTestGpuSourceOne() : PopSourceGpu<char>("PopTestGpuSourceOne", 1) { }
 
 
-    void send_both(size_t count, size_t stamps, double start_time = -1, double time_inc_divisor = -1)
+    void send_both(size_t count)
     {
+    	char h_buff[2];
+    	h_buff[0] = 'a';
+    	h_buff[1] = h_buff[0]+1;
+
+    	char* d_buff = get_buffer();
+
+
+    	cudaMemcpy(d_buff, h_buff, 2 * sizeof(char), cudaMemcpyHostToDevice);
+
+    	process(d_buff, 1, NULL, 0);
+
+
+
+
+
 
 //    	PopTestMsg (*buff)[50] = get_buffer(10);
 
@@ -756,13 +771,13 @@ public:
 
 };
 
-class PopTestGpuSinkOne : public PopSinkGpu<float>
+class PopTestGpuSinkOne : public PopSinkGpu<char>
 {
 public:
 
-	PopTestGpuSinkOne() : PopSinkGpu<float>("PopTestGpuSinkOne", 3) { }
+	PopTestGpuSinkOne() : PopSinkGpu<char>("PopTestGpuSinkOne", 3) { }
 	void init() { }
-	void process(const float* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+	void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
 //		m_lastData = data;
 //		m_lastSize = size;
@@ -802,6 +817,13 @@ BOOST_AUTO_TEST_CASE( basic_gpu_sink_source )
 	PopTestGpuSinkOne sink;
 
 	source.connect(sink);
+
+	for( int i = 0; i < 15; i++ )
+	{
+		source.send_both(0);
+		cout << endl << "after call " << i << " source_idx() = " << source.m_buf.source_idx() << " sink_idx()" << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
+	}
+
 
 }
 
