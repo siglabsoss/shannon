@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
 #endif
 
 	char c;
+	size_t i = 0;
 
 	// Run Control Loop
 	while(1)
@@ -154,6 +155,15 @@ int main(int argc, char *argv[])
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
 		boost::posix_time::microseconds workTime(10);
 		boost::this_thread::sleep(workTime);
+
+		// check to see if the SDR is frozen
+		if( i > 150000 && popuhd.init_stage < 4 )
+		{
+			if( i % 1000 == 0)
+				cout << RED "ERROR: PopUhd looks frozen.  The SDR may require a restart!" RESETCOLOR << endl;
+		}
+
+		i++;
 	}
 
     return ret;

@@ -39,6 +39,9 @@ namespace pop
 		POP_ERROR start();
 		POP_ERROR stop();
 
+		// this variable tracks the init stage of the pop uhd
+		unsigned init_stage;
+
 	private:
 		POP_ERROR run();
 		uhd::usrp::multi_usrp::sptr usrp;
