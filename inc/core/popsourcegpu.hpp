@@ -26,7 +26,12 @@
 #include "mdl/poptimestamp.hpp"
 
 #include <cuda.h>
-#include "dsp/utils.hpp"
+//#include "dsp/utils.hpp"
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+//#include <cassert>
+//#include <cufft.h>
+#include <cuda/helper_cuda.h>
 
 using namespace boost::posix_time;
 
@@ -119,7 +124,10 @@ public:
         // This is a hack to build a vector so that the for loop below can remain similar to how it looks in PopSource.hpp
 		// in reality PopSourceGpu is limited to one sink
         std::vector<PopSinkGpu<OUT_TYPE>* > m_rgSinks;
-        m_rgSinks.push_back(m_rgSink);
+
+        // only enter loop if a sink has been connected
+        if( m_rgSink )
+        	m_rgSinks.push_back(m_rgSink);
 
 //        /* iterate through list of a single GPU sinks and determine how many times
 //           to call it. */

@@ -6,4 +6,17 @@
 #include <dsp/common/poptypes.cuh>
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+extern cudaStream_t chan_filter_stream;
+
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #endif

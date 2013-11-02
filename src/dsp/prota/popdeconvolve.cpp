@@ -46,7 +46,7 @@ extern "C" void thrust_peak_detection(popComplex* in, thrust::device_vector<doub
 extern "C" void init_popdeconvolve(thrust::device_vector<double>** d_mag_vec, size_t size);
 
 
-PopProtADeconvolve::PopProtADeconvolve() : PopSink<complex<double>[50] >( "PopProtADeconvolve", SPREADING_LENGTH ),
+PopProtADeconvolve::PopProtADeconvolve() : PopSinkGpu<complex<double>[50] >( "PopProtADeconvolve", SPREADING_LENGTH ),
 		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima"), peaks ("PopProtADeconvolvePeaks")
 {
 
@@ -479,15 +479,15 @@ void PopProtADeconvolve::process(const std::complex<double> (*in)[50], size_t le
 		throw PopException("size does not match filter");
 
 	// copy new host data into device memory
-	cudaMemcpyAsync(d_sts, in - SPREADING_LENGTH, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyHostToDevice, deconvolve_stream);
+//	cudaMemcpyAsync(d_sts, in - SPREADING_LENGTH, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyHostToDevice, deconvolve_stream);
 //	cudaThreadSynchronize();
 
 	// perform FFTs on each channel (50)
-	cufftExecZ2Z(many_plan_fft, (cufftDoubleComplex*)d_sts, (cufftDoubleComplex*)d_sfs, CUFFT_FORWARD);
+	cufftExecZ2Z(many_plan_fft, (cufftDoubleComplex*)(in - SPREADING_LENGTH), (cufftDoubleComplex*)d_sfs, CUFFT_FORWARD);
 //	cudaThreadSynchronize();
 
 
-	for( int channel = 0; channel < 8; channel++ )
+	for( int channel = 0; channel < 14; channel++ )
 	{
 		deconvolve_channel(bsf_channel_sequence[channel], running_counter, in, len, timestamp_data, timestamp_size);
 	}
@@ -611,7 +611,8 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 				// set the data point and timestamp for this specific sample
 				// but offset so the PopPeak array only contains data for the detected fbin
 				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].sample = h_cts[sample];
-				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].timestamp = get_timestamp_for_index(timeIndex, timestamp_data);
+				// FIXME: timestamps are still on the GPU
+//				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].timestamp = get_timestamp_for_index(timeIndex, timestamp_data);
 
 				// all the positional data in the PopPeak object is related to the upper left sample
 				// if we are on the first iteration of the loop, set this stuff now

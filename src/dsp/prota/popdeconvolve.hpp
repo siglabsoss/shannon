@@ -16,6 +16,7 @@
 
 #include <core/popsource.hpp>
 #include <core/popsink.hpp>
+#include <core/popsinkgpu.hpp>
 #include <mdl/popsymbol.hpp>
 #include <mdl/poppeak.hpp>
 
@@ -40,7 +41,7 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopProtADeconvolve : public PopSink<std::complex<double>[50] >
+	class PopProtADeconvolve : public PopSinkGpu<std::complex<double>[50] >
 	{
 	public:
 		PopProtADeconvolve();

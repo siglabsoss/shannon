@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 
 //	chanfilter.strided.debug_free_buffers = true;
 
-	chanfilter.strided.connect(deconvolve);
+	chanfilter.strided_gpu.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
 
 	// Open Network Connection to our designated s3p

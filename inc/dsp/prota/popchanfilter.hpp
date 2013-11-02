@@ -15,6 +15,7 @@
 #include <boost/thread.hpp>
 #include <boost/signals2.hpp>
 #include <boost/timer.hpp>
+#include <core/popsourcegpu.hpp>
 
 #include "core/popblock.hpp"
 
@@ -40,6 +41,8 @@ namespace pop
 		static size_t channel_fbin_high(unsigned c);
 
 		PopSource<std::complex<double>[50]> strided;
+		PopSourceGpu<std::complex<double>[50]> strided_gpu;
+
 
 	private:
 		void process(const std::complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);

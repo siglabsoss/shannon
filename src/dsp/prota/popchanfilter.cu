@@ -136,14 +136,11 @@ extern "C"
 		}
 
 		// put back into time domain
-		cufftExecZ2Z(many_plan, (cufftDoubleComplex*)d_datac, (cufftDoubleComplex*)d_datad, CUFFT_INVERSE);
+		cufftExecZ2Z(many_plan, (cufftDoubleComplex*)d_datac, (cufftDoubleComplex*)out, CUFFT_INVERSE);
 
   		// Copy results to host
-		cudaMemcpyAsync(out, d_datad, 50 * g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost, chan_filter_stream);
+//		cudaMemcpyAsync(out, d_datad, 50 * g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost, chan_filter_stream);
 		
-		// block till all actions on this stream have completed
-		cudaStreamSynchronize(chan_filter_stream);
-
   		return 0;
 	}
 
