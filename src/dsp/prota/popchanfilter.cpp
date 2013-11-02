@@ -20,7 +20,7 @@
 #include <boost/lexical_cast.hpp>
 #include "sdr/popuhd.hpp"
 
-#include "cuda/helper_cuda.h"
+#include "dsp/utils.hpp"
 //#include "core/basestationfreq.h"
 
 #include "dsp/prota/popchanfilter.hpp"

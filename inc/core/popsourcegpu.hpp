@@ -26,12 +26,11 @@
 #include "mdl/poptimestamp.hpp"
 
 #include <cuda.h>
-//#include "dsp/utils.hpp"
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
-//#include <cassert>
-//#include <cufft.h>
-#include <cuda/helper_cuda.h>
+#include <cassert>
+#include <cufft.h>
+#include "dsp/utils.hpp"
 
 using namespace boost::posix_time;
 
@@ -289,10 +288,7 @@ public:
     	 */
     	void* create_circular_buffer(size_t& bytes_allocated, size_t datatype_size, size_t sink_chunk_size)
     	{
-    		void* temp_buf;
     		void* actual_buf;
-    		void* mirror_buf;
-    		int ret;
 
     		printf(GREEN);
     		printf(msg_create_new_circ_buf, get_name());
@@ -312,8 +308,6 @@ public:
 
     	void free_circular_buffer(size_t size)
     	{
-    		uint8_t* mirror_buf;
-
     		if( m_d_bufPtr )
     		{
     			printf(RED "Freeing circular buffer for object %s" RESETCOLOR "\n", get_name());
