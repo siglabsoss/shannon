@@ -141,19 +141,10 @@ private:
             process( in, size, timestamp_in, timestamp_size );
     }
 
-    /**
-     * Helper function when the amount of data received is apriori known.
-     */
-//    int unblock(IN_TYPE* const buf)
-//    {
-//        return unblock( buf, m_reqBufSize );
-//    }
-
     /// In Buffer size in number of samples
     size_t m_reqBufSize;
 
     /// In Buffer index in respective PopSource
-public: //fixme
     size_t m_sourceBufIdx;
 
     /// In timestamp Buffer index in respective PopSource
@@ -175,4 +166,4 @@ protected:
 
 } // namespace pop
 
-#endif // __POP_SINK_HPP_
+#endif

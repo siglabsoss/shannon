@@ -755,20 +755,22 @@ public:
 
     	char* d_buff = get_buffer();
 
-
     	cudaMemcpy(d_buff, h_buff, 2 * sizeof(char), cudaMemcpyHostToDevice);
 
+
+    	static double time = 0.333333333333333;
+    	PopTimestamp h_ts[3];
+    	h_ts[0] = PopTimestamp(time++);
+    	h_ts[1] = PopTimestamp(time++);
+
+    	PopTimestamp* d_ts = get_timestamp_buffer();
+
+    	cudaMemcpy(d_ts, h_ts, 2 * sizeof(PopTimestamp), cudaMemcpyHostToDevice);
+
+
+
+		// call to GPU process accepts no parameters because everything is fixed
     	process();
-
-
-
-
-
-
-//    	PopTestMsg (*buff)[50] = get_buffer(10);
-
-//    	process();
-
     }
 
 };
@@ -777,39 +779,41 @@ class PopTestGpuSinkOne : public PopSinkGpu<char>
 {
 public:
 
-	PopTestGpuSinkOne() : PopSinkGpu<char>("PopTestGpuSinkOne", 3) { }
+	bool verbose;
+	bool verboseVerbose;
+
+
+	PopTestGpuSinkOne() : PopSinkGpu<char>("PopTestGpuSinkOne", 3), verbose(0), verboseVerbose(0) { }
 	void init() { }
 	void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
-		cout << "    process called with " << size << " samples" << endl;
-
 		char h_buff[3];
+		PopTimestamp h_ts[3];
 
 		cudaMemcpy(h_buff, data, 3 * sizeof(char), cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_ts, timestamp_data, 3 * sizeof(PopTimestamp), cudaMemcpyDeviceToHost);
 
 //		m_lastData = data;
 //		m_lastSize = size;
 //
-//		if(verbose || verboseVerbose) printf("received %lu PopMsg(s)\r\n", size);
-//
-//		if(verboseVerbose)
-//		{
+		if(verbose || verboseVerbose) printf("received %lu Data samples(s)\r\n", size);
+
+		if(verboseVerbose)
+		{
 			for( size_t i = 0; i < size; i++ )
 			{
 				printf("Data was '%c'\r\n", h_buff[i]);
 			}
-//		}
-//
-//		if(verbose || verboseVerbose) printf("received %lu timestamps(s)\r\n", timestamp_size);
-//		for( size_t i = 0; i < timestamp_size; i++ )
-//		{
-//			if(verbose || verboseVerbose)
-//			{
-////				cout << "offset [" << timestamp_data[i].offset << "]" << endl;
-//				std::cout << "time was " << timestamp_data[i].get_full_secs() << std::endl;
-//				std::cout << "frac was " << timestamp_data[i].get_frac_secs() << std::endl;
-//			}
-//		}
+		}
+
+		if(verbose || verboseVerbose) printf("received %lu timestamps(s)\r\n", timestamp_size);
+		for( size_t i = 0; i < timestamp_size; i++ )
+		{
+			if(verbose || verboseVerbose)
+			{
+				std::cout << h_ts[i] << std::endl;
+			}
+		}
 
 	}
 
@@ -823,19 +827,20 @@ BOOST_AUTO_TEST_CASE( basic_gpu_sink_source )
 {
 	PopTestGpuSourceOne source;
 	PopTestGpuSinkOne sink;
+//	sink.verboseVerbose = true;
 
 	source.connect(sink);
 
-	cout << endl << "starting pos source_idx() = " << source.m_buf.source_idx() << " sink_idx()= " << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
+//	cout << endl << "starting pos source_idx() = " << source.m_buf.source_idx() << " sink_idx() = " << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
 
-	source.debug_print();
+//	source.debug_print();
 
 	for( int i = 0; i < 15; i++ )
 	{
 		source.send_both(0);
-		cout << endl << "after call " << i << " source_idx() = " << source.m_buf.source_idx() << " sink_idx()= " << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
+//		cout << endl << "after call " << i << " source_idx() = " << source.m_buf.source_idx() << " sink_idx() = " << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
 
-		source.debug_print();
+//		source.debug_print();
 	}
 
 
