@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 #include <core/popsource.hpp>
+#include <core/popsourcegpu.hpp>
 #include <core/popsink.hpp>
 #include <core/popsinkgpu.hpp>
 #include <mdl/popsymbol.hpp>
@@ -49,10 +50,11 @@ namespace pop
 		PopSource<std::complex<double> > cts;
 		PopSource<PopSymbol> maxima;
 		PopSource<PopPeak> peaks;
+		PopSourceGpu<popComplex[50][SPREADING_CODES][SPREADING_BINS]> cts_stream;
 
 	private:
 		void process(const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
-		void deconvolve_channel(unsigned channel, size_t running_counter, const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void deconvolve_channel(unsigned channel, size_t running_counter, popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<double>* cfc,

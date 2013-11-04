@@ -737,6 +737,44 @@ BOOST_AUTO_TEST_CASE( basic_array_sink_source )
 
 }
 
+
+unsigned gpu_kernel(unsigned i, unsigned len, unsigned half_len, unsigned three_quarter, unsigned fbins)
+{
+
+
+	int sample;
+
+	sample = (i/half_len) * len + ((i%half_len)+three_quarter) % len;
+
+	int b = i % half_len; // fft sample out
+
+	int fbin_out = i / half_len; // fbin out
+
+
+//	cout << sample << " goes into ";
+	printf("%u goes into [%u][%u]\r\n", sample, fbin_out, b);
+
+	return 0;
+
+}
+BOOST_AUTO_TEST_CASE( gpu_math_logic_check )
+{
+
+	int spread_len = 4;
+
+	int total = spread_len * SPREADING_BINS;
+
+	int total2 = 1030;
+
+	for( int i = 0; i < total2; i++ )
+	{
+//		gpu_kernel(i, spread_len*2, spread_len, (spread_len*6)/4, SPREADING_BINS);
+	}
+
+
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 class PopTestGpuSourceOne : public PopSourceGpu<char>

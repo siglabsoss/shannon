@@ -39,7 +39,7 @@ namespace pop
 
 /* Guaranteed minimum number of buffers for both sink and source. Must
  * be an even number or memory corruption */
-#define POPSOURCE_GPU_NUM_BUFFERS 20
+#define POPSOURCE_GPU_NUM_BUFFERS 6
 
 /* This class uses a single mirror, but the memory is real unlike mmap'd memory of PopSource.
  * This value is how many buffers the gpu sees

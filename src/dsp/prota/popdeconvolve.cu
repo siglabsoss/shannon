@@ -130,6 +130,26 @@ __global__ void local_maxima_detection(popComplex *data, int *in, unsigned int *
 
 #undef CHECK_POINTS
 
+// len is SPREADING_LENGTH * 2
+// half_len is SPREADING_LENGTH
+__global__ void cts_stride_copy(popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], popComplex* d_cts, unsigned channel, unsigned spreading_code, unsigned len, unsigned half_len, unsigned three_quarter_len, unsigned fbins)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+	// this will iterate linearly through valid samples of the IFFT.
+	// the first half_len samples are bin 0.
+	int index = (i/half_len) * len + ((i%half_len)+three_quarter_len) % len;
+
+	int sample_out = i % half_len; // fft sample out
+
+	int fbin_out = i / half_len; // fbin out
+
+	if( spreading_code != 0 || fbin_out != 0 || sample_out != 0 )
+		return;
+
+	cts_stream_buff[channel][spreading_code][fbin_out][sample_out] = d_cts[index];
+}
+
 
 extern "C"
 {	
@@ -180,6 +200,25 @@ extern "C"
 
 
 
+	// len should be SPREADING_LENGTH * 2
+	void gpu_cts_stride_copy(popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], popComplex* d_cts, unsigned channel, unsigned spreading_code, unsigned len, unsigned fbins, cudaStream_t* stream)
+	{
+		unsigned real_len = len / 2;
+
+		// we need to move SPREADING_LENGTH * fbins samples from the 0 shifted IFFT into our fancy cts_stream_buf array format
+
+		cts_stride_copy<<<fbins * 16, real_len / 16, 0>>>(cts_stream_buff, d_cts, channel, spreading_code, len, real_len, (len*3)/4, fbins);
+
+		 // check for error
+		cudaError_t error = cudaGetLastError();
+		if(error != cudaSuccess)
+		{
+			// print the CUDA error message and exit
+			printf("CUDA error: %s\n", cudaGetErrorString(error));
+			exit(-1);
+		}
+
+	}
 
 //	void gpu_peak_detection(popComplex* in, double* peak, int len, int fbins)
 //	{

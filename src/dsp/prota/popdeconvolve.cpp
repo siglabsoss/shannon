@@ -47,7 +47,7 @@ extern "C" void init_popdeconvolve(thrust::device_vector<double>** d_mag_vec, si
 
 
 PopProtADeconvolve::PopProtADeconvolve() : PopSinkGpu<complex<double>[50] >( "PopProtADeconvolve", SPREADING_LENGTH ),
-		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima"), peaks ("PopProtADeconvolvePeaks")
+		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima"), peaks ("PopProtADeconvolvePeaks"), cts_stream ("CtsForAllChannelsAndCodes", SPREADING_LENGTH)
 {
 
 }
@@ -231,7 +231,10 @@ void PopProtADeconvolve::init()
     		CUFFT_Z2Z, 50); // pad
 
     cufftPlan1d(&plan_fft, SPREADING_LENGTH * 2, CUFFT_Z2Z, 1); // pad
-    cufftPlanMany(&plan_deconvolve, 1, &dimension_size, 0, 1, 0, 0, 1, 0, CUFFT_Z2Z, SPREADING_BINS);
+    cufftPlanMany(&plan_deconvolve, 1, &dimension_size,
+    		0, 1, 0,
+    		0, 1, 0,
+    		CUFFT_Z2Z, SPREADING_BINS);
 
     // assign plans to a stream
     cufftSafeCall(cufftSetStream(many_plan_fft,   deconvolve_stream));
@@ -487,12 +490,16 @@ void PopProtADeconvolve::process(const std::complex<double> (*in)[50], size_t le
 //	cudaThreadSynchronize();
 
 
-	for( int channel = 0; channel < 14; channel++ )
+	popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS] = cts_stream.get_buffer();
+
+	for( int channel = 0; channel < 1; channel++ )
 	{
-		deconvolve_channel(bsf_channel_sequence[channel], running_counter, in, len, timestamp_data, timestamp_size);
+		deconvolve_channel(bsf_channel_sequence[channel], running_counter, cts_stream_buff, in, len, timestamp_data, timestamp_size);
 	}
 
 	running_counter += SPREADING_LENGTH;
+
+	cts_stream.process();
 
 	t2 = microsec_clock::local_time();
 	td = t2 - t1;
@@ -525,7 +532,7 @@ PopTimestamp get_timestamp_for_index(double index, const PopTimestamp* timestamp
 }
 
 
-void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_counter, const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_counter, popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 //	complex<double>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
 
@@ -538,122 +545,121 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 		// rolling dot product
 		gpu_rolling_dot_product(d_sfs + channel_offset, d_cfc[spreading_code], d_cfs, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
 
-		// perform IFFT on dot product
+		// perform IFFT on dot product for each bin.  data is layed out sequentially (SPREADING_LENGTH * 2 samples for bin 0, followed by bin 1... )
 		cufftExecZ2Z(plan_deconvolve, (cufftDoubleComplex*)d_cfs, (cufftDoubleComplex*)d_cts, CUFFT_INVERSE);
 		//cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyDeviceToHost);
 
-		double threshold = rbx::Config::get<double>("basestation_threshhold");
-
-
-		// allocate data in a rectangle which is +- neighbor samples and +- 1 fbin (which gives us *3)
-		popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL * 3 ];
-		unsigned h_maxima_peaks[MAX_SIGNALS_PER_SPREAD];
-
-		unsigned h_maxima_peaks_len;
-
-		// threshold detection copies final data results to host
-		gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, d_maxima_peaks, d_maxima_peaks_len, PEAK_SINC_NEIGHBORS, MAX_SIGNALS_PER_SPREAD, h_cts, h_maxima_peaks, &h_maxima_peaks_len, threshold, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
-
-//		unsigned int h_peaks_len;
-//		cudaMemcpyAsync(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost, deconvolve_stream);
-
-		// at this point h_cts an array that contains d_cts samples in chunks of PEAK_SINC_SAMPLES_TOTAL (17) samples at a time.
-		// these chunks surround peaks.  The array isn't sparse, but it represents sparse data
-
-
-		// Grab a buffer from our second source in prepration for outputting local maxima peaks
-
-		PopPeak* peaksOut;
-		PopPeak* currentPeak;
-
-		// only get_buffer if we are going to write into it
-		if( h_maxima_peaks_len != 0 )
-		{
-			peaksOut = peaks.get_buffer( h_maxima_peaks_len );
-			cout << "got " << h_maxima_peaks_len << " peaks!" << endl;
-		}
-
-
-
-		int up = 0;
-		int center = PEAK_SINC_SAMPLES_TOTAL;
-		int down   = PEAK_SINC_SAMPLES_TOTAL*2;
-
-		for( unsigned int i = 0; i < std::min((unsigned)MAX_SIGNALS_PER_SPREAD, h_maxima_peaks_len); i++ )
-		{
-			// pointer to current maxima in the source buffer
-			currentPeak = peaksOut+i;
-
-
-			// calculate the center sample (peak) in units of the sparse h_cts array for this peak
-			// remember h_cts is a sparse array with 3 runs of PEAK_SINC_SAMPLES_TOTAL samples on the previous, detected, and next fbins
-			unsigned h_cts_peak_index = PEAK_SINC_NEIGHBORS + (PEAK_SINC_SAMPLES_TOTAL*3) * i + center;
-
-			double timeIndex;
-			int timeBin;
-
-			// loop through detected fbins (ignore previous and next)
-			for( unsigned int sample = PEAK_SINC_SAMPLES_TOTAL; sample < PEAK_SINC_SAMPLES_TOTAL*2; sample++ )
-			{
-				// h_cts is sparse, this index is the original index into the d_cts array
-				int d_cts_index = h_maxima_peaks[i] - PEAK_SINC_NEIGHBORS + (sample % PEAK_SINC_SAMPLES_TOTAL);
-
-				// use integer division math to bump us to the correct fbin
-				int fbin_bump = (sample / PEAK_SINC_SAMPLES_TOTAL) * SPREADING_LENGTH * 2;
-
-				d_cts_index += fbin_bump;
-
-
-				boost::tie(timeIndex, timeBin) = linearToBins(d_cts_index, SPREADING_LENGTH * 2, SPREADING_BINS);
-
-//				cout << "i = " << i << " sample = " << sample << " timeIndex = " << timeIndex << " timeBin = " << timeBin << endl;
-
-				// set the data point and timestamp for this specific sample
-				// but offset so the PopPeak array only contains data for the detected fbin
-				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].sample = h_cts[sample];
-				// FIXME: timestamps are still on the GPU
-//				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].timestamp = get_timestamp_for_index(timeIndex, timestamp_data);
-
-				// all the positional data in the PopPeak object is related to the upper left sample
-				// if we are on the first iteration of the loop, set this stuff now
-				if( sample == 0 )
-				{
-					currentPeak->sample_x = running_counter + timeIndex;
-					currentPeak->fbin = timeBin;
-				}
-			}
-
-			// finish this PopPeak
-			currentPeak->channel = channel;
-			currentPeak->symbol = spreading_code;
-			currentPeak->basestation = rbx::Config::get<double>("basestation_id");
-
-
-
-
-//			cout << "code " << spreading_code << " peak number " << i << " found on channel " << channel << " in bin " << h_maxima_peaks[i] << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
-//
-//			//					cout << "    prev time was" << boost::lexical_cast<string>(prev->get_real_secs()) << endl;
-//			cout << "    real time is " << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << "   -   " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
-//			//			cout << boost::lexical_cast<string>(exactTimestamp.get_full_secs()) << ", " << boost::lexical_cast<string>(exactTimestamp.get_frac_secs()) << endl;
-//
-//
-//			if( i == 0 )
+//		for( int b = 0; b < SPREADING_BINS; b++ )
+//		{
+//			for( int l = 0; l < SPREADING_LENGTH; l++ )
 //			{
-//				PopTimestamp delta = exactTimestamp;
-//
-//				delta -= last;
-//
-//				cout << "    delt time is " << boost::lexical_cast<string>(delta.get_full_secs()) << "   -   " << boost::lexical_cast<string>(delta.get_frac_secs()) << endl << endl << endl;
-//
-//
-//				last = exactTimestamp;
+//				cudaMemcpyAsync(&(cts_stream_buff[channel][spreading_code][b][l]), d_cts, 1 * sizeof(popComplex), cudaMemcpyDeviceToDevice, deconvolve_stream);
 //			}
+//		}
 
-		}
+		gpu_cts_stride_copy(cts_stream_buff, d_cts, channel, spreading_code, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
+
+
+		cudaStreamSynchronize(deconvolve_stream);
+
+		int j = 6666666;
+
+
+//		double threshold = rbx::Config::get<double>("basestation_threshhold");
+//
+//
+//		// allocate data in a rectangle which is +- neighbor samples and +- 1 fbin (which gives us *3)
+//		popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL * 3 ];
+//		unsigned h_maxima_peaks[MAX_SIGNALS_PER_SPREAD];
+//
+//		unsigned h_maxima_peaks_len;
+//
+//		// threshold detection copies final data results to host
+//		gpu_threshold_detection(d_cts, d_peaks, d_peaks_len, d_maxima_peaks, d_maxima_peaks_len, PEAK_SINC_NEIGHBORS, MAX_SIGNALS_PER_SPREAD, h_cts, h_maxima_peaks, &h_maxima_peaks_len, threshold, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
+//
+////		unsigned int h_peaks_len;
+////		cudaMemcpyAsync(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost, deconvolve_stream);
+//
+//		// at this point h_cts an array that contains d_cts samples in chunks of PEAK_SINC_SAMPLES_TOTAL (17) samples at a time.
+//		// these chunks surround peaks.  The array isn't sparse, but it represents sparse data
+//
+//
+//		// Grab a buffer from our second source in prepration for outputting local maxima peaks
+//
+//		PopPeak* peaksOut;
+//		PopPeak* currentPeak;
+//
+//		// only get_buffer if we are going to write into it
+//		if( h_maxima_peaks_len != 0 )
+//		{
+//			peaksOut = peaks.get_buffer( h_maxima_peaks_len );
+//			cout << "got " << h_maxima_peaks_len << " peaks!" << endl;
+//		}
+//
+//
+//
+//		int up = 0;
+//		int center = PEAK_SINC_SAMPLES_TOTAL;
+//		int down   = PEAK_SINC_SAMPLES_TOTAL*2;
+//
+//		for( unsigned int i = 0; i < std::min((unsigned)MAX_SIGNALS_PER_SPREAD, h_maxima_peaks_len); i++ )
+//		{
+//			// pointer to current maxima in the source buffer
+//			currentPeak = peaksOut+i;
+//
+//
+//			// calculate the center sample (peak) in units of the sparse h_cts array for this peak
+//			// remember h_cts is a sparse array with 3 runs of PEAK_SINC_SAMPLES_TOTAL samples on the previous, detected, and next fbins
+//			unsigned h_cts_peak_index = PEAK_SINC_NEIGHBORS + (PEAK_SINC_SAMPLES_TOTAL*3) * i + center;
+//
+//			double timeIndex;
+//			int timeBin;
+//
+//			// loop through detected fbins (ignore previous and next)
+//			for( unsigned int sample = PEAK_SINC_SAMPLES_TOTAL; sample < PEAK_SINC_SAMPLES_TOTAL*2; sample++ )
+//			{
+//				// h_cts is sparse, this index is the original index into the d_cts array
+//				int d_cts_index = h_maxima_peaks[i] - PEAK_SINC_NEIGHBORS + (sample % PEAK_SINC_SAMPLES_TOTAL);
+//
+//				// use integer division math to bump us to the correct fbin
+//				int fbin_bump = (sample / PEAK_SINC_SAMPLES_TOTAL) * SPREADING_LENGTH * 2;
+//
+//				d_cts_index += fbin_bump;
+//
+//
+//				boost::tie(timeIndex, timeBin) = linearToBins(d_cts_index, SPREADING_LENGTH * 2, SPREADING_BINS);
+//
+////				cout << "i = " << i << " sample = " << sample << " timeIndex = " << timeIndex << " timeBin = " << timeBin << endl;
+//
+//				// set the data point and timestamp for this specific sample
+//				// but offset so the PopPeak array only contains data for the detected fbin
+//				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].sample = h_cts[sample];
+//				// FIXME: timestamps are still on the GPU
+////				currentPeak->data[sample - PEAK_SINC_SAMPLES_TOTAL].timestamp = get_timestamp_for_index(timeIndex, timestamp_data);
+//
+//				// all the positional data in the PopPeak object is related to the upper left sample
+//				// if we are on the first iteration of the loop, set this stuff now
+//				if( sample == 0 )
+//				{
+//					currentPeak->sample_x = running_counter + timeIndex;
+//					currentPeak->fbin = timeBin;
+//				}
+//			}
+//
+//			// finish this PopPeak
+//			currentPeak->channel = channel;
+//			currentPeak->symbol = spreading_code;
+//			currentPeak->basestation = rbx::Config::get<double>("basestation_id");
+//
+//
+//
+//
+////			cout << "code " << spreading_code << " peak number " << i << " found on channel " << channel << " in bin " << h_maxima_peaks[i] << " with mag " << sqrt(magnitude2(h_cts[h_cts_peak_index])) << endl;
+//
+//		}
 
 		// call process and send out all detected peaks.  If this is 0 nothing happens (ie it's handled correctly internally)
-		peaks.process(h_maxima_peaks_len);
+//		peaks.process(h_maxima_peaks_len);
 	}
 
 }

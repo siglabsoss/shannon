@@ -33,7 +33,8 @@ set(all_SOURCES
 
 set(dsp_SOURCES
 	dsp/prota/popchanfilter.cpp
-        dsp/prota/popdeconvolve.cpp
+	dsp/prota/popdeconvolve.cpp
+	dsp/prota/popbinner.cpp
 
 )
 

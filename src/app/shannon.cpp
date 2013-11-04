@@ -24,6 +24,7 @@
 #include "net/popnetwork.hpp"
 #include "mdl/popsymbol.hpp"
 #include "core/poptimestampinterpolate.hpp"
+#include "dsp/prota/popbinner.hpp"
 
 #include "dsp/common/poputils.hpp"
 
@@ -120,18 +121,23 @@ int main(int argc, char *argv[])
 	PopProtADeconvolve deconvolve;
 	deconvolve.start_thread();
 
-//	chanfilter.strided.debug_free_buffers = true;
+	chanfilter.strided_gpu.debug_free_buffers = true;
 
 	chanfilter.strided_gpu.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
 
-	// Open Network Connection to our designated s3p
-	PopNetwork<PopPeak> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
+	PopBinner binner;
+	binner.start_thread();
 
-	deconvolve.peaks.connect(s3pConnection);
+	deconvolve.cts_stream.connect(binner);
+
+	// Open Network Connection to our designated s3p
+//	PopNetwork<PopPeak> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
+
+//	deconvolve.peaks.connect(s3pConnection);
 
 	// call this after connecting all sources or sinks
-	s3pConnection.wakeup();
+//	s3pConnection.wakeup();
 //	s3pConnection.process();
 
 	//PopDumpToFile<complex<double> > dump;
