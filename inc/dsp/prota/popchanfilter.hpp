@@ -40,8 +40,8 @@ namespace pop
 		static size_t channel_fbin_low(unsigned c);
 		static size_t channel_fbin_high(unsigned c);
 
-		PopSource<std::complex<double>[50]> strided;
-		PopSourceGpu<std::complex<double>[50]> strided_gpu;
+		PopSource<std::complex<double>[CHANNELS_USED]> strided;
+		PopSourceGpu<std::complex<double>[CHANNELS_USED]> strided_gpu;
 
 
 	private:

@@ -27,6 +27,7 @@
 #include <thrust/device_vector.h>
 
 #include <dsp/common/poptypes.h>
+#include "core/basestationfreq.h"
 
 using namespace boost::posix_time;
 
@@ -42,7 +43,7 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopProtADeconvolve : public PopSinkGpu<std::complex<double>[50] >
+	class PopProtADeconvolve : public PopSinkGpu<std::complex<double>[CHANNELS_USED] >
 	{
 	public:
 		PopProtADeconvolve();
@@ -50,11 +51,11 @@ namespace pop
 		PopSource<std::complex<double> > cts;
 		PopSource<PopSymbol> maxima;
 		PopSource<PopPeak> peaks;
-		PopSourceGpu<popComplex[50][SPREADING_CODES][SPREADING_BINS]> cts_stream;
+		PopSourceGpu<popComplex[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS]> cts_stream;
 
 	private:
-		void process(const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
-		void deconvolve_channel(unsigned channel, size_t running_counter, popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void process(const std::complex<double> (*in)[CHANNELS_USED], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void deconvolve_channel(unsigned channel, size_t running_counter, popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], const std::complex<double> (*in)[CHANNELS_USED], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 		static void gpu_gen_pn_match_filter_coef(const int8_t* prn, std::complex<double>* cfc,

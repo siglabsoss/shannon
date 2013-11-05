@@ -20,6 +20,7 @@
 #include "mdl/popsymbol.hpp"
 #include "mdl/poppeak.hpp"
 #include "dsp/prota/popdeconvolve.hpp"
+#include "core/basestationfreq.h"
 
 
 #include <cufft.h>
@@ -35,14 +36,14 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopBinner : public PopSinkGpu<popComplex[50][SPREADING_CODES][SPREADING_BINS] >
+	class PopBinner : public PopSinkGpu<popComplex[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS] >
 	{
 	public:
 		PopBinner();
 		~PopBinner();
 
 	private:
-		void process(const popComplex (*data)[50][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void process(const popComplex (*data)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 	private:

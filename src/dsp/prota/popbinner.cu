@@ -29,7 +29,7 @@
 using namespace std;
 
 
-__global__ void threshold_detection(const popComplex (*cts_stream)[50][SPREADING_CODES][SPREADING_BINS], int *out, unsigned int *outLen, int outLenMax, double thresholdSquared, int len, int fbins)
+__global__ void threshold_detection(const popComplex (*cts_stream)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], int *out, unsigned int *outLen, int outLenMax, double thresholdSquared, int len, int fbins)
 {
 	int j;
 	int k;
@@ -43,8 +43,8 @@ __global__ void threshold_detection(const popComplex (*cts_stream)[50][SPREADING
 
 	int bin = i % SPREADING_BINS;
 	int code = (int)(i / SPREADING_BINS) % SPREADING_CODES;
-	int channel = (int)(i / (SPREADING_BINS*SPREADING_CODES)) % 50;
-	int sampletime = (int)(i / (SPREADING_BINS*SPREADING_CODES*50));
+	int channel = (int)(i / (SPREADING_BINS*SPREADING_CODES)) % CHANNELS_USED;
+	int sampletime = (int)(i / (SPREADING_BINS*SPREADING_CODES * CHANNELS_USED));
 
 	double mag0; // magnitude of peak
 	double mag1; // magnitude of peak
@@ -169,14 +169,14 @@ extern "C"
 // d_out is an array of samples which are above the threshold with size outLenMax
 // d_outLen is the length of valid samples in the d_out array (with a value of no more than outLenMax)
 // d_maxima_out is an array of samples which have passed the local maxima test
-	void gpu_threshold_detection(const popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], int* d_out, unsigned int *d_outLen, int* d_maxima_out, unsigned int *d_maxima_outLen, unsigned peak_sinc_neighbors, int outLenMax, popComplex* h_cts, unsigned *h_maxima_peaks, unsigned *h_maxima_peaks_len, double threshold, int len, int fbins, size_t sample_size, cudaStream_t* stream)
+	void gpu_threshold_detection(const popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], int* d_out, unsigned int *d_outLen, int* d_maxima_out, unsigned int *d_maxima_outLen, unsigned peak_sinc_neighbors, int outLenMax, popComplex* h_cts, unsigned *h_maxima_peaks, unsigned *h_maxima_peaks_len, double threshold, int len, int fbins, size_t sample_size, cudaStream_t* stream)
 	{
 		// reset this index of the largest detected peak to 0
 		checkCudaErrors(cudaMemsetAsync(d_outLen, 0, sizeof(unsigned int), *stream));
 
 		// how many actual popComplex samples did we just get
-		// (sample_size is the number of [50][SPREADING_CODES][SPREADING_BINS] arrays we got)
-		size_t iterations = sample_size * 50 * SPREADING_CODES * SPREADING_BINS;
+		// (sample_size is the number of [CHANNELS_USED][SPREADING_CODES][SPREADING_BINS] arrays we got)
+		size_t iterations = sample_size * CHANNELS_USED * SPREADING_CODES * SPREADING_BINS;
 
 //		cout << "iterations: " << iterations << endl;
 

@@ -36,7 +36,7 @@ namespace pop
 {
 
 
-PopBinner::PopBinner() : PopSinkGpu<popComplex[50][SPREADING_CODES][SPREADING_BINS]>( "PopBinner", SPREADING_LENGTH*2 )
+PopBinner::PopBinner() : PopSinkGpu<popComplex[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS]>( "PopBinner", SPREADING_LENGTH*2 )
 {
 
 }
@@ -92,7 +92,7 @@ void PopBinner::init()
 
 
 
-void PopBinner::process(const popComplex(*data)[50][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopBinner::process(const popComplex(*data)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 
 //	cout << "in PopBinner with " << data_size << " samples and " << timestamp_size << " stamps " << endl;

@@ -34,7 +34,7 @@ using namespace boost::posix_time;
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" size_t gpu_channel_split(const complex<double> *h_data, complex<double> (*out)[50]);
+extern "C" size_t gpu_channel_split(const complex<double> *h_data, complex<double> (*out)[CHANNELS_USED]);
 extern "C" void init_deconvolve(size_t len_fft, size_t len_chan);
 extern "C" void cleanup();
 
@@ -42,7 +42,7 @@ namespace pop
 {
 
 	PopChanFilter::PopChanFilter(): PopSink<complex<double> >( "PopChanFilter", FFT_SIZE ),
-		PopSource<complex<double> >( "PopChanFilter" ), strided ("PopChanFilter[50] Strided source"), strided_gpu ("PopChanFilter[50] GPU Strided source", CHAN_SIZE), mp_demod_func(0)
+		PopSource<complex<double> >( "PopChanFilter" ), strided ("PopChanFilter[N] Strided source"), strided_gpu ("PopChanFilter[N] GPU Strided source", CHAN_SIZE), mp_demod_func(0)
 	{
 	}
 
@@ -93,7 +93,7 @@ namespace pop
 
 //		complex<double> *out = get_buffer(CHAN_SIZE);
 
-		complex<double> (*out_strided)[50] = strided_gpu.get_buffer(); // grab 50 channels worth of memory
+		complex<double> (*out_strided)[CHANNELS_USED] = strided_gpu.get_buffer(); // grab 50 channels worth of memory
 
 //		//cudaProfilerStart();
 		// call the GPU to process work (this does not block on the stream)

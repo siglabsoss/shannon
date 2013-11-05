@@ -46,7 +46,7 @@ extern "C" void thrust_peak_detection(popComplex* in, thrust::device_vector<doub
 extern "C" void init_popdeconvolve(thrust::device_vector<double>** d_mag_vec, size_t size);
 
 
-PopProtADeconvolve::PopProtADeconvolve() : PopSinkGpu<complex<double>[50] >( "PopProtADeconvolve", SPREADING_LENGTH ),
+PopProtADeconvolve::PopProtADeconvolve() : PopSinkGpu<complex<double>[CHANNELS_USED] >( "PopProtADeconvolve", SPREADING_LENGTH ),
 		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima"), peaks ("PopProtADeconvolvePeaks"), cts_stream ("CtsForAllChannelsAndCodes", SPREADING_LENGTH)
 {
 
@@ -226,9 +226,9 @@ void PopProtADeconvolve::init()
     int dimension_size = SPREADING_LENGTH * 2;
 
     cufftPlanMany(&many_plan_fft, 1, &dimension_size,
-    		&dimension_size, 50, 1,
+    		&dimension_size, CHANNELS_USED, 1,
     		&dimension_size, 1, SPREADING_LENGTH * 2,
-    		CUFFT_Z2Z, 50); // pad
+    		CUFFT_Z2Z, CHANNELS_USED); // pad
 
     cufftPlan1d(&plan_fft, SPREADING_LENGTH * 2, CUFFT_Z2Z, 1); // pad
     cufftPlanMany(&plan_deconvolve, 1, &dimension_size,
@@ -241,8 +241,8 @@ void PopProtADeconvolve::init()
     cufftSafeCall(cufftSetStream(plan_deconvolve, deconvolve_stream));
 
     // allocate device memory
-    checkCudaErrors(cudaMalloc(&d_sts, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex)));
-    checkCudaErrors(cudaMalloc(&d_sfs, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMalloc(&d_sts, CHANNELS_USED * SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMalloc(&d_sfs, CHANNELS_USED * SPREADING_LENGTH * 2 * sizeof(popComplex)));
     // host has an array of pointers which will point to d_cfc's.  after this cuda malloc we aren't quit done yet
     checkCudaErrors(cudaMalloc(&d_cfc[0], SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(popComplex)));
     checkCudaErrors(cudaMalloc(&d_cfs, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
@@ -254,8 +254,8 @@ void PopProtADeconvolve::init()
 
 
     // initialize device memory
-    checkCudaErrors(cudaMemset(d_sts, 0, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex)));
-    checkCudaErrors(cudaMemset(d_sfs, 0, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMemset(d_sts, 0, CHANNELS_USED * SPREADING_LENGTH * 2 * sizeof(popComplex)));
+    checkCudaErrors(cudaMemset(d_sfs, 0, CHANNELS_USED * SPREADING_LENGTH * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_cfc[0], 0, SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_cfs, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
@@ -461,7 +461,7 @@ boost::tuple<double, int> linearToBins(double sample, int spreadLength, int fbin
 
 
 
-void PopProtADeconvolve::process(const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopProtADeconvolve::process(const std::complex<double> (*in)[CHANNELS_USED], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 
 //	cout << "in deconv with " << len << " samples and " << timestamp_size << " stamps " << endl;
@@ -492,11 +492,11 @@ void PopProtADeconvolve::process(const std::complex<double> (*in)[50], size_t le
 	checkCudaErrors(cudaGetLastError());
 
 
-	popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS] = cts_stream.get_buffer();
+	popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS] = cts_stream.get_buffer();
 
-	for( int channel = 0; channel < 2; channel++ )
+	for( int channel = 0; channel < CHANNELS_USED; channel++ )
 	{
-		deconvolve_channel(bsf_channel_sequence[channel], running_counter, cts_stream_buff, in, len, timestamp_data, timestamp_size);
+		deconvolve_channel(channel, running_counter, cts_stream_buff, in, len, timestamp_data, timestamp_size);
 	}
 
 	running_counter += SPREADING_LENGTH;
@@ -534,7 +534,7 @@ PopTimestamp get_timestamp_for_index(double index, const PopTimestamp* timestamp
 }
 
 
-void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_counter, popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], const std::complex<double> (*in)[50], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_counter, popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], const std::complex<double> (*in)[CHANNELS_USED], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 //	complex<double>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
 

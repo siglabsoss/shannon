@@ -29,6 +29,8 @@
 #define CHANNEL_COUNT (50)
 #define CHANNEL_SEQUENCE {9, 44, 45, 17, 30, 18, 3, 48, 11, 13, 35, 22, 14, 15, 49, 8, 26, 6, 29, 37, 32, 16, 46, 33, 24, 42, 47, 0, 5, 28, 19, 10, 4, 39, 40, 43, 25, 31, 1, 7, 23, 27, 12, 41, 34, 21, 2, 36, 38, 20}
 
+// how many channels are we listening on
+#define CHANNELS_USED (10)
 
 
 

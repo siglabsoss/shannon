@@ -84,7 +84,7 @@ extern "C"
 //	size_t g_start_chan;
 
 
-	size_t gpu_channel_split(const complex<double> *h_data, complex<double> (*out)[50])
+	size_t gpu_channel_split(const complex<double> *h_data, complex<double> (*out)[CHANNELS_USED])
 	{
 		//double ch_start, ch_end, ch_ctr;
 
@@ -112,10 +112,12 @@ extern "C"
 
 
 		// do 50 cuda mem copies in upper and lower halves so that the inverse fft's are zero centered
-		for( int c = 0; c < 50; c++ )
+		for( int c = 0; c < CHANNELS_USED; c++ )
 		{
+			int channelIndex = bsf_channel_sequence[c]; // index of channel in our hopping table
+
 			// shift zero-frequency component to center of spectrum ( calculate the bin in which the fft starts adjusting for the fact that the complex fft has 0 freq in the center)
-			unsigned small_bin_start = bsf_zero_shift_channel_fbin_low(c); //(g_start_chan + (g_len_fft/2)) % g_len_fft;
+			unsigned small_bin_start = bsf_zero_shift_channel_fbin_low(channelIndex); //(g_start_chan + (g_len_fft/2)) % g_len_fft;
 
 			// output bins start from array index 0
 			unsigned output_bin_start = bsf_fbins_per_channel() * c;
@@ -193,17 +195,17 @@ extern "C"
 
 	    // where x is the number of the sample (or bin) and b is the batch (aka the specific fft we are on)
 
-	    // we have 1040 samples per channel, and 50 channels
+	    // we have 1040 samples per channel, and CHANNELS_USED (50) channels
 
 	    // for the input the data is sequential, so we stride forward 1 sample at a time for the next bin for a single fft, and then move forward 1040 samples for the next fft
-	    // for the output the data is striped, so we stride forward 50 samples at a time for the next bin, and then move forward 1 sample for the next fft
+	    // for the output the data is striped, so we stride forward CHANNELS_USED samples at a time for the next bin, and then move forward 1 sample for the next fft
 
-	    // the final paramater is 50 which means we are doing 50 fft's
+	    // the final paramater is CHANNELS_USED (50) which means we are doing CHANNELS_USED fft's
 
 	    cufftPlanMany(&many_plan, 1, dimension_size,
 	    		dimension_size, 1, g_len_chan,
-	    		dimension_size, 50, 1,
-	    		CUFFT_Z2Z, 50);
+	    		dimension_size, CHANNELS_USED, 1,
+	    		CUFFT_Z2Z, CHANNELS_USED);
 
 	    // Set the stream for each of the FFT plans
 	    cufftSafeCall(cufftSetStream(plan1,     chan_filter_stream));

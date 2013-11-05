@@ -132,7 +132,7 @@ using namespace std;
 
 // len is SPREADING_LENGTH * 2
 // half_len is SPREADING_LENGTH
-__global__ void cts_stride_copy(popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], popComplex* d_cts, unsigned channel, unsigned spreading_code, unsigned len, unsigned half_len, unsigned three_quarter_len, unsigned fbins)
+__global__ void cts_stride_copy(popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], popComplex* d_cts, unsigned channel, unsigned spreading_code, unsigned len, unsigned half_len, unsigned three_quarter_len, unsigned fbins)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -223,7 +223,7 @@ extern "C"
 
 
 	// len should be SPREADING_LENGTH * 2
-	void gpu_cts_stride_copy(popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS], popComplex* d_cts, unsigned channel, unsigned spreading_code, unsigned len, unsigned fbins, cudaStream_t* stream)
+	void gpu_cts_stride_copy(popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], popComplex* d_cts, unsigned channel, unsigned spreading_code, unsigned len, unsigned fbins, cudaStream_t* stream)
 	{
 		unsigned real_len = len / 2;
 
