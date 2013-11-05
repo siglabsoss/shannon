@@ -200,8 +200,8 @@ public:
         // automatically grow buffer if needed
         if( sink.sink_size() * DOUBLE_POPSOURCE_GPU_NUM_BUFFERS > m_buf.m_sizeBuf )
         {
-        	m_buf.resize_buffer(sink.sink_size());
-        	m_timestamp_buf.resize_buffer(sink.sink_size());
+        	m_buf.resize_buffer(sink.sink_size(), sink.sink_size());
+        	m_timestamp_buf.resize_buffer(sink.sink_size(), sink.sink_size());
         }
 
         // set read indices
