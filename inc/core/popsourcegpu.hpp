@@ -37,14 +37,10 @@ using namespace boost::posix_time;
 namespace pop
 {
 
-/* Guaranteed minimum number of buffers for both sink and source. Must
- * be an even number or memory corruption */
-#define POPSOURCE_GPU_NUM_BUFFERS 6
-
 /* This class uses a single mirror, but the memory is real unlike mmap'd memory of PopSource.
  * This value is how many buffers the gpu sees
  */
-#define DOUBLE_POPSOURCE_GPU_NUM_BUFFERS (POPSOURCE_GPU_NUM_BUFFERS*2)
+#define DOUBLE_POPSOURCE_GPU_NUM_BUFFERS (m_popsource_gpu_num_buffers*2)
 
 /**
  * Data Source Class
@@ -59,8 +55,8 @@ public:
      * @param sizeBuf The default length of the output buffer in samples. If
      * set to zero then no output buffer is allocated.
      */
-	PopSourceGpu(const char* name, size_t nInBuf) :
-        PopObject(name), m_buf(name, nInBuf), m_timestamp_buf(name, nInBuf), debug_free_buffers(0), m_rgSink(0), m_reqBufSize(nInBuf)
+	PopSourceGpu(const char* name, size_t nInBuf, unsigned buffer_multiplier = 10) :
+        PopObject(name), m_buf(name, nInBuf, buffer_multiplier), m_timestamp_buf(name, nInBuf, buffer_multiplier), debug_free_buffers(0), m_rgSink(0), m_reqBufSize(nInBuf), m_popsource_gpu_num_buffers(buffer_multiplier)
     {
     }
 
@@ -170,7 +166,7 @@ public:
             // if this debug option is set, this prints how many free buffers are avaliable
             static int iii = 0;
             using namespace std;
-            int free_buffers = POPSOURCE_GPU_NUM_BUFFERS - (*it)->queue_size();
+            int free_buffers = m_popsource_gpu_num_buffers - (*it)->queue_size();
             if( debug_free_buffers )
             {
             	// only report every N times to reduce spam
@@ -179,7 +175,7 @@ public:
             }
 
             // check for overflow
-            if( (*it)->queue_size() >= POPSOURCE_GPU_NUM_BUFFERS )
+            if( (*it)->queue_size() >= m_popsource_gpu_num_buffers )
                 throw PopException(msg_object_overflow, get_name(),
                     (*it)->get_name());
         }
@@ -233,7 +229,7 @@ public:
     {
     public:
 
-    	PopSourceBufferGpu(const char* name, size_t source_size) : PopObject(name), m_bufIdx(0), m_d_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_reqBufSize(source_size) {}
+    	PopSourceBufferGpu(const char* name, size_t source_size, unsigned mult) : PopObject(name), m_bufIdx(0), m_d_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_reqBufSize(source_size), m_popsource_gpu_num_buffers(mult) {}
 
     	// the index that the source keeps starts at 0, and wraps at m_sizeBuf
     	// This function calculates the offset into the data array for pointer arithmetic
@@ -289,14 +285,17 @@ public:
     	void* create_circular_buffer(size_t& bytes_allocated, size_t datatype_size, size_t sink_chunk_size)
     	{
     		void* actual_buf;
+    		size_t bytes_requested = bytes_allocated; // copy this value
 
     		printf(GREEN);
     		printf(msg_create_new_circ_buf, get_name());
-    		printf(msg_create_new_circ_buf_dbg_1, datatype_size, bytes_allocated);
-    		printf(RESETCOLOR "\r\n");
+
 
     		// calculate how many pages required.  Note bytes_allocated is a reference so this also affects m_bytesAllocated
     		bytes_allocated = calc_buffer_size( bytes_allocated, datatype_size, sink_chunk_size );
+
+    		printf("datatype = %lu bytes, sink chunk = %lu samples, source chunk = %lu samples, multiplier = %uX, requested = %lu KiB, allocated = %lu KiB (%lu KiB usable)", datatype_size, sink_chunk_size, m_reqBufSize, m_popsource_gpu_num_buffers, bytes_requested/1024, bytes_allocated/1024, bytes_allocated/2048);
+    		printf(RESETCOLOR "\r\n");
 
     		checkCudaErrors(cudaMalloc(&actual_buf, bytes_allocated));
 
@@ -351,6 +350,10 @@ public:
     	/// The size of the buffer ( this the same as m_reqBufSize of the PopSourceGpu)
     	size_t m_reqBufSize;
 
+    	/// Guaranteed minimum number of buffers for both sink and source (copied from parent class)
+    	unsigned const m_popsource_gpu_num_buffers;
+
+
     }; //PopSourceBufferGpu
 
 public:
@@ -363,7 +366,7 @@ private:
     BUFFER_TYPE* get_buffer(size_t sizeBuf, PopSourceBufferGpu<BUFFER_TYPE> &buf)
     {
     	// automatically grow buffer if needed
-    	if( sizeBuf * POPSOURCE_GPU_NUM_BUFFERS > buf.m_sizeBuf ) // don't use double macro here
+    	if( sizeBuf * m_popsource_gpu_num_buffers > buf.m_sizeBuf ) // don't use double macro here
     		buf.resize_buffer(sizeBuf);
 
     	// only called if no size requested and no sinks are connected
@@ -406,6 +409,9 @@ protected:
 
     /// Out Buffer size in number of samples. Calling get_buffer always returns this many samples
     size_t m_reqBufSize;
+
+    /// Guaranteed minimum number of buffers for both sink and source.
+    unsigned const m_popsource_gpu_num_buffers;
 
 };
 
