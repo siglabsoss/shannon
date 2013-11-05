@@ -138,6 +138,8 @@ extern "C"
 		// put back into time domain
 		cufftExecZ2Z(many_plan, (cufftDoubleComplex*)d_datac, (cufftDoubleComplex*)out, CUFFT_INVERSE);
 
+		checkCudaErrors(cudaGetLastError());
+
   		// Copy results to host
 //		cudaMemcpyAsync(out, d_datad, 50 * g_len_chan * sizeof(popComplex), cudaMemcpyDeviceToHost, chan_filter_stream);
 		
@@ -230,6 +232,8 @@ extern "C"
 		// TODO: better refactor thread and block sizes for any possible spreading code and fbin lengths
 		rolling_scalar_multiply<<<fbins * 16, len / 16, 0, *stream>>>(in, cfc, out, len);
 //		cudaThreadSynchronize();
+
+		checkCudaErrors(cudaGetLastError());
 	}
 
 
