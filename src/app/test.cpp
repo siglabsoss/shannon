@@ -30,6 +30,7 @@
 #include <mdl/popradio.cpp>
 #include <mdl/poptimestamp.cpp>
 #include <mdl/popsymbol.cpp>
+#include "dsp/common/poptypes.cuh"
 
 #include <iostream>
 #include <fstream>
@@ -734,6 +735,65 @@ BOOST_AUTO_TEST_SUITE( lump_random )
 BOOST_AUTO_TEST_CASE( basic_array_sink_source )
 {
 	PopTestSourceTwo arraySource();
+
+}
+
+BOOST_AUTO_TEST_CASE( pak_basic )
+{
+	uint8_t storage[2];
+
+//	pak_print(storage, 16);
+
+
+
+	// set this to 0
+	storage[0] = 0;
+	storage[1] = 0;
+
+	// set 1's up the byte
+	uint8_t mask = 0xFE;
+	uint8_t check;
+	for( int i = 0; i < 8; i++ )
+	{
+		pak_change_bit(storage, i, 1);
+//		pak_print(storage1, 8);
+
+		check = 0xff & ~mask;
+
+		BOOST_CHECK_EQUAL(check, storage[0]);
+
+		mask <<=1;
+	}
+
+	// final check
+	BOOST_CHECK_EQUAL(0xff, storage[0]);
+
+	// verify no spillover
+	BOOST_CHECK_EQUAL(0x00, storage[1]);
+
+	// now check zeroing out
+	storage[0] = 0xff;
+	storage[1] = 0xff;
+
+	mask = 0x7f;
+	for( int i = 7; i >= 0; i-- )
+	{
+		pak_change_bit(storage, i, 0);
+//		pak_print(storage1, 8);
+
+		check = 0xff & mask;
+
+		BOOST_CHECK_EQUAL(check, storage[0]);
+
+		mask >>=1;
+	}
+
+	// final check
+	BOOST_CHECK_EQUAL(0x00, storage[0]);
+
+	// verify no spillover
+	BOOST_CHECK_EQUAL(0xff, storage[1]);
+
 
 }
 

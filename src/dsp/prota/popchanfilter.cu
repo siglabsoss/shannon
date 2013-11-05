@@ -30,7 +30,7 @@
 #include <cstdlib>
 #include <time.h>
 
-#include <dsp/common/poptypes.cuh>
+//#include <dsp/common/poptypes.cuh>
 
 #include <dsp/prota/popchanfilter.cuh>
 
