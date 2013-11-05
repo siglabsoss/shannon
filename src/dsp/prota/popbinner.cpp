@@ -36,7 +36,7 @@ namespace pop
 {
 
 
-PopBinner::PopBinner() : PopSinkGpu<popComplex[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS]>( "PopBinner", SPREADING_LENGTH*2 )
+PopBinner::PopBinner() : PopSinkGpu<popComplex[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS]>( "PopBinner", SPREADING_LENGTH )
 {
 
 }
@@ -56,7 +56,7 @@ void PopBinner::init()
     // create CUDA stream
     checkCudaErrors(cudaStreamCreate(&binner_stream));
 
-    checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
+    checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * BYTES_PER_DETECTED_PACKET * sizeof(uint8_t)));
     checkCudaErrors(cudaMalloc(&d_peaks_len, sizeof(unsigned int)));
     checkCudaErrors(cudaMalloc(&d_maxima_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
     checkCudaErrors(cudaMalloc(&d_maxima_peaks_len, sizeof(unsigned int)));
@@ -110,7 +110,7 @@ void PopBinner::process(const popComplex(*data)[CHANNELS_USED][SPREADING_CODES][
 
 	// allocate data in a rectangle which is +- neighbor samples and +- 1 fbin (which gives us *3)
 	popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL * 3 ];
-	unsigned h_maxima_peaks[MAX_SIGNALS_PER_SPREAD];
+	uint8_t h_maxima_peaks[MAX_SIGNALS_PER_SPREAD][BYTES_PER_DETECTED_PACKET];
 
 	unsigned h_maxima_peaks_len;
 

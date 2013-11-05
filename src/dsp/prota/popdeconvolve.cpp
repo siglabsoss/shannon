@@ -47,7 +47,8 @@ extern "C" void init_popdeconvolve(thrust::device_vector<double>** d_mag_vec, si
 
 
 PopProtADeconvolve::PopProtADeconvolve() : PopSinkGpu<complex<double>[CHANNELS_USED] >( "PopProtADeconvolve", SPREADING_LENGTH ),
-		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima"), peaks ("PopProtADeconvolvePeaks"), cts_stream ("CtsForAllChannelsAndCodes", SPREADING_LENGTH)
+		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima"), peaks ("PopProtADeconvolvePeaks"),
+		cts_stream ("CtsForAllChannelsAndCodes GPU", SPREADING_LENGTH, 43) // this multiplier gives us the ability to hold 44032 samples which is enough to negatively index 542*80 (43360)
 {
 
 }
@@ -62,10 +63,6 @@ PopProtADeconvolve::~PopProtADeconvolve()
 	checkCudaErrors(cudaFree(d_cfc));
 	checkCudaErrors(cudaFree(d_cfs));
 	checkCudaErrors(cudaFree(d_cts));
-	checkCudaErrors(cudaFree(d_peaks));
-	checkCudaErrors(cudaFree(d_peaks_len));
-	checkCudaErrors(cudaFree(d_maxima_peaks));
-	checkCudaErrors(cudaFree(d_maxima_peaks_len));
 }
 
 	/// spreading code m4k_001
@@ -247,10 +244,7 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMalloc(&d_cfc[0], SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(popComplex)));
     checkCudaErrors(cudaMalloc(&d_cfs, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMalloc(&d_cts, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
-    checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
-    checkCudaErrors(cudaMalloc(&d_peaks_len, sizeof(unsigned int)));
-    checkCudaErrors(cudaMalloc(&d_maxima_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
-    checkCudaErrors(cudaMalloc(&d_maxima_peaks_len, sizeof(unsigned int)));
+
 
 
     // initialize device memory
@@ -259,8 +253,6 @@ void PopProtADeconvolve::init()
     checkCudaErrors(cudaMemset(d_cfc[0], 0, SPREADING_LENGTH * 2 * SPREADING_CODES * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_cfs, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
     checkCudaErrors(cudaMemset(d_cts, 0, SPREADING_LENGTH * SPREADING_BINS * 2 * sizeof(popComplex)));
-    checkCudaErrors(cudaMemset(d_peaks, 0, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
-    checkCudaErrors(cudaMemset(d_maxima_peaks, 0, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
 
     // malloc host memory
     d_sinc_yp = (complex<double>*)malloc(PEAK_SINC_SAMPLES * sizeof(complex<double>));

@@ -34,10 +34,9 @@ using namespace boost::posix_time;
 
 
 #define SPREADING_LENGTH (512)
-#define SPREADING_BINS   (200)
+#define SPREADING_BINS   (100)
 #define SPREADING_CODES  (2)       //  some code assumes the value of this to be 2
 
-#define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
 
 
 
@@ -72,10 +71,6 @@ namespace pop
 		popComplex* d_cfs; // convoluted frequency swept series
 		popComplex* d_cts; // convoluted time series
 		popComplex* d_cfc[SPREADING_LENGTH]; // convolution filter coefficients
-		int*       d_peaks; // array of indices of detected peaks
-		unsigned int*  	   d_peaks_len; // index of last detected peak
-		int*       d_maxima_peaks; // array of indices of detected peaks that are local maxima
-		unsigned int*  	   d_maxima_peaks_len; // index of last detected peak that is a local maxima
 		std::complex<double>* d_sinc_yp; // samples for sinc interpolation around detected peak
 
 		friend class blahtest;
