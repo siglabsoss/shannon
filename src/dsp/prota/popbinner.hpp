@@ -47,6 +47,10 @@ namespace pop
 
 	private:
 		cudaStream_t binner_stream;
+		int*       d_peaks; // array of indices of detected peaks
+		unsigned int*  	   d_peaks_len; // index of last detected peak
+		int*       d_maxima_peaks; // array of indices of detected peaks that are local maxima
+		unsigned int*  	   d_maxima_peaks_len; // index of last detected peak that is a local maxima
 	};
 }
 

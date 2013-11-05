@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 	PopProtADeconvolve deconvolve;
 	deconvolve.start_thread();
 
-	chanfilter.strided_gpu.debug_free_buffers = true;
+//	chanfilter.strided_gpu.debug_free_buffers = true;
 
 	chanfilter.strided_gpu.connect(deconvolve);
 	//chanfilter.connect(popnetwork);

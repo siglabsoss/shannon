@@ -489,10 +489,12 @@ void PopProtADeconvolve::process(const std::complex<double> (*in)[50], size_t le
 	cufftExecZ2Z(many_plan_fft, (cufftDoubleComplex*)(in - SPREADING_LENGTH), (cufftDoubleComplex*)d_sfs, CUFFT_FORWARD);
 //	cudaThreadSynchronize();
 
+	checkCudaErrors(cudaGetLastError());
+
 
 	popComplex (*cts_stream_buff)[50][SPREADING_CODES][SPREADING_BINS] = cts_stream.get_buffer();
 
-	for( int channel = 0; channel < 1; channel++ )
+	for( int channel = 0; channel < 2; channel++ )
 	{
 		deconvolve_channel(bsf_channel_sequence[channel], running_counter, cts_stream_buff, in, len, timestamp_data, timestamp_size);
 	}
@@ -549,20 +551,13 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 		cufftExecZ2Z(plan_deconvolve, (cufftDoubleComplex*)d_cfs, (cufftDoubleComplex*)d_cts, CUFFT_INVERSE);
 		//cudaMemcpy(h_cts, d_cts, SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyDeviceToHost);
 
-//		for( int b = 0; b < SPREADING_BINS; b++ )
-//		{
-//			for( int l = 0; l < SPREADING_LENGTH; l++ )
-//			{
-//				cudaMemcpyAsync(&(cts_stream_buff[channel][spreading_code][b][l]), d_cts, 1 * sizeof(popComplex), cudaMemcpyDeviceToDevice, deconvolve_stream);
-//			}
-//		}
+		checkCudaErrors(cudaGetLastError());
+
 
 		gpu_cts_stride_copy(cts_stream_buff, d_cts, channel, spreading_code, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
 
 
-		cudaStreamSynchronize(deconvolve_stream);
-
-		int j = 6666666;
+		cudaStreamSynchronize(deconvolve_stream); // move outside of deconvolve FIXME
 
 
 //		double threshold = rbx::Config::get<double>("basestation_threshhold");

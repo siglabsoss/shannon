@@ -10,7 +10,7 @@
 // Bad practice, but I can't get multiple cuda files to link http://stackoverflow.com/questions/13683575/cuda-5-0-separate-compilation-of-library-with-cmake
 #include <dsp/prota/popdeconvolve.cu>
 #include <dsp/common/poptypes.cu>
-
+#include <dsp/prota/popbinner.cu>
 
 #include <iostream>
 #include <stdexcept>

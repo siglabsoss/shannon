@@ -34,7 +34,7 @@ using namespace boost::posix_time;
 
 #define SPREADING_LENGTH (512)
 #define SPREADING_BINS   (200)
-#define SPREADING_CODES  (2)
+#define SPREADING_CODES  (2)       //  some code assumes the value of this to be 2
 
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
 
@@ -70,7 +70,6 @@ namespace pop
 		popComplex* d_sfs; // sampled fourier series
 		popComplex* d_cfs; // convoluted frequency swept series
 		popComplex* d_cts; // convoluted time series
-		thrust::device_vector<double>* d_mag_vec; // convoluted time series magnitude
 		popComplex* d_cfc[SPREADING_LENGTH]; // convolution filter coefficients
 		int*       d_peaks; // array of indices of detected peaks
 		unsigned int*  	   d_peaks_len; // index of last detected peak

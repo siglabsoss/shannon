@@ -24,6 +24,7 @@
 
 
 #include "dsp/prota/popbinner.hpp"
+#include "dsp/prota/popbinner.cuh"
 #include "core/basestationfreq.h"
 
 
@@ -49,8 +50,17 @@ PopBinner::~PopBinner()
 
 void PopBinner::init()
 {
+	// setup context on this thread
+    cudaSetDevice(0); // this doesn't seem to matter
+
     // create CUDA stream
     checkCudaErrors(cudaStreamCreate(&binner_stream));
+
+    checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
+    checkCudaErrors(cudaMalloc(&d_peaks_len, sizeof(unsigned int)));
+    checkCudaErrors(cudaMalloc(&d_maxima_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
+    checkCudaErrors(cudaMalloc(&d_maxima_peaks_len, sizeof(unsigned int)));
+
 }
 
 
@@ -85,31 +95,88 @@ void PopBinner::init()
 void PopBinner::process(const popComplex(*data)[50][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 
-	cout << "in PopBinner with " << data_size << " samples and " << timestamp_size << " stamps " << endl;
-
-//	// this is a running counter which represents the x-offset of the first valid sample (without padding) that will be unique for a long time
-//	static size_t running_counter = 0;
+//	cout << "in PopBinner with " << data_size << " samples and " << timestamp_size << " stamps " << endl;
 
 
-//	ptime t1, t2;
-//	time_duration td, tLast;
-//	t1 = microsec_clock::local_time();
 
-	static popComplex h_cts[50][SPREADING_CODES][SPREADING_BINS][SPREADING_LENGTH*2];
 
-	cudaMemcpy(h_cts, data, 50 * SPREADING_CODES * SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyDeviceToHost);
 
-	std::complex<double> *val;
 
-	for( size_t i = 0; i < SPREADING_LENGTH * 2; i++ )
+
+
+
+	double threshold = rbx::Config::get<double>("basestation_threshhold");
+
+
+	// allocate data in a rectangle which is +- neighbor samples and +- 1 fbin (which gives us *3)
+	popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL * 3 ];
+	unsigned h_maxima_peaks[MAX_SIGNALS_PER_SPREAD];
+
+	unsigned h_maxima_peaks_len;
+
+	// threshold detection copies final data results to host
+	gpu_threshold_detection(data, d_peaks, d_peaks_len, d_maxima_peaks, d_maxima_peaks_len, PEAK_SINC_NEIGHBORS, MAX_SIGNALS_PER_SPREAD, h_cts, h_maxima_peaks, &h_maxima_peaks_len, threshold, SPREADING_LENGTH * 2, SPREADING_BINS, data_size, &binner_stream);
+
+	//		unsigned int h_peaks_len;
+	//		cudaMemcpyAsync(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost, deconvolve_stream);
+
+	// at this point h_cts an array that contains d_cts samples in chunks of PEAK_SINC_SAMPLES_TOTAL (17) samples at a time.
+	// these chunks surround peaks.  The array isn't sparse, but it represents sparse data
+
+
+	// Grab a buffer from our second source in prepration for outputting local maxima peaks
+
+	PopPeak* peaksOut;
+	PopPeak* currentPeak;
+
+	// only get_buffer if we are going to write into it
+	if( h_maxima_peaks_len != 0 )
 	{
-		val = (std::complex<double>*) &(h_cts[9][0][0][i]);
-		cout << "  " << *val << endl;
+//		peaksOut = peaks.get_buffer( h_maxima_peaks_len );
+		cout << "got " << h_maxima_peaks_len << " peaks!" << endl;
 	}
 
-	int j = 666666;
 
 
+
+
+
+
+
+
+
+
+
+
+//
+////	// this is a running counter which represents the x-offset of the first valid sample (without padding) that will be unique for a long time
+////	static size_t running_counter = 0;
+//
+//
+////	ptime t1, t2;
+////	time_duration td, tLast;
+////	t1 = microsec_clock::local_time();
+//
+//	static popComplex h_cts[SPREADING_LENGTH*2][50][SPREADING_CODES][SPREADING_BINS];
+
+//	cudaMemcpy(h_cts, data, 9 * SPREADING_CODES * SPREADING_BINS * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyDeviceToHost);
+
+
+//
+//	std::complex<double> *val;
+////
+////	for( size_t i = 0; i < SPREADING_LENGTH * 2; i++ )
+////	{
+////		cout << h_cts[0][0][0][1].x << " and " << h_cts[0][0][0][1].y << endl;
+////
+//		val = (std::complex<double>*) &(h_cts[0][3][0][0]);
+//		cout << "  " << *val << endl;
+////	}
+////
+//	int j = 666666;
+//	int k = j++;
+//
+//
 
 	// copy new host data into device memory
 //	cudaMemcpyAsync(d_sts, in - SPREADING_LENGTH, 50 * SPREADING_LENGTH * 2 * sizeof(popComplex), cudaMemcpyHostToDevice, deconvolve_stream);
