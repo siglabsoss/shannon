@@ -48,7 +48,9 @@ extern "C" void init_popdeconvolve(thrust::device_vector<double>** d_mag_vec, si
 
 PopProtADeconvolve::PopProtADeconvolve() : PopSinkGpu<complex<double>[CHANNELS_USED] >( "PopProtADeconvolve", SPREADING_LENGTH ),
 		cts( "PopProtADeconvolve" ), maxima ("PopProtADeconvolveMaxima"), peaks ("PopProtADeconvolvePeaks"),
-		cts_stream ("CtsForAllChannelsAndCodes GPU", SPREADING_LENGTH, 43) // this multiplier gives us the ability to hold 44032 samples which is enough to negatively index 542*80 (43360)
+		// this multiplier gives us the ability to hold 46080 samples which is enough to negatively index 542*80 (43360)
+		// get this number by looking at the printed output and doing this equation ( (usable KiB * 1024) / 2 ) / datatype
+		cts_mag_gpu ("CtsForAllChannelsAndCodes GPU", SPREADING_LENGTH, 180)
 {
 
 }
@@ -484,16 +486,16 @@ void PopProtADeconvolve::process(const std::complex<double> (*in)[CHANNELS_USED]
 	checkCudaErrors(cudaGetLastError());
 
 
-	popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS] = cts_stream.get_buffer();
+	double (*cts_mag_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS] = cts_mag_gpu.get_buffer();
 
 	for( int channel = 0; channel < CHANNELS_USED; channel++ )
 	{
-		deconvolve_channel(channel, running_counter, cts_stream_buff, in, len, timestamp_data, timestamp_size);
+		deconvolve_channel(channel, running_counter, cts_mag_buff, in, len, timestamp_data, timestamp_size);
 	}
 
 	running_counter += SPREADING_LENGTH;
 
-	cts_stream.process();
+	cts_mag_gpu.process();
 
 	t2 = microsec_clock::local_time();
 	td = t2 - t1;
@@ -526,7 +528,7 @@ PopTimestamp get_timestamp_for_index(double index, const PopTimestamp* timestamp
 }
 
 
-void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_counter, popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], const std::complex<double> (*in)[CHANNELS_USED], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_counter, double (*cts_mag_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], const std::complex<double> (*in)[CHANNELS_USED], size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 //	complex<double>* h_cts = cts.get_buffer(len * SPREADING_BINS * 2);
 
@@ -546,7 +548,10 @@ void PopProtADeconvolve::deconvolve_channel(unsigned channel, size_t running_cou
 		checkCudaErrors(cudaGetLastError());
 
 
-		gpu_cts_stride_copy(cts_stream_buff, d_cts, channel, spreading_code, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
+		cudaStreamSynchronize(deconvolve_stream); // move outside of deconvolve FIXME
+
+
+		gpu_cts_stride_copy(cts_mag_buff, d_cts, channel, spreading_code, SPREADING_LENGTH * 2, SPREADING_BINS, &deconvolve_stream);
 
 
 		cudaStreamSynchronize(deconvolve_stream); // move outside of deconvolve FIXME

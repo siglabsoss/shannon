@@ -13,7 +13,7 @@
 
 
 #define MAX_SIGNALS_PER_SPREAD (32) // how much memory to allocate for detecting signal peaks
-#define BYTES_PER_DETECTED_PACKET (8) // how much memory to allocate for detecting signal peaks
+#define BYTES_PER_DETECTED_PACKET (EXPECTED_BITS/8) // how much memory to allocate for detecting signal peaks
 
 
 #ifdef __cplusplus
@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 
-extern void gpu_threshold_detection(const popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], int* d_out, unsigned int *d_outLen, int* d_maxima_out, unsigned int *d_maxima_outLen, unsigned peak_sinc_neighbors, int outLenMax, popComplex* h_cts, uint8_t(*h_maxima_peaks)[BYTES_PER_DETECTED_PACKET], unsigned *h_maxima_peaks_len, double threshold, int len, int fbins, size_t sample_size, cudaStream_t* stream);
+extern void gpu_threshold_detection(const double (*cts_mag_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], uint8_t(*d_out)[BYTES_PER_DETECTED_PACKET], unsigned int *d_outLen, int outLenMax, uint8_t(*h_maxima_peaks)[BYTES_PER_DETECTED_PACKET], unsigned *h_maxima_peaks_len, double threshold, size_t sample_size, cudaStream_t* stream);
 
 void gpu_threshold_bin(popComplex* d_in);
 

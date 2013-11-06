@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 	PopBinner binner;
 	binner.start_thread();
 
-	deconvolve.cts_stream.connect(binner);
+	deconvolve.cts_mag_gpu.connect(binner);
 
 	// Open Network Connection to our designated s3p
 //	PopNetwork<PopPeak> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);

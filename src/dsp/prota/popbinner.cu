@@ -29,7 +29,7 @@
 using namespace std;
 
 
-__global__ void threshold_detection(const popComplex (*cts_stream)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], uint8_t(*out)[BYTES_PER_DETECTED_PACKET], unsigned int *outLen, int outLenMax, double thresholdSquared, int len, int fbins)
+__global__ void threshold_detection(const double (*cts_stream)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], uint8_t(*out)[BYTES_PER_DETECTED_PACKET], unsigned int *outLen, int outLenMax, double thresholdSquared)
 {
 	int j;
 	int k;
@@ -46,14 +46,14 @@ __global__ void threshold_detection(const popComplex (*cts_stream)[CHANNELS_USED
 	int channel = (int)(i / (SPREADING_BINS*SPREADING_CODES)) % CHANNELS_USED;
 	int sampletime = (int)(i / (SPREADING_BINS*SPREADING_CODES * CHANNELS_USED));
 
-	double mag0, mag1, mag2, mag3; // magnitude of peak
+	double mag0a, mag1a, mag0b, mag1b; // magnitude^2 of peak
 
 
 	// take the magnitude of the detection (mag0 is for either code 0 or 1 here)
-	mag0 = magnitude2(cts_stream[sampletime][channel][code][bin]);
+	mag0a = cts_stream[sampletime][channel][code][bin];
 
 	// if the magnitude is below the thresh, return
-	if( mag0 < thresholdSquared ) return;
+	if( mag0a < thresholdSquared ) return;
 
 	int sampleOffset;
 	// check previous N points to see if they are also above thresh
@@ -62,17 +62,17 @@ __global__ void threshold_detection(const popComplex (*cts_stream)[CHANNELS_USED
 		sampleOffset = sampletime - (previous * EXPECTED_PEAK_SEPARATION);
 
 		// assuming that SPREADING_CODES is 2, look for peaks at previous times
-		mag0 = magnitude2(cts_stream[sampleOffset][channel][0][bin]);
-		mag1 = magnitude2(cts_stream[sampleOffset][channel][1][bin]);
+		mag0a = cts_stream[sampleOffset][channel][0][bin];
+		mag1a = cts_stream[sampleOffset][channel][1][bin];
 
 		// compensate for drift by also checking in 1 previous
 		sampleOffset -= 1;
 
-		mag2 = magnitude2(cts_stream[sampleOffset][channel][0][bin]);
-		mag3 = magnitude2(cts_stream[sampleOffset][channel][1][bin]);
+		mag0b = cts_stream[sampleOffset][channel][0][bin];
+		mag1b = cts_stream[sampleOffset][channel][1][bin];
 
 		// if no time bin has a peak, bail
-		if( mag0 < thresholdSquared && mag1 < thresholdSquared && mag2 < thresholdSquared && mag3 < thresholdSquared)
+		if( mag0a < thresholdSquared && mag1a < thresholdSquared && mag0b < thresholdSquared && mag1b < thresholdSquared)
 			return;
 	}
 
@@ -90,37 +90,35 @@ __global__ void threshold_detection(const popComplex (*cts_stream)[CHANNELS_USED
 	// save the index of our detection to the array
 //	out[ourUniqueIndex] = i;
 
-//	uint8_t *storage = out[ourUniqueIndex];
+	uint8_t *storage = out[ourUniqueIndex];
 
-	uint8_t storage[BYTES_PER_DETECTED_PACKET];
+//	uint8_t storage[BYTES_PER_DETECTED_PACKET];
+
+//	uint8_t storage2;
 
 
 	unsigned detectedBit = 0;
 
 	// start from 0 this time
-	for( int previous = 0; previous < 60; previous++ )
+	for( int previous = 0; previous < 80; previous++ )
 	{
 		sampleOffset = sampletime - (previous * EXPECTED_PEAK_SEPARATION);
 
 		// assuming that SPREADING_CODES is 2, look for peaks at previous times
-		mag0 = magnitude2(cts_stream[sampleOffset][channel][0][bin]);
-		mag1 = magnitude2(cts_stream[sampleOffset][channel][1][bin]);
+		mag0a = cts_stream[sampleOffset][channel][0][bin];
+		mag1a = cts_stream[sampleOffset][channel][1][bin];
 
 		// compensate for drift by also checking in 1 previous
 		sampleOffset -= 1;
 
-		mag2 = magnitude2(cts_stream[sampleOffset][channel][0][bin]);
-		mag3 = magnitude2(cts_stream[sampleOffset][channel][1][bin]);
-//
-//		if( max(mag3,mag1) > max(mag2,mag0) )
-//			detectedBit = 1;
-//
-////		pak_change_bit(storage, 79-i, detectedBit);
+		mag0b = cts_stream[sampleOffset][channel][0][bin];
+		mag1b = cts_stream[sampleOffset][channel][1][bin];
 
+		if( max(mag1b,mag1a) > max(mag0b,mag0a) )
+			detectedBit = 1;
+
+		pak_change_bit(storage, 79-previous, detectedBit);
 	}
-
-
-
 
 }
 
@@ -196,7 +194,7 @@ extern "C"
 // d_out is an array of samples which are above the threshold with size outLenMax
 // d_outLen is the length of valid samples in the d_out array (with a value of no more than outLenMax)
 // d_maxima_out is an array of samples which have passed the local maxima test
-	void gpu_threshold_detection(const popComplex (*cts_stream_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], int* d_out, unsigned int *d_outLen, int* d_maxima_out, unsigned int *d_maxima_outLen, unsigned peak_sinc_neighbors, int outLenMax, popComplex* h_cts, uint8_t(*h_maxima_peaks)[BYTES_PER_DETECTED_PACKET], unsigned *h_maxima_peaks_len, double threshold, int len, int fbins, size_t sample_size, cudaStream_t* stream)
+	void gpu_threshold_detection(const double (*cts_mag_buff)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], uint8_t(*d_out)[BYTES_PER_DETECTED_PACKET], unsigned int *d_outLen, int outLenMax, uint8_t(*h_maxima_peaks)[BYTES_PER_DETECTED_PACKET], unsigned *h_maxima_peaks_len, double threshold, size_t sample_size, cudaStream_t* stream)
 	{
 		// reset this index of the largest detected peak to 0
 		checkCudaErrors(cudaMemsetAsync(d_outLen, 0, sizeof(unsigned int), *stream));
@@ -212,7 +210,7 @@ extern "C"
 		if( iterations % threadCount != 0 )
 			cout << "Error in math to calculate thread / block sizes." << endl;
 
-		threshold_detection<<<iterations/threadCount, threadCount, 0, *stream>>>(cts_stream_buff, (uint8_t(*)[BYTES_PER_DETECTED_PACKET])d_out, d_outLen, outLenMax, (threshold*threshold), len, fbins);
+		threshold_detection<<<iterations/threadCount, threadCount, 0, *stream>>>(cts_mag_buff, (uint8_t(*)[BYTES_PER_DETECTED_PACKET])d_out, d_outLen, outLenMax, (threshold*threshold));
 
 		checkCudaErrors(cudaGetLastError());
 
@@ -224,20 +222,18 @@ extern "C"
 //
 //		// copy the results back to the host
 		cudaMemcpyAsync(h_maxima_peaks_len, d_outLen, sizeof(unsigned int), cudaMemcpyDeviceToHost, *stream);
-		cudaMemcpyAsync(h_maxima_peaks, d_maxima_out, sizeof(unsigned int) * outLenMax, cudaMemcpyDeviceToHost, *stream);
+		cudaMemcpyAsync(h_maxima_peaks, d_out, MAX_SIGNALS_PER_SPREAD * BYTES_PER_DETECTED_PACKET * sizeof(uint8_t), cudaMemcpyDeviceToHost, *stream);
 //
 //		// block till all actions on this stream have completed
 		cudaStreamSynchronize(*stream);
 //
-//		int totalSamples = (1+peak_sinc_neighbors+peak_sinc_neighbors);
-//		int up = 0;
-//		int center = totalSamples;
-//		int down = totalSamples*2;
-//
+
 //
 //		// loop through results and copy neighboring samples back to host
-//		for(unsigned i = 0; i < *h_maxima_peaks_len; i++)
-//		{
+		for(unsigned i = 0; i < *h_maxima_peaks_len; i++)
+		{
+			pak_print(h_maxima_peaks[i], 80);
+			cout << endl << endl;
 //			// copy left and right neighbors on the previous fbin
 //			cudaMemcpyAsync(h_cts + up + i*(totalSamples*3),     d_in - len + h_maxima_peaks[i] - peak_sinc_neighbors, sizeof(popComplex) * totalSamples, cudaMemcpyDeviceToHost, *stream);
 //
@@ -246,7 +242,7 @@ extern "C"
 //
 //			// copy left and right neighbors on the next fbin
 //			cudaMemcpyAsync(h_cts + down + i*(totalSamples*3),   d_in + len + h_maxima_peaks[i] - peak_sinc_neighbors, sizeof(popComplex) * totalSamples, cudaMemcpyDeviceToHost, *stream);
-//		}
+		}
 //
 //		// block till all actions on this stream have completed
 //		cudaStreamSynchronize(*stream);

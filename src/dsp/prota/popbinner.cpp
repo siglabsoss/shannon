@@ -24,7 +24,7 @@
 
 
 #include "dsp/prota/popbinner.hpp"
-#include "dsp/prota/popbinner.cuh"
+
 #include "core/basestationfreq.h"
 
 
@@ -36,7 +36,7 @@ namespace pop
 {
 
 
-PopBinner::PopBinner() : PopSinkGpu<popComplex[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS]>( "PopBinner", SPREADING_LENGTH )
+PopBinner::PopBinner() : PopSinkGpu<double[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS]>( "PopBinner", SPREADING_LENGTH )
 {
 
 }
@@ -58,8 +58,8 @@ void PopBinner::init()
 
     checkCudaErrors(cudaMalloc(&d_peaks, MAX_SIGNALS_PER_SPREAD * BYTES_PER_DETECTED_PACKET * sizeof(uint8_t)));
     checkCudaErrors(cudaMalloc(&d_peaks_len, sizeof(unsigned int)));
-    checkCudaErrors(cudaMalloc(&d_maxima_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
-    checkCudaErrors(cudaMalloc(&d_maxima_peaks_len, sizeof(unsigned int)));
+//    checkCudaErrors(cudaMalloc(&d_maxima_peaks, MAX_SIGNALS_PER_SPREAD * sizeof(int)));
+//    checkCudaErrors(cudaMalloc(&d_maxima_peaks_len, sizeof(unsigned int)));
 
 }
 
@@ -92,11 +92,18 @@ void PopBinner::init()
 
 
 
-void PopBinner::process(const popComplex(*data)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopBinner::process(const double(*data)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 
 //	cout << "in PopBinner with " << data_size << " samples and " << timestamp_size << " stamps " << endl;
+	static size_t points = 0;
 
+	// ignore till we will be able to negativly index and pull out all 80 points
+	if( points < 80 * EXPECTED_PEAK_SEPARATION )
+	{
+		points += data_size;
+		return;
+	}
 
 
 
@@ -109,13 +116,13 @@ void PopBinner::process(const popComplex(*data)[CHANNELS_USED][SPREADING_CODES][
 
 
 	// allocate data in a rectangle which is +- neighbor samples and +- 1 fbin (which gives us *3)
-	popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL * 3 ];
-	uint8_t h_maxima_peaks[MAX_SIGNALS_PER_SPREAD][BYTES_PER_DETECTED_PACKET];
+//	popComplex h_cts[MAX_SIGNALS_PER_SPREAD * PEAK_SINC_SAMPLES_TOTAL * 3 ];
 
+	uint8_t h_maxima_peaks[MAX_SIGNALS_PER_SPREAD][BYTES_PER_DETECTED_PACKET];
 	unsigned h_maxima_peaks_len;
 
 	// threshold detection copies final data results to host
-	gpu_threshold_detection(data, d_peaks, d_peaks_len, d_maxima_peaks, d_maxima_peaks_len, PEAK_SINC_NEIGHBORS, MAX_SIGNALS_PER_SPREAD, h_cts, h_maxima_peaks, &h_maxima_peaks_len, threshold, SPREADING_LENGTH * 2, SPREADING_BINS, data_size, &binner_stream);
+	gpu_threshold_detection(data, d_peaks, d_peaks_len, MAX_SIGNALS_PER_SPREAD, h_maxima_peaks, &h_maxima_peaks_len, threshold, data_size, &binner_stream);
 
 	//		unsigned int h_peaks_len;
 	//		cudaMemcpyAsync(&h_peaks_len, d_peaks_len, sizeof(unsigned int), cudaMemcpyDeviceToHost, deconvolve_stream);

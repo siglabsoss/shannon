@@ -28,6 +28,7 @@
 #include <thrust/device_vector.h>
 
 #include "dsp/common/poptypes.h"
+#include "dsp/prota/popbinner.cuh"
 
 using namespace boost::posix_time;
 
@@ -36,22 +37,22 @@ using namespace boost::posix_time;
 
 namespace pop
 {
-	class PopBinner : public PopSinkGpu<popComplex[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS] >
+	class PopBinner : public PopSinkGpu<double[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS] >
 	{
 	public:
 		PopBinner();
 		~PopBinner();
 
 	private:
-		void process(const popComplex (*data)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size);
+		void process(const double (*data)[CHANNELS_USED][SPREADING_CODES][SPREADING_BINS], size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size);
 		void init();
 
 	private:
 		cudaStream_t binner_stream;
-		int*       d_peaks; // array of indices of detected peaks
+		uint8_t (*d_peaks)[BYTES_PER_DETECTED_PACKET];
 		unsigned int*  	   d_peaks_len; // index of last detected peak
-		int*       d_maxima_peaks; // array of indices of detected peaks that are local maxima
-		unsigned int*  	   d_maxima_peaks_len; // index of last detected peak that is a local maxima
+//		int*       d_maxima_peaks; // array of indices of detected peaks that are local maxima
+//		unsigned int*  	   d_maxima_peaks_len; // index of last detected peak that is a local maxima
 	};
 }
 
