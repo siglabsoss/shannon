@@ -8,10 +8,17 @@ tools/bin/*
 # all build system files
 CMakeCache.txt
 CMakeFiles
-Makefile
 cmake_install.cmake
 install_manifest.txt
 Doxyfile
+
+# Only ignore Makefiles that CMake generates
+/Makefile
+src/Makefile
+3rd/Makefile
+3rd/nedmalloc/Makefile
+tools/Makefile
+
 
 # all recorded sample data
 *.raw
