@@ -20,6 +20,7 @@
 #include "examples/popexamples.hpp"
 #include "core/popsourcegpu.hpp"
 #include "core/popsinkgpu.hpp"
+#include "core/popfpgasource.h"
 
 // include raw cpp files
 #include <core/config.cpp>
@@ -794,6 +795,14 @@ BOOST_AUTO_TEST_CASE( pak_basic )
 	// verify no spillover
 	BOOST_CHECK_EQUAL(0xff, storage[1]);
 
+
+}
+
+BOOST_AUTO_TEST_CASE( basic_fpga )
+{
+	PopFPGASource source;
+
+	source.init();
 
 }
 

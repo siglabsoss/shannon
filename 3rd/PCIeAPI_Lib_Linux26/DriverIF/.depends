@@ -1,0 +1,29 @@
+PCIe_IF.o: PCIe_IF.cpp \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/PCIeAPI.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h PCIe_IF.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ RegisterAccess.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscpcie/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//Utils/DebugPrint.h
+LSCPCIe2_IF.o: LSCPCIe2_IF.cpp \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/PCIeAPI.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ LSCPCIe2_IF.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscpcie2/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscpcie/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h PCIe_IF.h \
+ RegisterAccess.h
+LSCDMA_IF.o: LSCDMA_IF.cpp \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/PCIeAPI.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ LSCDMA_IF.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscdma/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscpcie/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h PCIe_IF.h \
+ RegisterAccess.h

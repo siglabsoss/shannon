@@ -1,0 +1,52 @@
+Device.o: Device.cpp Device.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/RegisterAccess.h
+GPIO.o: GPIO.cpp \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/PCIeAPI.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//Utils/DebugPrint.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h GPIO.h \
+ Device.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/RegisterAccess.h
+Mem.o: Mem.cpp \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/PCIeAPI.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//Utils/DebugPrint.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h Mem.h \
+ Device.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/RegisterAccess.h
+SGDMA.o: SGDMA.cpp \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/PCIeAPI.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//Utils/DebugPrint.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h SGDMA.h \
+ Device.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/RegisterAccess.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/LSCDMA_IF.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscdma/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscpcie/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/PCIe_IF.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/RegisterAccess.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//Utils/MemFormat.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DevObjs/Device.h
+SFIF.o: SFIF.cpp \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/PCIeAPI.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//Utils/DebugPrint.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h SFIF.h \
+ Device.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/RegisterAccess.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/LSCPCIe2_IF.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscpcie2/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//include/lscpcie/Ioctl.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/PCIe_IF.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/RegisterAccess.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//Utils/MemFormat.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DevObjs/Device.h

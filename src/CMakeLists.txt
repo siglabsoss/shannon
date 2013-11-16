@@ -48,7 +48,7 @@ cuda_add_library(${LIB_NAME} ${gpuacc_SRCS})
 
 # TEST SHIT Y'ALL
 add_executable(test app/test.cpp)
-target_link_libraries(test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
+target_link_libraries(test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${CUDA_LIBRARIES} uhd lscpcieapi_S ${LIB_NAME})
 set_target_properties(test PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -DUNIT_TEST")
 CUDA_ADD_CUFFT_TO_TARGET( test )
 add_custom_target(runtest COMMAND test DEPENDS test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
@@ -59,7 +59,7 @@ add_custom_target(runtest COMMAND test DEPENDS test WORKING_DIRECTORY ${CMAKE_SO
 # For target shannon
 add_executable(shannon ${all_SOURCES} ${dsp_SOURCES} app/shannon.cpp)
     
-target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
+target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd lscpcieapi_S ${LIB_NAME})
 CUDA_ADD_CUFFT_TO_TARGET( shannon )
 
 

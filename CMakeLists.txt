@@ -29,6 +29,8 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 find_library(UHD_LIBRARY uhd)
 
+find_library(PCIE_LIBRARY lscpcieapi_S)
+
 find_package(Boost COMPONENTS date_time thread filesystem program_options prg_exec_monitor regex system unit_test_framework)
 
 set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-5.5)
@@ -87,11 +89,15 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/3rd
 	${Boost_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}
+	${CMAKE_SOURCE_DIR}/3rd/PCIeAPI_Lib_Linux26/include
+	${CMAKE_SOURCE_DIR}/3rd/PCIeSFIF_Linux26/
 )
 
 link_directories(
 	${Boost_LIBRARY_DIRS}
 	${CUDA_LIBRARY_DIRS}
+	${CMAKE_SOURCE_DIR}/3rd/PCIeAPI_Lib_Linux26/
+	
 )
 
 ########################################################################

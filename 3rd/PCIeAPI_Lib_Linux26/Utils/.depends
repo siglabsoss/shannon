@@ -1,0 +1,13 @@
+DebugPrint.o: DebugPrint.cpp DebugPrint.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h
+MemFormat.o: MemFormat.cpp MemFormat.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DevObjs/Device.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26//DriverIF/RegisterAccess.h
+MiscUtils.o: MiscUtils.cpp MiscUtils.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/sysDefs.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/PCIeAPI.h \
+ /home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/dllDef.h
