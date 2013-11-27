@@ -806,6 +806,34 @@ BOOST_AUTO_TEST_CASE( basic_fpga )
 
 }
 
+// bjm, added to compensate for changes in kernel 3
+// https://android.googlesource.com/kernel/common/+/18dabf473e15850c0dbc8ff13ac1e2806d542c15
+// https://android.googlesource.com/kernel/common/+/18dabf473e15850c0dbc8ff13ac1e2806d542c15%5E%21/#F24
+// https://lkml.org/lkml/2007/10/23/261
+// zero out upper
+// then or in val shifted by 2
+#define write_upper(dest, val) \
+dest = dest & 0x3; \
+dest |= (val << 2);
+
+
+void test_upper(int dest, int val)
+{
+	cout << "before: " << hex << dest << endl;
+	write_upper(dest,val);
+	cout << "after: " << hex << dest << endl << endl;;
+}
+
+BOOST_AUTO_TEST_CASE( write_upper )
+{
+	test_upper(0xaa,3);
+	test_upper(0x3,5);
+	test_upper(0xff, 5);
+	test_upper(0xff, 3);
+	test_upper(0, 0xffff);
+
+}
+
 
 unsigned gpu_kernel(unsigned i, unsigned len, unsigned half_len, unsigned three_quarter, unsigned fbins)
 {
