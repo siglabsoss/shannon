@@ -1,0 +1,1 @@
+cmd_/root/DK-ECP3-PCIE-030/Software/lscdma_Linux26/drvr/lscdma.ko := ld -m elf_x86_64 -r -o /root/DK-ECP3-PCIE-030/Software/lscdma_Linux26/drvr/lscdma.ko /root/DK-ECP3-PCIE-030/Software/lscdma_Linux26/drvr/lscdma.o /root/DK-ECP3-PCIE-030/Software/lscdma_Linux26/drvr/lscdma.mod.o
