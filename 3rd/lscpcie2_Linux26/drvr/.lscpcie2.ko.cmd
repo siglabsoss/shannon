@@ -1,0 +1,1 @@
+cmd_/root/DK-ECP3-PCIE-030/Software/lscpcie2_Linux26/drvr/lscpcie2.ko := ld -m elf_x86_64 -r -o /root/DK-ECP3-PCIE-030/Software/lscpcie2_Linux26/drvr/lscpcie2.ko /root/DK-ECP3-PCIE-030/Software/lscpcie2_Linux26/drvr/lscpcie2.o /root/DK-ECP3-PCIE-030/Software/lscpcie2_Linux26/drvr/lscpcie2.mod.o
