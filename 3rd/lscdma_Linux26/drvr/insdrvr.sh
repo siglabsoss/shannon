@@ -27,5 +27,20 @@ echo "Installing driver module "${module}" into kernel."
 /sbin/insmod -f ./${module}.ko $* || exit 1
 
 
+mkdir -p /dev/lscpcie2
+
+# ECP3_DMA_1  ECP3_DMA_1_CB  ECP3_DMA_1_IM
+
+mknod /dev/lscpcie2/ECP3_DMA_1 c 249 0
+mknod /dev/lscpcie2/ECP3_DMA_1_CB c 249 1
+mknod /dev/lscpcie2/ECP3_DMA_1_IM c 249 2
+
+
+chmod 666 /dev/lscpcie2/*
+
+
+
+
+
 echo "Done."
 

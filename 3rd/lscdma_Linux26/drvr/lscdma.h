@@ -3,6 +3,7 @@
 #ifndef LSC_LSCDMA_H
 #define LSC_LSCDMA_H
 
+#include <linux/sched.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/version.h>
@@ -28,6 +29,7 @@
 #include <linux/pagemap.h>
 #include <linux/pci.h>
 #include <linux/mman.h>
+#include <linux/scatterlist.h>
 
 #include <linux/ioport.h>
 #include <linux/interrupt.h>

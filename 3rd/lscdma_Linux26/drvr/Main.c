@@ -95,6 +95,8 @@
  *
  */
 
+#include <linux/sched.h>
+
 #include "lscdma.h"
 
 #ifndef CONFIG_PCI
@@ -392,7 +394,7 @@ static pcie_board_t* initBoard(struct pci_dev *PCI_Dev_Cfg, void * devID)
 
 	//================ DMA Common Buffer (Consistent) Allocation ====================
 	// First see if platform supports 32 bit DMA address cycles (like what won't!)
-	if (pci_set_dma_mask(PCI_Dev_Cfg, DMA_32BIT_MASK))
+	if (pci_set_dma_mask(PCI_Dev_Cfg, DMA_BIT_MASK(32)))
 	{
 		printk(KERN_WARNING "lscdma: init DMA not supported!\n");
 		pBrd->CBDMA.hasDMA = FALSE;
@@ -1422,7 +1424,7 @@ static struct file_operations drvr_fops =
 	owner:   THIS_MODULE,
 	open:    lscdma_open,
 	release: lscdma_release,
-	ioctl:   lscdma_ioctl,
+	unlocked_ioctl:   lscdma_ioctl,
 	mmap:    lscdma_mmap,
 	read:	 lscdma_read,
 	write:	 lscdma_write,
@@ -1522,7 +1524,7 @@ static int __devinit lscdma_probe(struct pci_dev *pdev,
 	 * Examples: "sc_dma_1", "ecp2m_dma_2"
 	 */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,12))
-	class_device_create(lscdma.sysClass,
+	device_create(lscdma.sysClass,
 				NULL,
 				MKDEV(brd->majorNum,brd->minorNum),
 				 &(pdev->dev),   // this is of type struct device, the PCI device?
@@ -1531,7 +1533,7 @@ static int __devinit lscdma_probe(struct pci_dev *pdev,
 
 								DemoName[brd->demoType], 
 								brd->instanceNum);
-	class_device_create(lscdma.sysClass,
+	device_create(lscdma.sysClass,
 				NULL,
 				MKDEV(brd->majorNum,brd->minorNum + COLOR_BARS_NUM),
 				 &(pdev->dev),   // this is of type struct device, the PCI device?
@@ -1540,7 +1542,7 @@ static int __devinit lscdma_probe(struct pci_dev *pdev,
 
 								DemoName[brd->demoType], 
 								brd->instanceNum);
-	class_device_create(lscdma.sysClass,
+	device_create(lscdma.sysClass,
 				NULL,
 				MKDEV(brd->majorNum,brd->minorNum + IMAGE_MOVE_NUM),
 				 &(pdev->dev),   // this is of type struct device, the PCI device?
@@ -1643,9 +1645,9 @@ static void __devexit lscdma_remove(struct pci_dev *pdev)
 
 	// Remove the device entry in the /sys/class/lscdma/ tree
 #if  (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,12))
-	class_device_destroy(lscdma.sysClass, MKDEV(pBrd->majorNum, pBrd->minorNum));
-	class_device_destroy(lscdma.sysClass, MKDEV(pBrd->majorNum, pBrd->minorNum + COLOR_BARS_NUM));
-	class_device_destroy(lscdma.sysClass, MKDEV(pBrd->majorNum, pBrd->minorNum + IMAGE_MOVE_NUM));
+	device_destroy(lscdma.sysClass, MKDEV(pBrd->majorNum, pBrd->minorNum));
+	device_destroy(lscdma.sysClass, MKDEV(pBrd->majorNum, pBrd->minorNum + COLOR_BARS_NUM));
+	device_destroy(lscdma.sysClass, MKDEV(pBrd->majorNum, pBrd->minorNum + IMAGE_MOVE_NUM));
 
 #else
 	class_simple_device_remove(MKDEV(pBrd->majorNum, pBrd->minorNum));

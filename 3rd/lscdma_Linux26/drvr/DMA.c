@@ -90,6 +90,16 @@ void StartDmaRead(pcie_board_t *pBrd,
 
 }
 
+// bjm, added to compensate for changes in kernel 3
+// https://android.googlesource.com/kernel/common/+/18dabf473e15850c0dbc8ff13ac1e2806d542c15
+// https://android.googlesource.com/kernel/common/+/18dabf473e15850c0dbc8ff13ac1e2806d542c15%5E%21/#F24
+// https://lkml.org/lkml/2007/10/23/261
+// zero out upper
+// then or in val shifted by 2
+#define WRITE_UPPER(dest, val) \
+dest = dest & 0x3; \
+dest |= (val << 2);
+
 
 
 /**
@@ -240,6 +250,9 @@ int initDMAChan(pcie_board_t *pBrd,
 
 
 	// fill in the information from the pages data
+//	WRITE_UPPER(pChan->sgList[0].page, pChan->pageList[0]);
+	//pChan->sgList[0].page_link = *(pChan->pageList[0]);
+
 	pChan->sgList[0].page = pChan->pageList[0];
 	pChan->sgList[0].offset = firstPgOffset;
 	pChan->sgList[0].length = PAGE_SIZE - firstPgOffset;
@@ -247,6 +260,10 @@ int initDMAChan(pcie_board_t *pBrd,
 	{
 		if (pChan->pageList[i] == NULL)
 			goto FREE_SGMEM;
+//		WRITE_UPPER(pChan->sgList[i].page, pChan->pageList[i]);
+		//pChan->sgList[i].page_link = *(pChan->pageList[i]);
+
+
 		pChan->sgList[i].page = pChan->pageList[i];
 		pChan->sgList[i].offset = 0;
 		pChan->sgList[i].length = PAGE_SIZE;
