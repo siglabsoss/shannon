@@ -294,6 +294,7 @@ void  SFIF::getCntrs(SFIFCntrs_t &cnts)
 	cnts.WrWaitTime = read32(SFIF_WRWAIT_CNT);	 // WrWaitTime
 	cnts.LastCplDTime = read32(SFIF_LAST_CPLD);	 // LastCplDTime
 	cnts.RdWaitTime = read32(SFIF_RDWAIT_CNT);	 // RdWaitTime
+	cnts.PopDebug = read32(SFIF_POPWI_DEBUG);    // Popwi's debug location
 }
 
 
@@ -413,6 +414,10 @@ bool SFIF::getSFIFParseRxFIFO(string &outs)
 
 	ENTER();
 
+	cout << endl << endl;
+
+	cout << "[";
+
 	n = 0;	// number of words read from RX FIFO
 	for (i = 0; i < FIFO_SIZE/4; i++)
 	{
@@ -422,7 +427,11 @@ bool SFIF::getSFIFParseRxFIFO(string &outs)
 		RxFIFO[i] =  read32(SFIF_RXTLP_DATA);
 		++n;
 
+		cout << RxFIFO[i] << ", ";
+
 	}
+
+	cout << "] (" << n << ")" << endl;
 
 
 	// if the RX FIFO contains all the CplD's then parse and use the time stamps

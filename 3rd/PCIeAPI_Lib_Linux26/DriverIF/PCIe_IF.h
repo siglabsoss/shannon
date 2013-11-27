@@ -13,6 +13,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <string>
 
 #include "dllDef.h"
 
@@ -21,6 +22,7 @@
 // The driver interface definitions
 #include "lscpcie/Ioctl.h"
 
+using namespace std;
 
 /*
  * Lattice Semiconductor Corp. namespace

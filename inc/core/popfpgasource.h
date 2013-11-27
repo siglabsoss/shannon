@@ -72,7 +72,9 @@ public:
 		cout<<"CREDIT_WR_PAUSE_CNT: SFIF[0x20] = "<<sfifCnts.WrWaitTime<<endl;
 		cout<<"LAST_CPLD_TS: SFIF[0x24] = "<<sfifCnts.LastCplDTime<<endl;
 		cout<<"CREDIT_RD_PAUSE_CNT: SFIF[0x28] = "<<sfifCnts.RdWaitTime<<endl;
+		cout<<"beef: SFIF[0x30] = " << sfifCnts.PopDebug << endl;
 	}
+
 
 
 
@@ -95,101 +97,104 @@ public:
 		while (1)
 		{
 
-			cout<<"\n\n";
-			cout<<"==================================================\n";
-			cout<<"  Read a TLP(s) from system memory\n";
-			cout<<"==================================================\n";
-			cout<<"Read Request Size(4,16,32,64,128,256,512): ";
-			//cin>>readReqSize;
-			readReqSize = 16;
-			switch (readReqSize)
-			{
-			case 4:
-			case 16:
-			case 32:
-			case 64:
-			case 128:
-			case 256:
-			case 512:
-//				numDWs = readReqSize / 4;
-				break;
-			default:
-				readReqSize = 4;
-//				numDWs = 1;
-			}
-
-//			cout<<"Number MRd TLPs to send: ";
-//			cin>>nPkts;
-			nPkts = 1;
-			if (nPkts > 32)
-			{
-				cout<<"NOTE: Max 32 outstanding TLPs."<<endl;
-				nPkts = 32;
-			}
-			cout<<"# Cycles of MRd pkts: ";
-//			cin>>cycles;
-			cycles = 1;
-			if (cycles >= 0x10000)
-			{
-				cout<<"NOTE: Max 64k cycles."<<endl;
-				cycles = 0xffff;
-			}
-			else if (cycles < 1)
-				cycles = 1;
-
-			cout<<"ICG: ";
-//			cin>>icg;
-
-			// how many clocks to wait between reads
-			icg = 0;
-
-			// Put pattern to read in DMA common buffer done by SFIF class
-
-			pSFIF->setupSFIF(READ_CYC_MODE,	 // runMode
-					MRD_TLPS,		  // trafficMode
-					cycles,
-					icg,
-					readReqSize,  // rdTLPSize
-					0,			   // wrTLPSize
-					nPkts,				// numRdTLPs
-					0);   // numWrTLPs
-
-
-			pSFIF->startSFIF(false);  // not looping, just run the set many cycles
-
-			Sleep(1000);
-
-			pSFIF->stopSFIF();
+//			cout<<"\n\n";
+//			cout<<"==================================================\n";
+//			cout<<"  Read a TLP(s) from system memory\n";
+//			cout<<"==================================================\n";
+//			cout<<"Read Request Size(4,16,32,64,128,256,512): ";
+//			//cin>>readReqSize;
+//			readReqSize = 16;
+//			switch (readReqSize)
+//			{
+//			case 4:
+//			case 16:
+//			case 32:
+//			case 64:
+//			case 128:
+//			case 256:
+//			case 512:
+////				numDWs = readReqSize / 4;
+//				break;
+//			default:
+//				readReqSize = 4;
+////				numDWs = 1;
+//			}
+//
+////			cout<<"Number MRd TLPs to send: ";
+////			cin>>nPkts;
+//			nPkts = 1;
+//			if (nPkts > 32)
+//			{
+//				cout<<"NOTE: Max 32 outstanding TLPs."<<endl;
+//				nPkts = 32;
+//			}
+//			cout<<"# Cycles of MRd pkts: ";
+////			cin>>cycles;
+//			cycles = 1;
+//			if (cycles >= 0x10000)
+//			{
+//				cout<<"NOTE: Max 64k cycles."<<endl;
+//				cycles = 0xffff;
+//			}
+//			else if (cycles < 1)
+//				cycles = 1;
+//
+//			cout<<"ICG: ";
+////			cin>>icg;
+//
+//			// how many clocks to wait between reads
+//			icg = 0;
+//
+//			// Put pattern to read in DMA common buffer done by SFIF class
+//
+//			pSFIF->setupSFIF(READ_CYC_MODE,	 // runMode
+//					MRD_TLPS,		  // trafficMode
+//					cycles,
+//					icg,
+//					readReqSize,  // rdTLPSize
+//					0,			   // wrTLPSize
+//					nPkts,				// numRdTLPs
+//					0);   // numWrTLPs
+//
+//
+//			pSFIF->startSFIF(false);  // not looping, just run the set many cycles
+//
+//			Sleep(1000);
+//
+//			pSFIF->stopSFIF();
 
 
 			pSFIF->getCntrs(sfifCnts);
 			showSFIFCounters(sfifCnts);
 
 
-			//pauseRatio = (double)sfifCnts.RdWaitTime / (double)sfifCnts.ElapsedTime;
-			pauseRatio = (double)sfifCnts.RdWaitTime / (double)sfifCnts.LastCplDTime;
-			cout<<"Run-time waiting for MRd credits: "<<(pauseRatio * 100.0)<<"%\n";
-
-			if (pSFIF->getSFIFParseRxFIFO(outs))
-			{
-				cout<<outs;
-			}
-			else
-			{
-				cout<<"\n\nThruput estimate based on read request size, Rx TLP count and Last CplD time\n";
-				if (readReqSize < RCB)
-					totalBytes = (uint64_t)readReqSize * (uint64_t)sfifCnts.RxTLPCnt;
-				else
-					totalBytes = (uint64_t)RCB * (uint64_t)sfifCnts.RxTLPCnt;
-				thruput = (totalBytes / (8E-9 * sfifCnts.LastCplDTime)) / 1E6;
-
-				cout<<"Recvd: "<<dec<<totalBytes<<" bytes  in "<<(8E-9 * sfifCnts.LastCplDTime)<<" secs   Throughput: "<<thruput<<" MB/s\n";
-			}
 
 
-//			cout<<"\n\nAgain(y/n)? ";
-//			cin>>line;
-//			if (line[0] != 'y')
+
+//			//pauseRatio = (double)sfifCnts.RdWaitTime / (double)sfifCnts.ElapsedTime;
+//			pauseRatio = (double)sfifCnts.RdWaitTime / (double)sfifCnts.LastCplDTime;
+//			cout<<"Run-time waiting for MRd credits: "<<(pauseRatio * 100.0)<<"%\n";
+//
+//			if (pSFIF->getSFIFParseRxFIFO(outs))
+//			{
+//				cout<<outs;
+//			}
+//			else
+//			{
+//				cout<<"\n\nThruput estimate based on read request size, Rx TLP count and Last CplD time\n";
+//				if (readReqSize < RCB)
+//					totalBytes = (uint64_t)readReqSize * (uint64_t)sfifCnts.RxTLPCnt;
+//				else
+//					totalBytes = (uint64_t)RCB * (uint64_t)sfifCnts.RxTLPCnt;
+//				thruput = (totalBytes / (8E-9 * sfifCnts.LastCplDTime)) / 1E6;
+//
+//				cout<<"Recvd: "<<dec<<totalBytes<<" bytes  in "<<(8E-9 * sfifCnts.LastCplDTime)<<" secs   Throughput: "<<thruput<<" MB/s\n";
+//			}
+//
+//
+////			cout<<"\n\nAgain(y/n)? ";
+////			cin>>line;
+////			if (line[0] != 'y')
 			break;
 		}
 
@@ -385,9 +390,40 @@ public:
 						cout<<"PASS\n";
 					}
 
+//					cout<<endl << endl << endl << endl;
+//
+//					readTlpMenu();
+
 					cout<<endl << endl << endl << endl;
 
-					readTlpMenu();
+
+					SFIF::SFIFCntrs_t sfifCnts;
+					pSFIF->getCntrs(sfifCnts);
+					showSFIFCounters(sfifCnts);
+
+					uint32_t bytes[2048*64];
+
+					int count = 4;
+
+					pSFIF->read32(0x1000, bytes, count, true);
+//					pSFIF->read32(0x9a0, bytes, count, true);
+
+//					for( int i = 0; i < count; i += 4 )
+//					{
+//						bytes[i] = pSFIF->read32(0x1000+i);
+//						cout << "read " << i;
+//					}
+
+					for( int i = 0; i < count; i++ )
+					{
+						cout << hex << bytes[i] << endl;
+					}
+
+
+//					PopDebug = pSFIF->read32(0x34);
+//
+//					cout << "I pulled " << PopDebug << endl;
+
 
 //
 //

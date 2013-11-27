@@ -62,9 +62,7 @@ namespace LatticeSemi_PCIe
 #define SFIF_WRWAIT_CNT 0x20 // Wr Wait Time  - Number of clock cycles waiting for Posted Credits in current run
 #define SFIF_LAST_CPLD  0x24 // Last CplD Time - Timestamp for last CplD
 #define SFIF_RDWAIT_CNT 0x28 // Rd Wait Time  - Number of clocks cycles waiting for Non-Posted Credits or Tags in current run
-
-
-
+#define SFIF_POPWI_DEBUG 0x34
 
 
 /**
@@ -93,14 +91,14 @@ namespace LatticeSemi_PCIe
 class DLLIMPORT SFIF : public LatticeSemi_PCIe::Device
 {
 public:
-	typedef struct 
-	{
-	    uint32_t ElapsedTime;
-	    uint32_t TxTLPCnt;
-	    uint32_t RxTLPCnt;
-	    uint32_t WrWaitTime;
-	    uint32_t LastCplDTime;
-	    uint32_t RdWaitTime;
+	typedef struct {
+		uint32_t ElapsedTime;
+		uint32_t TxTLPCnt;
+		uint32_t RxTLPCnt;
+		uint32_t WrWaitTime;
+		uint32_t LastCplDTime;
+		uint32_t RdWaitTime;
+		uint32_t PopDebug;
 	} SFIFCntrs_t;
 
 	    

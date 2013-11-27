@@ -114,10 +114,10 @@ includes:
 #-----------------------------------------------------------------
 .PHONY: depends
 depends:
-	$(MAKE) -f Makefile depends  -C ./DriverIF
-	$(MAKE) -f Makefile depends  -C ./DevObjs
-	$(MAKE) -f Makefile depends  -C ./Utils
-	$(MAKE) -f Makefile depends  -C ./HdwSim
+	$(MAKE) -f Makefile CC_OPTS='-g -DDEBUG' depends  -C ./DriverIF
+	$(MAKE) -f Makefile CC_OPTS='-g -DDEBUG' depends  -C ./DevObjs
+	$(MAKE) -f Makefile CC_OPTS='-g -DDEBUG' depends  -C ./Utils
+	$(MAKE) -f Makefile CC_OPTS='-g -DDEBUG' depends  -C ./HdwSim
 
 
 #-----------------------------------------------------------------
