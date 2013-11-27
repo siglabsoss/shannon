@@ -15,6 +15,8 @@ ifneq ($(KERNELRELEASE),)
 obj-m := lscdma.o
 lscdma-y = Main.o DMA.o Devices.o ISR.o 
 
+ccflags-y += -g
+
 EXTRA_CFLAGS += -I.
 
 else
@@ -23,7 +25,7 @@ KDIR := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 
 default :
-	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
+	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) CC_OPTS='-g -DDEBUG' modules
 
 clean :
 	rm *.o *.ko *.mod.c

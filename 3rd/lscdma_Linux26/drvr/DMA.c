@@ -132,7 +132,9 @@ int initDMAChan(pcie_board_t *pBrd,
 	unsigned long firstPg, lastPg;
 	unsigned long firstPgOffset;
 
-	if (DrvrDebug)
+	printk("Ben Morse\n");
+
+	if (1)
 		printk(KERN_INFO "lscdma: initDMA  userAddr=%lx len=%d\n", userAddr, (u32)len);
 
 
@@ -155,7 +157,7 @@ int initDMAChan(pcie_board_t *pBrd,
 	// STEP 1
 	// Get information about the user's buffer in virtual memory space
 	//-------------------------------------------------------------------------
-	if (DrvrDebug)
+	if (1)
 		printk(KERN_INFO "lscdma: Create SGlist from user buffer\n");
 
 	firstPg = (userAddr & PAGE_MASK) >> PAGE_SHIFT;
@@ -180,7 +182,7 @@ int initDMAChan(pcie_board_t *pBrd,
 		printk(KERN_WARNING "lscdma: WARNING! buffer not page aligned! SGDMA may not cope well"
 				"with partial page transfers!\n");	
 	
-	if (DrvrDebug)
+	if (1)
 		printk(KERN_INFO "FirstPg=%lx offset=%lx LastPg=%lx nPgs=%d\n", firstPg,
 									firstPgOffset,
 								     lastPg,
@@ -223,7 +225,7 @@ int initDMAChan(pcie_board_t *pBrd,
 	}
  
 // TODO remove this debugging stuff later
-	if (DrvrDebug)
+	if (1)
 	{
 		printk(KERN_INFO "lscdma: get_user_pages = %d\n", ret);
 		for (i = 0; i < pChan->numPages; i++)
@@ -253,7 +255,13 @@ int initDMAChan(pcie_board_t *pBrd,
 //	WRITE_UPPER(pChan->sgList[0].page, pChan->pageList[0]);
 	//pChan->sgList[0].page_link = *(pChan->pageList[0]);
 
-	pChan->sgList[0].page = pChan->pageList[0];
+//	pChan->sgList[0].page = pChan->pageList[0];
+
+
+
+	//printk(KERN_ERR "initDMAChan: pageList[0] %ld\n", pChan->pageList[0] );
+
+	sg_assign_page( &(pChan->sgList[0]), pChan->pageList[0] );
 	pChan->sgList[0].offset = firstPgOffset;
 	pChan->sgList[0].length = PAGE_SIZE - firstPgOffset;
 	for (i = 1; i < pChan->numPages; i++)
@@ -264,7 +272,8 @@ int initDMAChan(pcie_board_t *pBrd,
 		//pChan->sgList[i].page_link = *(pChan->pageList[i]);
 
 
-		pChan->sgList[i].page = pChan->pageList[i];
+//		pChan->sgList[i].page = pChan->pageList[i];
+		sg_assign_page( &(pChan->sgList[i]), pChan->pageList[i] );
 		pChan->sgList[i].offset = 0;
 		pChan->sgList[i].length = PAGE_SIZE;
 	}
@@ -285,7 +294,7 @@ int initDMAChan(pcie_board_t *pBrd,
 
 
 // TODO remove this debugging stuff later
-	if (DrvrDebug)
+	if (1)
 	{
 		struct scatterlist *sg = pChan->sgList;
 		printk(KERN_INFO "sgLen = %d\n", pChan->sgLen);

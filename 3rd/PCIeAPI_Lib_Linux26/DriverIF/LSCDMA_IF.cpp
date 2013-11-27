@@ -99,6 +99,8 @@ size_t LSCDMA_IF::getSysDmaBufSize(void)
 bool LSCDMA_IF::getDriverDMAInfo(const DMAResourceInfo_t **pInfo)
 {
 
+	cout << "in getDriverDMAInfo with " << pInfo << " and hdev " << hDev << endl;
+
 	if (ioctl(hDev, IOCTL_LSCDMA_GET_DMA_INFO, &DMAInfo) != 0)
 		throw(PCIe_IF_Error("LSCDMA_IF: getDriverDMAInfo ioctl Failed!"));
 

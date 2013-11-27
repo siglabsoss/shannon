@@ -140,7 +140,7 @@ static struct LSCDMA lscdma;
 
 
 
-int DrvrDebug = 0;
+int DrvrDebug = 1;
 
 
 static const char Version[] = "lscdma v1.1.0 - ECP3 and SGDMA v2.3 support";  /**< version string for display */
@@ -937,14 +937,14 @@ int lscdma_release(struct inode *inode, struct file *filp)
  * device interrupts and such.
  * IOCTL works on a board object as a whole, not a BAR.
  */
-int lscdma_ioctl(struct inode *inode, 
+long lscdma_ioctl(
 		  struct file *filp,
 		  unsigned int cmd,
 		  unsigned long arg)
 {
 	int i;
 	int status = OK;
-	int mnr = iminor(inode);
+	int mnr = 0; //iminor(inode);
 	pcie_board_t *pBrd = NULL; 
 	PCIResourceInfo_t *pInfo;
 	DMAResourceInfo_t *pDmaInfo;
@@ -1314,7 +1314,7 @@ ssize_t lscdma_read(struct file *filp,
  * User passes length (in bytes) like writing to a file.
  */
 ssize_t lscdma_write(struct file *filp,
-		 	const char __user *userBuf,
+		 	const char __user *,
 			size_t len,
 			loff_t *offp)
 {
@@ -1707,6 +1707,8 @@ static int __init lscdma_init(void)
 	int err;
 	//pci_dev_bar_t *p;
 	//pcie_board_t *pB;
+
+	debug = 1;
 
 	printk(KERN_INFO "lscdma: _init()   debug=%d\n", debug);
 	printk(KERN_INFO "lscdma: Version=%s\n", Version);

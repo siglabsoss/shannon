@@ -14,7 +14,7 @@
 #include <sys/mman.h>
 
 #include <linux/version.h>
-
+#include <stdbool.h>
 #include "Ioctl.h"
 
 
@@ -81,6 +81,9 @@ int main(int argc, char *argv[])
 
 	printf("Opening access to lscdma/%s\n", brd);
 	sprintf(filename, "/dev/lscdma/%s", brd);
+
+	printf("Using exact filename: %s\n", filename);
+
 	p0 = lscdma_open(filename, BarSize);
 
 	if (Board_fd == -1)
