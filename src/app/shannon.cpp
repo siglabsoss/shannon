@@ -24,6 +24,7 @@
 #include "net/popnetwork.hpp"
 #include "mdl/popsymbol.hpp"
 #include "core/poptimestampinterpolate.hpp"
+#include "dsp/prota/popbinner.hpp"
 
 #include "dsp/common/poputils.hpp"
 
@@ -111,6 +112,7 @@ int main(int argc, char *argv[])
 
 	// Setup timestamp interpolate block.  This number is hardcoded.. how can we grab it from popuhd?
 	PopTimestampInterpolation<complex<double> > timestampInterpolation(507);
+	timestampInterpolation.start_thread();
 
 	popuhd.connect(timestampInterpolation);
 
@@ -119,16 +121,23 @@ int main(int argc, char *argv[])
 	PopProtADeconvolve deconvolve;
 	deconvolve.start_thread();
 
-	chanfilter.connect(deconvolve);
+//	chanfilter.strided_gpu.debug_free_buffers = true;
+
+	chanfilter.strided_gpu.connect(deconvolve);
 	//chanfilter.connect(popnetwork);
 
-	// Open Network Connection to our designated s3p
-	PopNetwork<PopSymbol> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"));
+	PopBinner binner;
+	binner.start_thread();
 
-	deconvolve.maxima.connect(s3pConnection);
+	deconvolve.cts_mag_gpu.connect(binner);
+
+	// Open Network Connection to our designated s3p
+//	PopNetwork<PopPeak> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
+
+//	deconvolve.peaks.connect(s3pConnection);
 
 	// call this after connecting all sources or sinks
-	s3pConnection.wakeup();
+//	s3pConnection.wakeup();
 //	s3pConnection.process();
 
 	//PopDumpToFile<complex<double> > dump;
@@ -140,6 +149,7 @@ int main(int argc, char *argv[])
 #endif
 
 	char c;
+	size_t i = 0;
 
 	// Run Control Loop
 	while(1)
@@ -151,6 +161,15 @@ int main(int argc, char *argv[])
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
 		boost::posix_time::microseconds workTime(10);
 		boost::this_thread::sleep(workTime);
+
+		// check to see if the SDR is frozen
+		if( i > 150000 && popuhd.init_stage < 4 )
+		{
+			if( i % 1000 == 0)
+				cout << RED "ERROR: PopUhd looks frozen.  The SDR may require a restart!" RESETCOLOR << endl;
+		}
+
+		i++;
 	}
 
     return ret;

@@ -48,7 +48,7 @@ public:
      * set to zero then no output buffer is allocated.
      */
     PopSource(const char* name = "PopSource") :
-        PopObject(name), m_buf(name), m_timestamp_buf(name)
+        PopObject(name), m_buf(name), m_timestamp_buf(name), debug_free_buffers(0)
     {
     }
 
@@ -131,7 +131,7 @@ public:
             {
 
             	// bound this number because we might not have timestamps for every sample
-            	size_t timestamp_req_samples_from_sink = std::min(timestamp_uncopied_pts, req_samples_from_sink);
+            	timestamp_req_samples_from_sink = std::min(timestamp_uncopied_pts, req_samples_from_sink);
 
 //            	cout << "timestamp_req_samples_from_sink in " << get_name() << " is " << timestamp_req_samples_from_sink << endl;
 
@@ -147,6 +147,17 @@ public:
             	timestamp_sink_idx_into_buffer += timestamp_req_samples_from_sink;
             	timestamp_sink_idx_into_buffer %= m_timestamp_buf.m_sizeBuf;
             	timestamp_uncopied_pts -= timestamp_req_samples_from_sink;
+            }
+
+            // if this debug option is set, this prints how many free buffers are avaliable
+            static int iii = 0;
+            using namespace std;
+            int free_buffers = POPSOURCE_NUM_BUFFERS - (*it)->queue_size();
+            if( debug_free_buffers )
+            {
+            	// only report every N times to reduce spam
+            	if( iii++ % 15 == 0 )
+            		cout << get_name() << " free buffers: " << free_buffers << endl;
             }
 
             // check for overflow
@@ -450,6 +461,9 @@ private:
 
     // buffer for timestamp data
     PopSourceBuffer<PopTimestamp> m_timestamp_buf;
+public:
+    bool debug_free_buffers;
+private:
 
     // --------------------------------
     // JSON member variables

@@ -1,5 +1,7 @@
 #include "poptimestamp.hpp"
 
+#include <boost/lexical_cast.hpp>
+
 //
 // Copyright 2011-2013 Ettus Research LLC
 //
@@ -215,6 +217,13 @@ bool operator==(const PopTimestamp &lhs, const PopTimestamp &rhs){
 //        (lhs.get_frac_secs() < rhs.get_frac_secs())
 //    ));
 //}
+
+std::ostream& operator << (std::ostream &o, const PopTimestamp &timestamp)
+{
+	o << "time: " << boost::lexical_cast<std::string>(timestamp.get_full_secs()) << "  -  " << boost::lexical_cast<std::string>(timestamp.get_frac_secs());
+	return o;
+}
+
 
 } // namespace pop
 

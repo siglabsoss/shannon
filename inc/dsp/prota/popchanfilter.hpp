@@ -15,6 +15,7 @@
 #include <boost/thread.hpp>
 #include <boost/signals2.hpp>
 #include <boost/timer.hpp>
+#include <core/popsourcegpu.hpp>
 
 #include "core/popblock.hpp"
 
@@ -27,6 +28,21 @@ namespace pop
 	public:
 		PopChanFilter();
 		~PopChanFilter();
+		static double fbin_size();
+		static double fft_bottom_frequency();
+		static double fft_top_frequency();
+		static double fbins_per_channel();
+		static double channel_frequency(unsigned c);
+		static double channel_frequency_above_fft(unsigned c);
+		static double channel_fbin_center(unsigned c);
+		static double channel_fbin_low_exact(unsigned c);
+		static double channel_fbin_high_exact(unsigned c);
+		static size_t channel_fbin_low(unsigned c);
+		static size_t channel_fbin_high(unsigned c);
+
+		PopSource<std::complex<double>[CHANNELS_USED]> strided;
+		PopSourceGpu<std::complex<double>[CHANNELS_USED]> strided_gpu;
+
 
 	private:
 		void process(const std::complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size);

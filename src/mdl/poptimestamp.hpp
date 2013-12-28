@@ -9,7 +9,7 @@
 namespace pop
 {
 
-class PopTimestamp
+class __attribute__ ((__packed__)) PopTimestamp
 {
 	/*!
 	 * A time_spec_t holds a seconds and a fractional seconds time value.
@@ -149,6 +149,9 @@ public:
 }; // class PopTimestamp
 
 extern bool operator==(const PopTimestamp &lhs, const PopTimestamp &rhs);
+
+//! Implement printable interface
+std::ostream& operator << (std::ostream &o, const PopTimestamp &t);
 
 
 

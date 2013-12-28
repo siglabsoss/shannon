@@ -9,6 +9,7 @@
 //#include <boost/test/framework.hpp>
 //#include <boost/test/unit_test.hpp>
 #include <boost/test/auto_unit_test.hpp>
+#include <boost/lexical_cast.hpp>
 //#include <boost/test/unit_test_suite.hpp>
 
 
@@ -17,14 +18,19 @@
 #include <core/popassert.h>
 #include <core/config.hpp>
 #include "examples/popexamples.hpp"
+#include "core/popsourcegpu.hpp"
+#include "core/popsinkgpu.hpp"
 
 // include raw cpp files
 #include <core/config.cpp>
 #include <dsp/prota/popdeconvolve.cpp>
+#include "dsp/prota/popchanfilter.cpp"
 #include <core/objectstash.cpp>
+#include <core/basestationfreq.c>
 #include <mdl/popradio.cpp>
 #include <mdl/poptimestamp.cpp>
 #include <mdl/popsymbol.cpp>
+#include "dsp/common/poptypes.cuh"
 
 #include <iostream>
 #include <fstream>
@@ -660,6 +666,285 @@ BOOST_AUTO_TEST_CASE( file_readback )
 
 BOOST_AUTO_TEST_SUITE_END()
 
+
+BOOST_AUTO_TEST_SUITE( channel_math )
+BOOST_AUTO_TEST_CASE( basic_channel_math )
+{
+	return; // disable to visually check
+
+	cout << "fbin size: " <<  boost::lexical_cast<string>(  bsf_fbin_size()  )   << endl;
+	cout << "bottom: " <<  boost::lexical_cast<string>(  bsf_fft_bottom_frequency()  )   << endl;
+	cout << "top   : " <<  boost::lexical_cast<string>(  bsf_fft_top_frequency()  )   << endl;
+	cout << "bins per channel: " <<  boost::lexical_cast<string>(  bsf_fbins_per_channel()  )   << endl;
+
+	cout << endl;
+
+	for( int i = 0; i < 50; i++ )
+	{
+		cout << "channel " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_frequency(i)  )   << endl;
+		cout << "above fft " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_frequency_above_fft(i)  )   << endl;
+		cout << "fbin center " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_fbin_center(i)  )   << endl;
+
+		cout << "fbin low  " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_fbin_low_exact(i)  )   << endl;
+		cout << "fbin high " << i <<  ": " <<  boost::lexical_cast<string>(  bsf_channel_fbin_high_exact(i)  )   << endl;
+	}
+}
+
+BOOST_AUTO_TEST_CASE( test_channel_frequency )
+{
+	double channels[50] = {902382812.5, 902433593.75, 902484375, 902535156.25, 902585937.5, 902636718.75, 902687500, 902738281.25, 902789062.5, 902839843.75, 902890625, 902941406.25, 902992187.5, 903042968.75, 903093750, 903144531.25, 903195312.5, 903246093.75, 903296875, 903347656.25, 903398437.5, 903449218.75, 903500000, 903550781.25, 903601562.5, 903652343.75, 903703125, 903753906.25, 903804687.5, 903855468.75, 903906250, 903957031.25, 904007812.5, 904058593.75, 904109375, 904160156.25, 904210937.5, 904261718.75, 904312500, 904363281.25, 904414062.5, 904464843.75, 904515625, 904566406.25, 904617187.5, 904667968.75, 904718750, 904769531.25, 904820312.5, 904871093.75};
+
+	// test channel frequency calculation against every pre-defined one from the wiki
+	for( int i = 0; i < 50; i++ )
+	{
+		BOOST_CHECK_EQUAL( channels[i], bsf_channel_frequency(i) );
+	}
+
+	size_t difference;
+
+	// test if the rounded versions are returning discreet integers
+	for( int i = 0; i < 50; i++ )
+	{
+		difference = bsf_channel_fbin_high(i) - bsf_channel_fbin_low(i);
+		BOOST_CHECK_EQUAL( difference, 1040 ); // this is a hard check, this could also be bsf_bins_per_channel()
+	}
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+
+class PopTestSourceTwo : public PopSource<PopTestMsg[50]>
+{
+public:
+	PopTestSourceTwo() : PopSource<PopTestMsg[50]>("PopTestSourceTwo Array") { }
+
+
+    void send_both(size_t count, size_t stamps, double start_time = -1, double time_inc_divisor = -1)
+    {
+
+    	PopTestMsg (*buff)[50] = get_buffer(10);
+
+    	process();
+
+    }
+
+};
+
+
+BOOST_AUTO_TEST_SUITE( lump_random )
+
+BOOST_AUTO_TEST_CASE( basic_array_sink_source )
+{
+	PopTestSourceTwo arraySource();
+
+}
+
+BOOST_AUTO_TEST_CASE( pak_basic )
+{
+	uint8_t storage[2];
+
+//	pak_print(storage, 16);
+
+
+
+	// set this to 0
+	storage[0] = 0;
+	storage[1] = 0;
+
+	// set 1's up the byte
+	uint8_t mask = 0xFE;
+	uint8_t check;
+	for( int i = 0; i < 8; i++ )
+	{
+		pak_change_bit(storage, i, 1);
+//		pak_print(storage1, 8);
+
+		check = 0xff & ~mask;
+
+		BOOST_CHECK_EQUAL(check, storage[0]);
+
+		mask <<=1;
+	}
+
+	// final check
+	BOOST_CHECK_EQUAL(0xff, storage[0]);
+
+	// verify no spillover
+	BOOST_CHECK_EQUAL(0x00, storage[1]);
+
+	// now check zeroing out
+	storage[0] = 0xff;
+	storage[1] = 0xff;
+
+	mask = 0x7f;
+	for( int i = 7; i >= 0; i-- )
+	{
+		pak_change_bit(storage, i, 0);
+//		pak_print(storage1, 8);
+
+		check = 0xff & mask;
+
+		BOOST_CHECK_EQUAL(check, storage[0]);
+
+		mask >>=1;
+	}
+
+	// final check
+	BOOST_CHECK_EQUAL(0x00, storage[0]);
+
+	// verify no spillover
+	BOOST_CHECK_EQUAL(0xff, storage[1]);
+
+
+}
+
+
+unsigned gpu_kernel(unsigned i, unsigned len, unsigned half_len, unsigned three_quarter, unsigned fbins)
+{
+
+
+	int sample;
+
+	sample = (i/half_len) * len + ((i%half_len)+three_quarter) % len;
+
+	int b = i % half_len; // fft sample out
+
+	int fbin_out = i / half_len; // fbin out
+
+
+//	cout << sample << " goes into ";
+	printf("%u goes into [%u][%u]\r\n", sample, fbin_out, b);
+
+	return 0;
+
+}
+BOOST_AUTO_TEST_CASE( gpu_math_logic_check )
+{
+
+	int spread_len = 4;
+
+	int total = spread_len * SPREADING_BINS;
+
+	int total2 = 1030;
+
+	for( int i = 0; i < total2; i++ )
+	{
+//		gpu_kernel(i, spread_len*2, spread_len, (spread_len*6)/4, SPREADING_BINS);
+	}
+
+
+
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+class PopTestGpuSourceOne : public PopSourceGpu<char>
+{
+public:
+	PopTestGpuSourceOne() : PopSourceGpu<char>("PopTestGpuSourceOne", 2) { }
+
+
+    void send_both(size_t count)
+    {
+    	static char c = 'a';
+    	char h_buff[3];
+    	h_buff[0] = c++;
+    	h_buff[1] = c++;
+//    	h_buff[2] = c++;
+
+    	char* d_buff = get_buffer();
+
+    	cudaMemcpy(d_buff, h_buff, 2 * sizeof(char), cudaMemcpyHostToDevice);
+
+
+    	static double time = 0.333333333333333;
+    	PopTimestamp h_ts[3];
+    	h_ts[0] = PopTimestamp(time++);
+    	h_ts[1] = PopTimestamp(time++);
+
+    	PopTimestamp* d_ts = get_timestamp_buffer();
+
+    	cudaMemcpy(d_ts, h_ts, 2 * sizeof(PopTimestamp), cudaMemcpyHostToDevice);
+
+
+
+		// call to GPU process accepts no parameters because everything is fixed
+    	process();
+    }
+
+};
+
+class PopTestGpuSinkOne : public PopSinkGpu<char>
+{
+public:
+
+	bool verbose;
+	bool verboseVerbose;
+
+
+	PopTestGpuSinkOne() : PopSinkGpu<char>("PopTestGpuSinkOne", 3), verbose(0), verboseVerbose(0) { }
+	void init() { }
+	void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+	{
+		char h_buff[3];
+		PopTimestamp h_ts[3];
+
+		cudaMemcpy(h_buff, data, 3 * sizeof(char), cudaMemcpyDeviceToHost);
+		cudaMemcpy(h_ts, timestamp_data, 3 * sizeof(PopTimestamp), cudaMemcpyDeviceToHost);
+
+//		m_lastData = data;
+//		m_lastSize = size;
+//
+		if(verbose || verboseVerbose) printf("received %lu Data samples(s)\r\n", size);
+
+		if(verboseVerbose)
+		{
+			for( size_t i = 0; i < size; i++ )
+			{
+				printf("Data was '%c'\r\n", h_buff[i]);
+			}
+		}
+
+		if(verbose || verboseVerbose) printf("received %lu timestamps(s)\r\n", timestamp_size);
+		for( size_t i = 0; i < timestamp_size; i++ )
+		{
+			if(verbose || verboseVerbose)
+			{
+				std::cout << h_ts[i] << std::endl;
+			}
+		}
+
+	}
+
+};
+
+
+
+BOOST_AUTO_TEST_SUITE( sink_source_gpu )
+
+BOOST_AUTO_TEST_CASE( basic_gpu_sink_source )
+{
+	PopTestGpuSourceOne source;
+	PopTestGpuSinkOne sink;
+//	sink.verboseVerbose = true;
+
+	source.connect(sink);
+
+//	cout << endl << "starting pos source_idx() = " << source.m_buf.source_idx() << " sink_idx() = " << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
+
+//	source.debug_print();
+
+	for( int i = 0; i < 15; i++ )
+	{
+		source.send_both(0);
+//		cout << endl << "after call " << i << " source_idx() = " << source.m_buf.source_idx() << " sink_idx() = " << source.m_buf.sink_idx(sink.m_sourceBufIdx) << endl;
+
+//		source.debug_print();
+	}
+
+
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 
 

@@ -22,6 +22,7 @@
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "net/popnetwork.hpp"
+#include "mdl/poppeak.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
@@ -115,19 +116,25 @@ int main(int argc, char *argv[])
 
 	Config::loadFromDisk();
 
+//	PopReadFromFile<PopPeak> file ("incoming_packets.raw");
 
+	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
-	PopNetwork<PopSymbol> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
+	PopNetwork<PopPeak> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
 	PopTokenizer tokenizer;
 
 	basestationConnection.connect(tokenizer);
+	basestationConnection.connect(dump);
 
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();
 
+//	file.connect(tokenizer);
 
 	char c;
+
+	int i = 0;
 
 	// Run Control Loop
 	while(1)
@@ -139,6 +146,11 @@ int main(int argc, char *argv[])
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
 		boost::posix_time::microseconds workTime(10);
 		boost::this_thread::sleep(workTime);
+
+//		if( i % 1000 == 0)
+//			file.read(1);
+
+		i++;
 	}
 
     return ret;

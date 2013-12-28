@@ -18,22 +18,23 @@
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
 #include <boost/lexical_cast.hpp>
+#include "sdr/popuhd.hpp"
 
-#include "cuda/helper_cuda.h"
+#include "dsp/utils.hpp"
+//#include "core/basestationfreq.h"
 
 #include "dsp/prota/popchanfilter.hpp"
 
+#include "dsp/prota/popchanfilter.cuh"
+
 using namespace std;
 using namespace boost::posix_time;
-
-#define FFT_SIZE 65536
-#define CHAN_SIZE 1040
 
 
 /**************************************************************************
  * CUDA Function Prototypes
  *************************************************************************/
-extern "C" size_t gpu_channel_split(const complex<double> *h_data, complex<double> *out);
+extern "C" size_t gpu_channel_split(const complex<double> *h_data, complex<double> (*out)[CHANNELS_USED]);
 extern "C" void init_deconvolve(size_t len_fft, size_t len_chan);
 extern "C" void cleanup();
 
@@ -41,7 +42,7 @@ namespace pop
 {
 
 	PopChanFilter::PopChanFilter(): PopSink<complex<double> >( "PopChanFilter", FFT_SIZE ),
-		PopSource<complex<double> >( "PopChanFilter" ), mp_demod_func(0)
+		PopSource<complex<double> >( "PopChanFilter" ), strided ("PopChanFilter[N] Strided source"), strided_gpu ("PopChanFilter[N] GPU Strided source", CHAN_SIZE), mp_demod_func(0)
 	{
 	}
 
@@ -81,30 +82,40 @@ namespace pop
 	 */
 	void PopChanFilter::process(const complex<double>* in, size_t len, const PopTimestamp* timestamp_data, size_t timestamp_size)
 	{
+		// because we are using a GPU source, these are required to be the same
+		if( timestamp_size != len )
+			cout << "error in " << PopSink::get_name() << " sample count and timestamp count are not equal (" << len << ", " << timestamp_size << ")" << endl;
+
 		//size_t chan_buf_len;
 		ptime t1, t2;
 		time_duration td, tLast;
 		t1 = microsec_clock::local_time();
 
-		complex<double> *out = get_buffer(CHAN_SIZE);
+//		complex<double> *out = get_buffer(CHAN_SIZE);
+
+		complex<double> (*out_strided)[CHANNELS_USED] = strided_gpu.get_buffer(); // grab 50 channels worth of memory
 
 //		//cudaProfilerStart();
-//		// call the GPU to process work
-		gpu_channel_split(in, out);
+		// call the GPU to process work (this does not block on the stream)
+		// because this is non blocking we can do timestamp decimation on the cpu below while the gpu does it's thing
+		gpu_channel_split(in, out_strided);
+
 
 
 		// in comes FFT_SIZE (65K) samples, and out goes CHAN_SIZE (1040)
 		// these 1040 samples still represent the same timestamps
 		// so we need to just do a simple divide
 
-		// get timestamp buffer
-		PopTimestamp *timestampOut = get_timestamp_buffer(timestamp_size);
+		// get device timestamp buffer
+		PopTimestamp *d_timestampOut = strided_gpu.get_timestamp_buffer();
+
+		// host timestamp buffer which will be copied to gpu
+		PopTimestamp h_timestampOut[CHAN_SIZE];
 
 		// get correction factor (note we do (slower) division here outside of loop and then (faster) multiplication inside the loop
 		double factor = (double) FFT_SIZE / CHAN_SIZE;
 
 		double a;
-//		double secs;
 
 		// index of two timestamps to interpolate between
 		size_t i1, i2;
@@ -128,12 +139,18 @@ namespace pop
 			// final result is stored in ts1
 			ts1 += ts2;
 
-			timestampOut[m] = ts1;
+			h_timestampOut[m] = ts1;
 		}
 
+		// strided_gpu expects timestamps to be on the gpu (for the time being)
+		cudaMemcpyAsync(d_timestampOut, h_timestampOut, CHAN_SIZE * sizeof(PopTimestamp), cudaMemcpyHostToDevice, chan_filter_stream);
 
-		// process data
-		PopSource<complex<double> >::process(out, CHAN_SIZE, timestampOut, CHAN_SIZE);
+
+		// block on the stream before calling process
+		cudaStreamSynchronize(chan_filter_stream);
+
+		// process autoamtically takes the buffers from get_buffer() and get_timestamp_buffer()
+		strided_gpu.process();
 
 		// while( chan_buf_len >= PN_SIZE)
 		// {
@@ -163,4 +180,22 @@ namespace pop
 		// free CUDA memory
 		cleanup();
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

@@ -57,7 +57,7 @@ namespace pop
 	/**
 	 * Constructor for Software Defined radio class.
 	 */
-	PopUhd::PopUhd() : PopSource<complex<double> >("PopUhd"), mp_thread(0), m_timestamp_offset(0, 0.0)
+	PopUhd::PopUhd() : PopSource<complex<double> >("PopUhd"), init_stage(0), mp_thread(0), m_timestamp_offset(0, 0.0)
 	{
 	}
 
@@ -94,19 +94,28 @@ namespace pop
 	 */
 	POP_ERROR PopUhd::run()
 	{
+		init_stage = 1;
         /* This will fail unless you have sudo permissions but its ok.
            Giving UHD thread priority control can reduce overflows.*/
         uhd::set_thread_priority_safe();
+
+        init_stage = 2;
 
         // create device (TODO: don't know if this is best method)
         usrp = uhd::usrp::multi_usrp::make(std::string());
         std::cout << boost::format("Using Device: %s") %
             usrp->get_pp_string() << std::endl;
 
+        // when UDH freezes it never gets here
+
+        init_stage = 3;
+
         usrp->set_rx_freq(POP_PROTA_BLOCK_A_UPLK);
         usrp->set_rx_rate(POP_PROTA_BLOCK_A_WIDTH);
         usrp->set_rx_antenna("RX2");
         usrp->set_rx_gain(25);
+
+        init_stage = 4;
 
         vector<string> vstr;
         vector<string>::iterator vstrit;
@@ -119,6 +128,8 @@ namespace pop
         double actual_rate = usrp->get_rx_rate();
 
         std::cout << "actual RX sample rate: " << actual_rate << "Hz" << std::endl;
+
+        init_stage = 5;
 
 #ifndef OPTION_DISABLE_GPS
         usrp->set_time_source("external");

@@ -15,6 +15,7 @@ const char msg_create_new_circ_buf_dbg_2[] = "allocated = %lu bytes";
 const char msg_requested_mem_size[] = "Requested memSize=%lu, actual=%lu, number of samples=%lu\r\n";
 const char msg_no_buffer_allocated[] = _MSG_HEADER "No buffer has been allocated.";
 const char msg_passing_invalid_amount_of_samples[] = _MSG_HEADER "Passing invalid amount of samples to class.";
+const char msg_warning_replacing_gpu_sink[] = "\r\nWarning: Replacing existing sink for object%s\r\n";
 
 
 
