@@ -41,6 +41,7 @@ set(dsp_SOURCES
 
 # Helper to mark target as having uhd library so source can handle this
 # This MUST be called or ommited for every target correctly
+# See http://www.kitware.com/blog/home/post/390 for an alternate way to inspect target properties
 function(has_uhd tgt)
   set_target_properties(${tgt} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -DTARGET_HAS_UHD")
 endfunction()
