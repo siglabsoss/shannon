@@ -3,8 +3,10 @@
 
 #include <time.h>
 #include <boost/operators.hpp>
-#include <uhd/types/time_spec.hpp>
 
+#ifdef TARGET_HAS_UHD
+#include <uhd/types/time_spec.hpp>
+#endif
 
 namespace pop
 {
@@ -26,10 +28,12 @@ class __attribute__ ((__packed__)) PopTimestamp
 	//	class UHD_API time_spec_t : boost::additive<time_spec_t>, boost::totally_ordered<time_spec_t>{
 public:
 
+#ifdef TARGET_HAS_UHD
 	/*!
 	 * Copy constructor from time_spec_t type
 	 */
 	PopTimestamp(uhd::time_spec_t copy) : _full_secs(copy.get_full_secs()), _frac_secs(copy.get_frac_secs()) {}
+#endif
 
 	/*!
 	 * Traditional copy constructor

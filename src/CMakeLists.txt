@@ -39,6 +39,13 @@ set(dsp_SOURCES
 )
 
 
+# Helper to mark target as having uhd library so source can handle this
+# This MUST be called or ommited for every target correctly
+function(has_uhd tgt)
+  set_target_properties(${tgt} PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -DTARGET_HAS_UHD")
+endfunction()
+
+
 if(CUDA_FOUND)
 
 cuda_add_library(${LIB_NAME} ${gpuacc_SRCS})
@@ -51,6 +58,7 @@ add_executable(test app/test.cpp)
 target_link_libraries(test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
 set_target_properties(test PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -DUNIT_TEST")
 CUDA_ADD_CUFFT_TO_TARGET( test )
+has_uhd(test)
 add_custom_target(runtest COMMAND test DEPENDS test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 
@@ -58,7 +66,7 @@ add_custom_target(runtest COMMAND test DEPENDS test WORKING_DIRECTORY ${CMAKE_SO
 
 # For target shannon
 add_executable(shannon ${all_SOURCES} ${dsp_SOURCES} app/shannon.cpp)
-    
+has_uhd(shannon)
 target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
 CUDA_ADD_CUFFT_TO_TARGET( shannon )
 
@@ -72,13 +80,18 @@ endif() # if CUDA_FOUND
 # For target s3p
 add_executable(s3p ${all_SOURCES} app/s3p.cpp)
 target_link_libraries(s3p ${Boost_LIBRARIES} uhd)
+has_uhd(s3p)
+
+# For target gravitino
+add_executable(gravitino ${all_SOURCES} app/gravitino.cpp)
+target_link_libraries(gravitino ${Boost_LIBRARIES})
 	
 
 
 
 
 # list of the different files that contain main()
-set(executable_list shannon s3p)
+set(executable_list shannon s3p gravitino)
 
 # iterate and build each executuable, and add make runx shortcut
 foreach(executable ${executable_list}) 
