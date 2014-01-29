@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <inttypes.h>
 
 #include <boost/timer.hpp>
 #include <mdl/popradio.h>
@@ -48,7 +49,7 @@ public:
     PopPoop() : PopSink<struct odd>("PopPoop") { }
     void process(const struct odd* data, size_t size)
     {
-        printf("received %lu struct odd from PopPoop\r\n", size);
+        printf("received %" PRIuPTR " struct odd from PopPoop\r\n", size);
     }
     void init()
     {
@@ -71,13 +72,13 @@ public:
     void init() { }
     void process(const PopMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
-        printf("received %lu PopBob(s)\r\n", size);
+        printf("received %" PRIuPTR " PopBob(s)\r\n", size);
 //        for( size_t i = 0; i < size; i++ )
 //        {
 //        	printf("Data was '%s'\r\n", (data+i)->origin);
 //        }
 
-        printf("received %lu timestamps(s)\r\n", timestamp_size);
+        printf("received %" PRIuPTR " timestamps(s)\r\n", timestamp_size);
         for( size_t i = 0; i < timestamp_size; i++ )
         {
         	std::cout << "time was " << timestamp_data[0].get_full_secs() << std::endl;
@@ -331,7 +332,7 @@ public:
         a %= 500;
 
         if( a == 0 )
-        printf("received %lu samples (500 times)\r\n", size);
+        printf("received %" PRIuPTR " samples (500 times)\r\n", size);
     }
 };
 
