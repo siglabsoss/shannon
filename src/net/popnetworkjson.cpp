@@ -10,6 +10,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <inttypes.h>
 
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
@@ -315,7 +316,7 @@ namespace pop
             memcpy(message+message_bytes, json_c_str, std::min((unsigned)1024,json_len) );
             message_bytes += std::min((unsigned)1024,json_len);
 
-            printf("build header with length %ld for %d bytes\r\n", header_len, json_len);
+            printf("build header with length %" PRIdPTR " for %d bytes\r\n", header_len, json_len);
 
 
 
