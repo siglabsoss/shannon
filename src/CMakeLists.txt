@@ -82,8 +82,7 @@ endif() # if CUDA_FOUND
 
 # For target s3p
 add_executable(s3p ${all_SOURCES} app/s3p.cpp)
-target_link_libraries(s3p ${Boost_LIBRARIES} uhd)
-has_uhd(s3p)
+target_link_libraries(s3p ${Boost_LIBRARIES})
 
 # For target gravitino
 add_executable(gravitino ${all_SOURCES} app/gravitino.cpp)
