@@ -133,7 +133,7 @@ private:
             throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
 
         if( m_pThread )
-            push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size ) );
+            this->push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size ) );
         else
             process( in, size, timestamp_in, timestamp_size );
     }

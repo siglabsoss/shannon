@@ -17,7 +17,6 @@
 #include "core/objectstash.hpp"
 #include "core/poptokenizer.hpp"
 #include "net/popnetworkjson.hpp"
-#include "sdr/popuhd.hpp"
 #include "core/config.hpp"
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
