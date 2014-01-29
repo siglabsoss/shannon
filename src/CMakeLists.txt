@@ -29,13 +29,16 @@ set(all_SOURCES
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
 	net/popnetwork.cpp
-	sdr/popuhd.cpp)
+)
 
 set(dsp_SOURCES
 	dsp/prota/popchanfilter.cpp
 	dsp/prota/popdeconvolve.cpp
 	dsp/prota/popbinner.cpp
+)
 
+set(uhd_SOURCES
+	sdr/popuhd.cpp	
 )
 
 
@@ -66,7 +69,7 @@ add_custom_target(runtest COMMAND test DEPENDS test WORKING_DIRECTORY ${CMAKE_SO
 
 
 # For target shannon
-add_executable(shannon ${all_SOURCES} ${dsp_SOURCES} app/shannon.cpp)
+add_executable(shannon ${all_SOURCES} ${dsp_SOURCES} ${uhd_SOURCES} app/shannon.cpp)
 has_uhd(shannon)
 target_link_libraries(shannon ${Boost_LIBRARIES} ${CUDA_LIBRARIES} uhd ${LIB_NAME})
 CUDA_ADD_CUFFT_TO_TARGET( shannon )
