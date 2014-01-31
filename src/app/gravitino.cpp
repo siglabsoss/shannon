@@ -14,21 +14,21 @@
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
 
-#include "core/objectstash.hpp"
-#include "core/poptokenizer.hpp"
-#include "net/popnetworkjson.hpp"
+//#include "core/objectstash.hpp"
+//#include "core/poptokenizer.hpp"
+//#include "net/popnetworkjson.hpp"
 #include "core/config.hpp"
-#include "examples/popexamples.hpp"
-#include "dsp/prota/popprotatdmabin.hpp"
-#include "net/popnetwork.hpp"
-#include "mdl/poppeak.hpp"
+//#include "examples/popexamples.hpp"
+//#include "dsp/prota/popprotatdmabin.hpp"
+//#include "net/popnetwork.hpp"
+//#include "mdl/poppeak.hpp"
+#include "core/popserial.hpp"
+#include "core/popjsonrpc.hpp"
+
 
 //#include "core/popsourcemsg.hpp"
 
-using namespace boost;
-using namespace pop;
-using namespace std;
-using namespace rbx;
+
 
 namespace po = boost::program_options;
 
@@ -50,6 +50,11 @@ int getch(void)
 
 int main(int argc, char *argv[])
 {
+	using namespace boost;
+	using namespace pop;
+	using namespace std;
+	using namespace rbx;
+
 	int ret = 0;
 	unsigned incoming_port, outgoing_port;
 	string incoming_address, outgoing_address;
@@ -119,17 +124,26 @@ int main(int argc, char *argv[])
 
 //	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
-	PopNetwork<PopPeak> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
-
-	PopTokenizer tokenizer;
-
-	basestationConnection.connect(tokenizer);
-	//	basestationConnection.connect(dump);
-
-	// call this after connecting all sources or sinks
-	basestationConnection.wakeup();
+//	PopNetwork<PopPeak> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
+//
+//	PopTokenizer tokenizer;
+//
+//	basestationConnection.connect(tokenizer);
+//	//	basestationConnection.connect(dump);
+//
+//	// call this after connecting all sources or sinks
+//	basestationConnection.wakeup();
 
 //	file.connect(tokenizer);
+
+
+	PopSerial uart4("/dev/ttyO4");
+//	PopSerial uartfake("/dev/ttyO4");
+	PopJsonRPC rpc(1);
+
+	uart4.rx.connect(rpc);
+
+//	uart4.read();
 
 	char c;
 
