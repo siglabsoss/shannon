@@ -113,7 +113,7 @@ private:
 
         while(1)
         {
-            wait_and_pop( buf );
+        	this->wait_and_pop( buf );
 
             process( buf.data, buf.len, buf.timestamp_data, buf.timestamp_len );
         }
