@@ -37,7 +37,6 @@
 #define NETWORK_UDP_PACKET_MTU (1500)
 
 using boost::asio::ip::udp;
-using namespace boost::asio;
 using namespace std;
 
 
@@ -92,7 +91,7 @@ public:
 			cout << PopSink<DATA_TYPE>::get_name() << " is awake and ready to send." << endl;
 
 			// We assume these were set correctly in the constructor
-			outgoing_endpoint_.address(ip::address::from_string(outgoing_ip_));
+			outgoing_endpoint_.address(boost::asio::ip::address::from_string(outgoing_ip_));
 			outgoing_endpoint_.port(outgoing_port_);
 
 			//					cout << this->m_rgSource->get_name() << " is connected to us for input" << endl;
