@@ -9,10 +9,10 @@
 
 
 #include <iostream>
-#include <complex>
+//#include <complex>
 
-#include <boost/bind.hpp>
-#include <boost/program_options.hpp>
+//#include <boost/bind.hpp>
+//#include <boost/program_options.hpp>
 
 //#include "core/objectstash.hpp"
 //#include "core/poptokenizer.hpp"
@@ -30,7 +30,7 @@
 
 
 
-namespace po = boost::program_options;
+//namespace po = boost::program_options;
 
 extern size_t h_start_chan;
 
@@ -61,32 +61,32 @@ int main(int argc, char *argv[])
 	string server_name;
 	string debug_file;
 
-	cout << "Shannon - PopWi Server Side Signal Processing (S3P) Core" << endl;
-	cout << "Copyright (c) 2013. PopWi Technology Group, Inc." << endl << endl;
-
-	po::options_description desc("Shannon Command-line Options");
-	desc.add_options()
-	    ("help", "help message")
-	    ("server", po::value<string>(&server_name)->default_value("papa.popwi.com"), "Remote Manager Location")
-	    ("file", po::value<string>(&server_name)->default_value("shannon.xml"), "Setup File")
-	    ("incoming-address", po::value<string>(&incoming_address)->default_value("173.167.119.220"), "Incoming UDP address")
-	    ("incoming-port", po::value<unsigned>(&incoming_port)->default_value(5004), "Incoming UDP port")
-	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("173.167.119.220"), "Outgoing UDP address")
-	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(35005), "Outgoing UDP port")
-	    ("debug-file", po::value<string>(&debug_file)->default_value("dat/dump.raw"), "filename used for raw data dump")
-	;
-
-	po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
-	po::notify(vm);
-
-	if( vm.count("help") )
-	{
-		cout << endl << desc << endl;
-		cout <<
-		"    Command-line options override program defaults." << endl << endl;
-		return ~0;
-	}
+//	cout << "Shannon - PopWi Server Side Signal Processing (S3P) Core" << endl;
+//	cout << "Copyright (c) 2013. PopWi Technology Group, Inc." << endl << endl;
+//
+//	po::options_description desc("Shannon Command-line Options");
+//	desc.add_options()
+//	    ("help", "help message")
+//	    ("server", po::value<string>(&server_name)->default_value("papa.popwi.com"), "Remote Manager Location")
+//	    ("file", po::value<string>(&server_name)->default_value("shannon.xml"), "Setup File")
+//	    ("incoming-address", po::value<string>(&incoming_address)->default_value("173.167.119.220"), "Incoming UDP address")
+//	    ("incoming-port", po::value<unsigned>(&incoming_port)->default_value(5004), "Incoming UDP port")
+//	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("173.167.119.220"), "Outgoing UDP address")
+//	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(35005), "Outgoing UDP port")
+//	    ("debug-file", po::value<string>(&debug_file)->default_value("dat/dump.raw"), "filename used for raw data dump")
+//	;
+//
+//	po::variables_map vm;
+//	po::store(po::parse_command_line(argc, argv, desc), vm);
+//	po::notify(vm);
+//
+//	if( vm.count("help") )
+//	{
+//		cout << endl << desc << endl;
+//		cout <<
+//		"    Command-line options override program defaults." << endl << endl;
+//		return ~0;
+//	}
 
 
 
@@ -138,6 +138,8 @@ int main(int argc, char *argv[])
 
 
 	PopSerial uart4("/dev/ttyO4");
+	uart4.start_thread();
+
 //	PopSerial uartfake("/dev/ttyO4");
 	PopJsonRPC rpc(1);
 

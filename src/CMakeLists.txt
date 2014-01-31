@@ -31,6 +31,14 @@ set(all_SOURCES
 	net/popnetwork.cpp
 )
 
+set(gravatino_SOURCES
+	mdl/poptimestamp.cpp
+	core/popassert.c
+	core/popsource.cpp
+	core/config.cpp
+	net/popnetwork.cpp
+)
+
 set(dsp_SOURCES
 	dsp/prota/popchanfilter.cpp
 	dsp/prota/popdeconvolve.cpp
@@ -85,7 +93,7 @@ add_executable(s3p ${all_SOURCES} app/s3p.cpp)
 target_link_libraries(s3p ${Boost_LIBRARIES})
 
 # For target gravitino
-add_executable(gravitino ${all_SOURCES} app/gravitino.cpp)
+add_executable(gravitino ${gravatino_SOURCES} app/gravitino.cpp)
 target_link_libraries(gravitino ${Boost_LIBRARIES})
 	
 
