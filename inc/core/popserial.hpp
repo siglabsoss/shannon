@@ -114,7 +114,7 @@ class PopSerial : public PopSink<unsigned char>
 {
 public:
 	 PopSink<unsigned char> *tx;
-	 PopSource<unsigned char> rx;
+	 PopSource<unsigned char> rx; // serial receive generates characters
 	 string path;
 	 SimpleSerial handle;
 
@@ -124,6 +124,8 @@ public:
 	PopSerial(std::string devicePath, unsigned baud = 115200) : PopSink<unsigned char>("PopSerialSink", 1), rx("PopSerialSource"), path(devicePath), handle(devicePath, baud)
     {
 		 tx = this;
+
+		this->rx.set_loop_function(boost::bind(&PopSerial::run_loop,this));
 
 
 		 handle.writeString("Serial Boot\r\n");
@@ -137,6 +139,15 @@ public:
     	}
 
 //		handle.close();
+    }
+
+    // this gets called over and over in a while(1)
+    unsigned int run_loop()
+    {
+    	cout << "run_loop" << endl;
+//    	cout<<"Received : " << handle.readChar() << " : end" << endl;
+
+    	return 0;
     }
 
     void process(const unsigned char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)

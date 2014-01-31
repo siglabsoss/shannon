@@ -137,8 +137,14 @@ int main(int argc, char *argv[])
 //	file.connect(tokenizer);
 
 
-	PopSerial uart4("/dev/ttyO4");
-	uart4.start_thread();
+
+	PopSerial uart4("/dev/ttyS0");
+	uart4.rx.start_thread();
+
+//	boost::bind<void>(mem_fn(&pop::PopSerial::run_loop), uart4);
+
+//	boost::thread *m_pThread = new boost::thread(boost::bind<void>(mem_fn(&pop::PopSerial::run_loop), uart4));
+//	mem_fn(&pop::PopSerial::run_loop);
 
 //	PopSerial uartfake("/dev/ttyO4");
 	PopJsonRPC rpc(1);
