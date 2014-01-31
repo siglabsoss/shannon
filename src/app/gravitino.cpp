@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 
 
 
-	PopSerial uart4("/dev/ttyS0");
+	PopSerial uart4("/dev/ttyO1");
 	uart4.rx.start_thread();
 
 //	boost::bind<void>(mem_fn(&pop::PopSerial::run_loop), uart4);

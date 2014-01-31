@@ -123,29 +123,34 @@ public:
 
 	PopSerial(std::string devicePath, unsigned baud = 115200) : PopSink<unsigned char>("PopSerialSink", 1), rx("PopSerialSource"), path(devicePath), handle(devicePath, baud)
     {
-		 tx = this;
+		tx = this;
 
+		// this ugly syntax is required if we want to use start_thread()
 		this->rx.set_loop_function(boost::bind(&PopSerial::run_loop,this));
-
-
-		 handle.writeString("Serial Boot\r\n");
 
     }
     void init()
     {
-    	while(1)
-    	{
-    		cout<<"Received : " << handle.readChar() << " : end" << endl;
-    	}
+    	 handle.writeString("Serial Boot\r\n");
+//    	while(1)
+//    	{
+//    		cout<<"Received : " << handle.readChar() << " : end" << endl;
+//    	}
 
 //		handle.close();
     }
 
-    // this gets called over and over in a while(1)
+    // this gets called over and over in a while(1), this function should not contain any sort of infinite loop itself
+    // return non-zero to exit loop
     unsigned int run_loop()
     {
-    	cout << "run_loop" << endl;
-//    	cout<<"Received : " << handle.readChar() << " : end" << endl;
+    	unsigned char* buf = rx.get_buffer(1);
+
+    	buf[0] = handle.readChar();
+
+    	cout<<"Received : " << buf[0] << " : end" << endl;
+
+    	rx.process(1);
 
     	return 0;
     }
