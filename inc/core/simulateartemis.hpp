@@ -103,7 +103,11 @@ public:
 
     void process(const unsigned char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
-
+    	unsigned int i = 0;
+    	while(i < size) {
+    		cout << data[i];
+    		i++;
+    	}
     }
 };
 

@@ -54,6 +54,8 @@ int main(int argc, char *argv[])
 	SimulateArtemis simArt(0);
 
 	simArt.rx.connect(rpc);
+	rpc.rx.connect(simArt);
+
 	simArt.rx.start_thread();
 
 

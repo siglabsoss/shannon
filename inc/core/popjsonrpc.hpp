@@ -5,6 +5,8 @@
 #include <core/popsink.hpp>
 #include <core/popsource.hpp>
 #include <frozen/frozen.h>
+#include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -22,10 +24,11 @@ void rcp_log(std::string log)
 }
 
 
-void rpc_count()
+int rpc_count()
 {
 	static int i = 0;
-	cout << "Bump to " << i++ << endl;
+	cout << "Bump to " << ++i << endl;
+	return i;
 }
 
 void ppp(std::string p)
@@ -47,6 +50,7 @@ class PopJsonRPC : public PopSink<unsigned char>
 {
 public:
 	 PopSink<unsigned char> *tx; // PopSink must be inherited b/c of virtual classes, so we fake out a pointer here
+	 PopSource<unsigned char> rx;
 	 bool headValid;
 	 std::vector<unsigned char> command;
 
@@ -57,7 +61,7 @@ private:
 //	// the number of data samples from the previous call to process
 //	size_t previous_size;
 public:
-	PopJsonRPC(size_t chunk) : PopSink<unsigned char>("PopJsonRPCSink", 1), headValid(false)
+	PopJsonRPC(size_t chunk) : PopSink<unsigned char>("PopJsonRPCSink", 1), rx("PopJsonRPCResponse"), headValid(false)
     {
 		 tx = this;
     }
@@ -102,7 +106,7 @@ public:
     	const char *json = str.c_str();
 
     	struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS];
-    	const struct json_token *tok, *tok2;
+    	const struct json_token *tok, *tok2, *tok3;
 
     	// Tokenize json string, fill in tokens array
     	int returnValue = parse_json(json, strlen(json), arr, POP_JSON_RPC_SUPPORTED_TOKENS);
@@ -125,28 +129,42 @@ public:
     	if( !(tok && tok->type == JSON_TYPE_STRING) )
     	{
     		return;
-//
-//    		cout << "got : " << method << endl;
     	}
-    	method = std::string(tok->ptr, tok->len);
+    	else
+    	{
+    		method = std::string(tok->ptr, tok->len);
+    	}
+
 
     	tok2 = find_json_token(arr, "params");
-
     	if( !(tok2 && tok2->type == JSON_TYPE_ARRAY) )
 		{
     		return;
-//			std::string params = std::string(tok2->ptr, tok2->len);
-//
-//			cout << "got : " << params << endl;
 		}
-//    	cout << tok->type << endl;
-//    	printf("Value of bar is: [%.*s]\n", tok->len, tok->ptr);
 
-    	execute(method, arr);
+    	int methodId = -1;
+    	tok3 = find_json_token(arr, "id");
+    	if( !(tok3 && tok3->type == JSON_TYPE_NUMBER) )
+    	{
+    		return;
+    	}
+    	else
+    	{
+    		std::string sval = std::string(tok3->ptr, tok3->len);
+    		methodId = std::stoi(sval);
+
+    		if( methodId < 0 )
+    			return;
+    	}
+
+
+
+
+    	execute(method, arr, methodId);
 
     }
 
-    void execute(std::string &method, json_token *tokens)
+    void execute(std::string &method, json_token *tokens, int methodId)
     {
      	const struct json_token *tok;
     	if( method.compare("log") == 0 )
@@ -160,8 +178,35 @@ public:
 
     	if( method.compare("count") == 0 )
     	{
-    		rpc_count();
+    		int ret = rpc_count();
+    		respond_int(ret, methodId);
     	}
+    }
+
+    void respond_int(int value, int methodId)
+    {
+
+    	std::ostringstream ss;
+//    	ss << "This is " << cs << "!";
+//    	std::cout << ss.str() << std::endl
+
+    	ss << "{\"result\":" << value << ", \"error\": null, \"id\": " << methodId << "}";
+
+    	std::string str = ss.str();
+    	unsigned char *buff;
+
+    	buff = rx.get_buffer(1);
+    	buff[0] = '\0';
+    	rx.process(1);
+
+    	// should copy in all the characters but omit the final null
+    	buff = rx.get_buffer(str.size());
+    	strncpy((char*)buff, str.c_str(), str.size());
+    	rx.process(str.size());
+
+    	buff = rx.get_buffer(1);
+    	buff[0] = '\0';
+    	rx.process(1);
     }
 };
 
