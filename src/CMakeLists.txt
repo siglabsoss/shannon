@@ -37,6 +37,7 @@ set(gravatino_SOURCES
 	core/popsource.cpp
 	core/config.cpp
 	net/popnetwork.cpp
+	../3rd/frozen/frozen.c
 )
 
 set(dsp_SOURCES

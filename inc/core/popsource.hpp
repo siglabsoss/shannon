@@ -392,14 +392,14 @@ public:
     		ret = remap_file_pages(actual_buf, bytes_allocated, 0, 0, 0);
 
     		if( ret )
-    			throw PopException( "#1 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
+    			throw PopException( "#1 remap_file_pages=%d, errno=%s, actual_buf=%x, bytes_allcoated=%" PRIuPTR, ret, strerror(errno), actual_buf, bytes_allocated );
 
     		// map mirror buffer (third third of address space) into first third of memory map
     		mirror_buf = ((uint8_t*)temp_buf) + (2 * bytes_allocated);
     		ret = remap_file_pages(mirror_buf, bytes_allocated, 0, 0, 0);
 
     		if( ret )
-    			throw PopException( "#2 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
+    			throw PopException( "#2 remap_file_pages=%d, errno=%s, mirror_buf=%x, bytes_allocated=%" PRIuPTR, ret, strerror(errno), actual_buf, bytes_allocated );
 
     		// shrink the memory map back down to it's necessary size
     		// TODO: don't know if this works as expected. are my original higher remappings
