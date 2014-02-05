@@ -22,7 +22,7 @@
 //#include "dsp/prota/popprotatdmabin.hpp"
 //#include "net/popnetwork.hpp"
 //#include "mdl/poppeak.hpp"
-#include "core/simulateartemis.hpp"
+//#include "core/simulateartemis.hpp"
 #include "core/popserial.hpp"
 #include "core/popjsonrpc.hpp"
 
@@ -47,16 +47,18 @@ int main(int argc, char *argv[])
 
 	PopJsonRPC rpc(1);
 
-//	PopSerial uart4("/dev/ttyO1");
-//	uart4.rx.start_thread();
-//	uart4.rx.connect(rpc);
+	PopSerial uart4("/dev/ttyO2");
 
-	SimulateArtemis simArt(0);
+	uart4.rx.connect(rpc);
+	rpc.rx.connect(uart4);
+	uart4.rx.start_thread();
 
-	simArt.rx.connect(rpc);
-	rpc.rx.connect(simArt);
 
-	simArt.rx.start_thread();
+//	SimulateArtemis simArt(0);
+//	simArt.rx.connect(rpc);
+//	rpc.rx.connect(simArt);
+
+//	simArt.rx.start_thread();
 
 
 

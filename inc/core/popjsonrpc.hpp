@@ -61,7 +61,7 @@ private:
 //	// the number of data samples from the previous call to process
 //	size_t previous_size;
 public:
-	PopJsonRPC(size_t chunk) : PopSink<unsigned char>("PopJsonRPCSink", 1), rx("PopJsonRPCResponse"), headValid(false)
+	PopJsonRPC(unsigned notused) : PopSink<unsigned char>("PopJsonRPCSink", 1), rx("PopJsonRPCResponse"), headValid(false)
     {
 		 tx = this;
     }
@@ -173,6 +173,7 @@ public:
     		if( tok && tok->type == JSON_TYPE_STRING )
     		{
     			rcp_log(std::string(tok->ptr, tok->len));
+    			respond_int(0, methodId);
     		}
     	}
 

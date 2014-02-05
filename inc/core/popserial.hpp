@@ -148,7 +148,14 @@ public:
 
     	buf[0] = handle.readChar();
 
-    	cout<<"Received : " << buf[0] << " : end" << endl;
+    	if( buf[0] == '\0')
+    	{
+    		cout << "NULL" << endl;
+    	}
+    	else
+    	{
+    		cout<<"Received : " << buf[0] << " (" << (int)buf[0] << ")" << endl;
+    	}
 
     	rx.process(1);
 
@@ -157,7 +164,7 @@ public:
 
     void process(const unsigned char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
-
+    	handle.write(data, size);
     }
 };
 
