@@ -29,6 +29,7 @@ set(all_SOURCES
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
 	net/popnetwork.cpp
+	core/popparsegps.cpp
 )
 
 set(gravatino_SOURCES
@@ -38,6 +39,7 @@ set(gravatino_SOURCES
 	core/config.cpp
 	net/popnetwork.cpp
 	../3rd/frozen/frozen.c
+	core/popparsegps.cpp
 )
 
 set(dsp_SOURCES
