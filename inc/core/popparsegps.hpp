@@ -125,14 +125,10 @@ public:
 
     bool checksumOk(std::string &str, unsigned len)
     {
-    	unsigned givenChecksumInt;
     	unsigned char givenChecksum;
     	std::string checkStr = str.substr(len - 3, 2);
 
-    	std::stringstream ss;
-    	ss << std::hex << checkStr;
-    	ss >> givenChecksumInt; // the >> operator must be given an int
-    	givenChecksum = givenChecksumInt;
+    	givenChecksum = parseHex(checkStr);
 
 
     	// this extracts bytes according to http://www.gpsinformation.org/dale/nmea.htm
@@ -202,7 +198,7 @@ public:
     	char *token;
     	char *state;
     	unsigned index = 0;
-    	unsigned fixStatus;
+    	int fixStatus = -1;
 
     	token = strtok_r_single( &str[0], seps, &state );
     	while( token != NULL )
