@@ -2,7 +2,7 @@
 #include <iostream>
 
 
-#include <boost/lexical_cast.hpp>
+//#include <boost/lexical_cast.hpp>
 
 using namespace std;
 
@@ -154,7 +154,7 @@ double parseRetardedFormat(std::string &str, bool positive)
 	return (parseDouble(degree) + (parseDouble(minute)/60)) * sign;
 }
 
-bool fixOk(int status) {
+bool fixStatusOk(int status) {
 	if( status < 1 )
 		return false;
 
@@ -163,6 +163,17 @@ bool fixOk(int status) {
 
 	return true;
 }
+
+void PopParseGPS::setFix(double lat, double lng, double time)
+{
+	boost::lock_guard<boost::mutex> guard(mtx_);
+	this->lat = lat;
+	this->lng = lng;
+	//time
+	this->gpsFix = true;
+}
+
+
 
 void PopParseGPS::gga(std::string &str)
 {
@@ -206,10 +217,25 @@ void PopParseGPS::gga(std::string &str)
 		index++;
 	}
 
+	if( fixStatusOk(fixStatus) )
+	{
+		setFix(parseRetardedFormat(latStr, latPositive), parseRetardedFormat(lngStr, lngPositive), 0);
+	}
+
 //	cout << boost::lexical_cast<string>( parseRetardedFormat(latStr, latPositive) ) << endl;
 //	cout << boost::lexical_cast<string>( parseRetardedFormat(lngStr, lngPositive) )<< endl;
 //	cout << "Fix ok: " << fixOk(fixStatus) << endl;
 //	cout << latStr << latPositive << lngStr << lngPositive << endl;
+}
+
+bool PopParseGPS::gpsFixed()
+{
+	return gpsFix;
+}
+boost::tuple<double, double, double> PopParseGPS::getFix()
+{
+	boost::lock_guard<boost::mutex> guard(mtx_);
+	return boost::tuple<double, double, double>(this->lat, this->lng, 0.0);
 }
 
 void PopParseGPS::parse()

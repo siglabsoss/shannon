@@ -3,6 +3,7 @@
 
 #include <core/popsink.hpp>
 #include <string>
+#include <boost/tuple/tuple.hpp>
 
 namespace pop
 {
@@ -16,6 +17,7 @@ public:
 	bool gpsFix;
 	double lat;
 	double lng;
+	boost::mutex mtx_;
 
 public:
 	PopParseGPS(unsigned notused);
@@ -23,6 +25,13 @@ public:
 	void init() {}
 	void gga(std::string &str);
 	void parse();
+	bool gpsFixed();
+	boost::tuple<double, double, double> getFix();
+
+private:
+	void setFix(double lat, double lng, double time);
+
+
 };
 
 }
