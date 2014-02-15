@@ -2,6 +2,8 @@
 #include <iostream>
 
 
+#include <boost/lexical_cast.hpp>
+
 using namespace std;
 
 
@@ -88,6 +90,15 @@ unsigned parseInt(char *in)
 	return result;
 }
 
+double parseDouble(std::string &in)
+{
+	double result;
+	std::stringstream ss;
+	ss << in;
+	ss >> result;
+	return result;
+}
+
 bool checksumOk(std::string &str, unsigned len)
 {
 	unsigned char givenChecksum;
@@ -115,6 +126,44 @@ bool checksumOk(std::string &str, unsigned len)
 	return (givenChecksum == calculatedChecksum);
 }
 
+double parseRetardedFormat(std::string &str, bool positive)
+{
+	size_t found;
+
+	found = str.find(".");
+
+	if( found == std::string::npos )
+	{
+		cout << "GPS format missing decimal" << endl;
+		return 0.0;
+	}
+
+	if( found < 2 )
+	{
+		cout << "LHS of GPS format is too small (" << found << ")" << endl;
+		return 0.0;
+	}
+
+	std::string minute = str.substr(found-2, str.length() - 1);
+	std::string degree = str.substr(0, found-2);
+
+	double sign = (positive)?1:-1;
+
+//	cout << "Minute is: " << minute << " degree is: " << degree << endl;
+
+	return (parseDouble(degree) + (parseDouble(minute)/60)) * sign;
+}
+
+bool fixOk(int status) {
+	if( status < 1 )
+		return false;
+
+	if( status > 6 )
+		return false;
+
+	return true;
+}
+
 void PopParseGPS::gga(std::string &str)
 {
 	char seps[] = ",";
@@ -122,23 +171,45 @@ void PopParseGPS::gga(std::string &str)
 	char *state;
 	unsigned index = 0;
 	int fixStatus = -1;
+	std::string latStr, lngStr;
+	bool latPositive = true, lngPositive = true;
 
 	token = strtok_r_single( &str[0], seps, &state );
 	while( token != NULL )
 	{
 		cout << index << ": " << token << endl;
 
-		if( index == 6 )
+		switch(index)
 		{
-			fixStatus = parseInt(token);
-			cout << "Fix status: " << fixStatus << endl;
+			case 2:
+				latStr = std::string(token);
+				break;
+			case 3:
+				latPositive = (strncmp("N", token, 1)==0)?true:false;
+				break;
+			case 4:
+				lngStr = std::string(token);
+				break;
+			case 5:
+				lngPositive = (strncmp("E", token, 1)==0)?true:false;
+				break;
+			case 6:
+				fixStatus = parseInt(token);
+				cout << "Fix status: " << fixStatus << endl;
+				break;
+			default:
+				break;
 		}
 
 
-		/* Do your thing */
 		token = strtok_r_single( NULL, seps, &state );
 		index++;
 	}
+
+//	cout << boost::lexical_cast<string>( parseRetardedFormat(latStr, latPositive) ) << endl;
+//	cout << boost::lexical_cast<string>( parseRetardedFormat(lngStr, lngPositive) )<< endl;
+//	cout << "Fix ok: " << fixOk(fixStatus) << endl;
+//	cout << latStr << latPositive << lngStr << lngPositive << endl;
 }
 
 void PopParseGPS::parse()
