@@ -131,7 +131,7 @@ public:
     }
     void init()
     {
-    	 handle.writeString("Serial Boot\r\n");
+//    	 handle.writeString("Serial Boot\r\n");
 //    	while(1)
 //    	{
 //    		cout<<"Received : " << handle.readChar() << " : end" << endl;
@@ -148,14 +148,14 @@ public:
 
     	buf[0] = handle.readChar();
 
-    	if( buf[0] == '\0')
-    	{
-    		cout << "NULL" << endl;
-    	}
-    	else
-    	{
-    		cout<<"Received : " << buf[0] << " (" << (int)buf[0] << ")" << endl;
-    	}
+//    	if( buf[0] == '\0')
+//    	{
+//    		cout << "NULL" << endl;
+//    	}
+//    	else
+//    	{
+//    		cout<<"Received : " << buf[0] << " (" << (int)buf[0] << ")" << endl;
+//    	}
 
     	rx.process(1);
 
