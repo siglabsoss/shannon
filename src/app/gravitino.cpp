@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 		if( c == '+' ) h_start_chan++;*/
 
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
-		boost::posix_time::microseconds workTime(10);
+		boost::posix_time::milliseconds workTime(1000);
 		boost::this_thread::sleep(workTime);
 
 //		if( i % 1000 == 0)
