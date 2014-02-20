@@ -40,6 +40,7 @@ set(gravatino_SOURCES
 	net/popnetwork.cpp
 	../3rd/frozen/frozen.c
 	core/popparsegps.cpp
+	core/popgpsdevice.cpp
 )
 
 set(dsp_SOURCES

@@ -20,10 +20,11 @@
 #include "core/config.hpp"
 //#include "examples/popexamples.hpp"
 //#include "dsp/prota/popprotatdmabin.hpp"
-//#include "net/popnetwork.hpp"
+#include "net/popnetwork.hpp"
 //#include "mdl/poppeak.hpp"
 //#include "core/simulateartemis.hpp"
 #include "core/popserial.hpp"
+#include "core/popgpsdevice.hpp"
 #include "core/popjsonrpc.hpp"
 #include "core/popparsegps.hpp"
 
@@ -59,6 +60,17 @@ int main(int argc, char *argv[])
 	PopSerial uart4("/dev/ttyO4", 4800);
 	uart4.rx.connect(gps);
 	uart4.rx.start_thread();
+
+	PopNetwork<unsigned char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
+
+	PopGpsDevice fakeUpdates(1);
+
+	fakeUpdates.tx.connect(json);
+	fakeUpdates.gps = &gps;
+	json.wakeup();
+	fakeUpdates.tx.start_thread();
+
+
 
 
 
