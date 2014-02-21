@@ -29,6 +29,20 @@ set(all_SOURCES
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
 	net/popnetwork.cpp
+	core/popparsegps.cpp
+)
+
+set(gravatino_SOURCES
+	mdl/poptimestamp.cpp
+	core/popassert.c
+	core/popsource.cpp
+	core/config.cpp
+	net/popnetwork.cpp
+	../3rd/frozen/frozen.c
+	core/popparsegps.cpp
+	core/popgpsdevice.cpp
+	mdl/popradio.cpp
+	core/objectstash.cpp
 )
 
 set(dsp_SOURCES
@@ -85,7 +99,7 @@ add_executable(s3p ${all_SOURCES} app/s3p.cpp)
 target_link_libraries(s3p ${Boost_LIBRARIES})
 
 # For target gravitino
-add_executable(gravitino ${all_SOURCES} app/gravitino.cpp)
+add_executable(gravitino ${gravatino_SOURCES} app/gravitino.cpp)
 target_link_libraries(gravitino ${Boost_LIBRARIES})
 	
 

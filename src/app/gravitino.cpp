@@ -9,127 +9,78 @@
 
 
 #include <iostream>
-#include <complex>
+//#include <complex>
 
-#include <boost/bind.hpp>
-#include <boost/program_options.hpp>
+//#include <boost/bind.hpp>
+//#include <boost/program_options.hpp>
 
-#include "core/objectstash.hpp"
-#include "core/poptokenizer.hpp"
-#include "net/popnetworkjson.hpp"
+//#include "core/objectstash.hpp"
+//#include "core/poptokenizer.hpp"
+//#include "net/popnetworkjson.hpp"
 #include "core/config.hpp"
-#include "examples/popexamples.hpp"
-#include "dsp/prota/popprotatdmabin.hpp"
+//#include "examples/popexamples.hpp"
+//#include "dsp/prota/popprotatdmabin.hpp"
 #include "net/popnetwork.hpp"
-#include "mdl/poppeak.hpp"
+//#include "mdl/poppeak.hpp"
+//#include "core/simulateartemis.hpp"
+#include "core/popserial.hpp"
+#include "core/popgpsdevice.hpp"
+#include "core/popjsonrpc.hpp"
+#include "core/popparsegps.hpp"
 
-//#include "core/popsourcemsg.hpp"
 
-using namespace boost;
-using namespace pop;
-using namespace std;
-using namespace rbx;
 
-namespace po = boost::program_options;
-
-extern size_t h_start_chan;
-
-int getch(void)
-{
-  int ch;
-  struct termios oldt;
-  struct termios newt;
-  tcgetattr(STDIN_FILENO, &oldt); /*store old settings */
-  newt = oldt; /* copy old settings to new settings */
-  newt.c_lflag &= ~(ICANON | ECHO); /* make one change to old settings in new settings */
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt); /*apply the new settings immediatly */
-  ch = getchar(); /* standard getchar call */
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt); /*reapply the old settings */
-  return ch; /*return received char */
-}
 
 int main(int argc, char *argv[])
 {
-	int ret = 0;
-	unsigned incoming_port, outgoing_port;
-	string incoming_address, outgoing_address;
-	string server_name;
-	string debug_file;
-
-	cout << "Shannon - PopWi Server Side Signal Processing (S3P) Core" << endl;
-	cout << "Copyright (c) 2013. PopWi Technology Group, Inc." << endl << endl;
-
-	po::options_description desc("Shannon Command-line Options");
-	desc.add_options()
-	    ("help", "help message")
-	    ("server", po::value<string>(&server_name)->default_value("papa.popwi.com"), "Remote Manager Location")
-	    ("file", po::value<string>(&server_name)->default_value("shannon.xml"), "Setup File")
-	    ("incoming-address", po::value<string>(&incoming_address)->default_value("173.167.119.220"), "Incoming UDP address")
-	    ("incoming-port", po::value<unsigned>(&incoming_port)->default_value(5004), "Incoming UDP port")
-	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("173.167.119.220"), "Outgoing UDP address")
-	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(35005), "Outgoing UDP port")
-	    ("debug-file", po::value<string>(&debug_file)->default_value("dat/dump.raw"), "filename used for raw data dump")
-	;
-
-	po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
-	po::notify(vm);
-
-	if( vm.count("help") )
-	{
-		cout << endl << desc << endl;
-		cout <<
-		"    Command-line options override program defaults." << endl << endl;
-		return ~0;
-	}
+	using namespace boost;
+	using namespace pop;
+	using namespace std;
+	using namespace rbx;
 
 
-
-
-//	// Build Stash of PopRadio objects
-//	ObjectStash stash;
-//
-//	// Populate with N Radio
-//
-//	int testRadioCount = 100000;
-//
-//	buildNFakePopRadios(stash, testRadioCount);
-//
-//	// This source prints to stdout
-//	PopPrintCharStream printer;
-//
-//	// This source generates GPS changes for devices
-//	PopRandomMoveGPS randomMove;
-//
-//	// wire in pointer to our global PopRadio stash
-//	randomMove.stash = &stash;
-//
-//	// tell it which serial numbers to nudge around the map
-//	randomMove.testRadioCount = testRadioCount;
-//
-//	// connect a source which prints
-//	randomMove.connect(printer);
-//
-//	// start it up
-//	randomMove.start();
 
 	Config::loadFromDisk();
 
-//	PopReadFromFile<PopPeak> file ("incoming_packets.raw");
 
-//	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
-	PopNetwork<PopPeak> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
-	PopTokenizer tokenizer;
 
-	basestationConnection.connect(tokenizer);
-	//	basestationConnection.connect(dump);
 
-	// call this after connecting all sources or sinks
-	basestationConnection.wakeup();
+	PopJsonRPC rpc(1);
 
-//	file.connect(tokenizer);
+	PopSerial uart2("/dev/ttyO2");
+
+	uart2.rx.connect(rpc);
+	rpc.rx.connect(uart2);
+	uart2.rx.start_thread();
+
+
+	PopParseGPS gps(1);
+	PopSerial uart4("/dev/ttyO4", 4800);
+	uart4.rx.connect(gps);
+	uart4.rx.start_thread();
+
+	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
+
+	PopGpsDevice fakeUpdates(1);
+
+	fakeUpdates.tx.connect(json);
+	fakeUpdates.gps = &gps;
+	json.wakeup();
+	fakeUpdates.tx.start_thread();
+
+
+
+
+
+//	SimulateArtemis simArt(0);
+//	simArt.rx.connect(rpc);
+//	rpc.rx.connect(simArt);
+
+//	simArt.rx.start_thread();
+
+
 
 	char c;
 
@@ -143,7 +94,7 @@ int main(int argc, char *argv[])
 		if( c == '+' ) h_start_chan++;*/
 
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
-		boost::posix_time::microseconds workTime(10);
+		boost::posix_time::milliseconds workTime(1000);
 		boost::this_thread::sleep(workTime);
 
 //		if( i % 1000 == 0)
@@ -152,5 +103,5 @@ int main(int argc, char *argv[])
 		i++;
 	}
 
-    return ret;
+    return 0;
 }

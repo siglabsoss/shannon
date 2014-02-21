@@ -48,7 +48,7 @@ public:
      * set to zero then no output buffer is allocated.
      */
     PopSource(const char* name = "PopSource") :
-        PopObject(name), m_buf(name), m_timestamp_buf(name), debug_free_buffers(0)
+        PopObject(name), m_buf(name), m_timestamp_buf(name), debug_free_buffers(0), m_fp(0), mp_thread(0)
     {
     }
 
@@ -60,6 +60,52 @@ public:
     	m_buf.free_circular_buffer(m_buf.m_bytesAllocated);
     	m_timestamp_buf.free_circular_buffer(m_timestamp_buf.m_bytesAllocated);
     }
+
+    void call_thread_loop()
+    {
+    	unsigned int ret;
+    	for(;;)
+    	{
+    		// abort if this is not set
+    		if(!this->m_fp)
+    		{
+    			return;
+    		}
+
+    		ret = this->m_fp();
+
+    		// abort if a non-zero value is returned
+    		if( ret )
+    		{
+    			return;
+    		}
+    	}
+    }
+
+    POP_ERROR start_thread()
+    {
+    	// check to see if thread is already running for this object
+    	if( mp_thread ) return POP_ERROR_ALREADY_RUNNING;
+
+    	// no function pointer has been specified
+    	if( !m_fp ) return POP_ERROR_UNKNOWN;
+
+    	// create a new thread that runs a function pointer set by set_loop_function()
+    	mp_thread = new boost::thread(boost::bind(&PopSource<OUT_TYPE>::call_thread_loop, this));
+
+    	// if thread was not created return an error
+    	if( 0 == mp_thread ) return POP_ERROR_UNKNOWN;
+
+       	return POP_ERROR_NONE;
+    }
+
+
+    // Call this before calling start_thread()
+    void set_loop_function(boost::function<unsigned int(void)> fff)
+    {
+    	this->m_fp = fff;
+    }
+
 
     /**
      * Legacy overload for calling process with no timestamp data
@@ -346,14 +392,14 @@ public:
     		ret = remap_file_pages(actual_buf, bytes_allocated, 0, 0, 0);
 
     		if( ret )
-    			throw PopException( "#1 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
+    			throw PopException( "#1 remap_file_pages=%d, errno=%s, actual_buf=%x, bytes_allcoated=%" PRIuPTR, ret, strerror(errno), actual_buf, bytes_allocated );
 
     		// map mirror buffer (third third of address space) into first third of memory map
     		mirror_buf = ((uint8_t*)temp_buf) + (2 * bytes_allocated);
     		ret = remap_file_pages(mirror_buf, bytes_allocated, 0, 0, 0);
 
     		if( ret )
-    			throw PopException( "#2 remap_file_pages=%d, errno=%s", ret, strerror(errno) );
+    			throw PopException( "#2 remap_file_pages=%d, errno=%s, mirror_buf=%x, bytes_allocated=%" PRIuPTR, ret, strerror(errno), actual_buf, bytes_allocated );
 
     		// shrink the memory map back down to it's necessary size
     		// TODO: don't know if this works as expected. are my original higher remappings
@@ -476,6 +522,15 @@ protected:
 
     /// Attached Sink Classes
     std::vector<PopSink<OUT_TYPE>* > m_rgSinks;
+
+    /// Function pointer used with start_thread
+    boost::function<unsigned int(void)> m_fp;
+
+private:
+    /// Pointer to thread if start_thread() was called
+    boost::thread *mp_thread;
+
+
 
     // --------------------------------
     // JSON methods
