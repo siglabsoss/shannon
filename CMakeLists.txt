@@ -14,7 +14,15 @@
 ########################################################################
 
 cmake_minimum_required(VERSION 2.8)
+
+set(CMAKE_C_COMPILER "arm-linux-gnueabihf-gcc")
+set(CMAKE_CXX_COMPILER "arm-linux-gnueabihf-g++")
+
 project(shannon CXX C)
+
+set(BOOST_ROOT ${PROJECT_SOURCE_DIR}/3rd/boost)
+set(Boost_NO_SYSTEM_PATHS true)
+set(Boost_NO_BOOST_CMAKE true)
 
 set(shannon_VERSION_MAJOR 0)
 set(shannon_VERSION_MINOR 1)
@@ -27,9 +35,9 @@ set(CMAKE_BUILD_TYPE debug)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-find_library(UHD_LIBRARY uhd)
-
 find_package(Boost COMPONENTS date_time thread filesystem program_options prg_exec_monitor regex system unit_test_framework)
+
+find_library(UHD_LIBRARY uhd)
 
 set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-5.5)
 
