@@ -16,34 +16,32 @@ endif()
 set(gpuacc_SRCS
 	dsp/prota/popchanfilter.cu)
 
-set(all_SOURCES
+# The subset of source files that all apps share
+set(shared_SOURCES
 	mdl/popradio.cpp
 	mdl/poptimestamp.cpp
-	mdl/popsymbol.cpp
-	mdl/poppeak.cpp
 	core/popassert.c
-	core/basestationfreq.c
 	core/popsource.cpp
 	core/objectstash.cpp
 	core/config.cpp
-	net/popnetworkcomplex.cpp
-	net/popnetworkjson.cpp
 	net/popnetwork.cpp
-	core/popparsegps.cpp
 	../3rd/frozen/frozen.c
 )
 
+set(all_SOURCES
+	${shared_SOURCES}
+	mdl/popsymbol.cpp
+	mdl/poppeak.cpp
+	core/basestationfreq.c
+	net/popnetworkcomplex.cpp
+	net/popnetworkjson.cpp
+)
+
+# Gravatinio only sources
 set(gravatino_SOURCES
-	mdl/poptimestamp.cpp
-	core/popassert.c
-	core/popsource.cpp
-	core/config.cpp
-	net/popnetwork.cpp
-	../3rd/frozen/frozen.c
+   ${shared_SOURCES}
 	core/popparsegps.cpp
 	core/popgpsdevice.cpp
-	mdl/popradio.cpp
-	core/objectstash.cpp
 )
 
 set(dsp_SOURCES
