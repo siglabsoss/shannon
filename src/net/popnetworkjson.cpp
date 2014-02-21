@@ -103,7 +103,7 @@ namespace pop
         	r.setBatCurrent(1);
         	r.setBatVoltage(1);
         	r.setLat(37.0);
-        	r.setLon(-122);
+        	r.setLng(-122);
         	r.setStatus(0);
 
         	cout << r.seralize() << endl;
@@ -205,7 +205,7 @@ namespace pop
     	r->setBatCurrent(1.0010101);
     	r->setBatVoltage(1.12345);
     	r->setLat(37);
-    	r->setLon(-122);
+    	r->setLng(-122);
     	r->setTemp(98);
     	r->setStatus(0);
     	r->setSerial(0);
@@ -227,11 +227,11 @@ namespace pop
     		PopNetworkJson::setup_radio(&array[i]);
 
     		array[i].setLat(RAND_BETWEEN(37.0,38.0));
-    		array[i].setLon(RAND_BETWEEN(-122.4,-123));
+    		array[i].setLng(RAND_BETWEEN(-122.4,-123));
     		array[i].setSerial(i);
 
 
-//    		printf("lat: %f\n", array[i].getLon());
+//    		printf("lat: %f\n", array[i].getLng());
     	}
 
     	char message[1024];
@@ -283,7 +283,7 @@ namespace pop
             r.setBatCurrent(1.0010101);
             r.setBatVoltage(1.12345);
             r.setLat((debug++));
-            r.setLon(-122);
+            r.setLng(-122);
             r.setTemp(98);
             r.setStatus(0);
             r.setSerial(0);
@@ -377,11 +377,11 @@ namespace pop
             
             const json::value jlat = json["lat"];
             double lat = json::to_number(jlat);
-            double lon = json::to_number(json["lon"]);
+            double lng = json::to_number(json["lng"]);
             string id = json::to_string(json["id"]);
             
             cout << "lat: " << lat << endl;
-            cout << "lon: " << lon << endl;
+            cout << "lon: " << lng << endl;
             cout << "id: "  << id << endl;
         }
 } // namespace pop

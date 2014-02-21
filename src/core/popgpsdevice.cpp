@@ -18,7 +18,7 @@ PopGpsDevice::PopGpsDevice(size_t chunk) : tx("PopSerialSource"), gps(0)
 
 	PopRadio* r = radios[10000]; // find or create
 	r->setLat(lat);
-	r->setLon(lon);
+	r->setLng(lon);
 }
 
 

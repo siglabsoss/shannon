@@ -21,7 +21,7 @@ std::string PopRadio::seralize()
 	// construct programatically
 	json::object o;
 	o.insert("lat", lat)
-            		 .insert("lon", lon)
+            		 .insert("lng", lng)
             		 .insert("bat_current", bat_current)
             		 .insert("bat_voltage", bat_voltage)
             		 .insert("serial", serial)
@@ -60,12 +60,12 @@ void PopRadio::setLat(double lat) {
 	this->lat = lat;
 }
 
-double PopRadio::getLon() const {
-	return lon;
+double PopRadio::getLng() const {
+	return lng;
 }
 
-void PopRadio::setLon(double lon) {
-	this->lon = lon;
+void PopRadio::setLng(double lng) {
+	this->lng = lng;
 }
 
 long PopRadio::getSerial() const {

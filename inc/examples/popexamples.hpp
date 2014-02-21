@@ -285,9 +285,9 @@ public:
         	if(diceB)
         	{
         		double nudge = RAND_BETWEEN(-0.01,0.01);
-        		r->setLon((r->getLon() + nudge));
+        		r->setLng((r->getLng() + nudge));
 
-        		pushJSON("lon", r->getLon());
+        		pushJSON("lon", r->getLng());
         	}
 
 
@@ -316,7 +316,7 @@ void buildNFakePopRadios(ObjectStash &s, unsigned int n)
 	{
 		PopRadio* r = s[i]; // find or create
 		r->setLat(lat + i/n);
-		r->setLon(lon + i/n);
+		r->setLng(lon + i/n);
 	}
 }
 

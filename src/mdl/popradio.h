@@ -17,8 +17,8 @@ public:
 	void setBatVoltage(float batVoltage);
 	double getLat() const;
 	void setLat(double lat);
-	double getLon() const;
-	void setLon(double lon);
+	double getLng() const;
+	void setLng(double lon);
 	long getSerial() const;
 	void setSerial(long serial);
 	int getStatus() const;
@@ -30,7 +30,7 @@ public:
 
 private:
 	double lat;
-	double lon;
+	double lng;
 	float bat_current;
 	float bat_voltage;
 	long serial;
