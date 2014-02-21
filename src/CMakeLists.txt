@@ -30,6 +30,7 @@ set(all_SOURCES
 	net/popnetworkjson.cpp
 	net/popnetwork.cpp
 	core/popparsegps.cpp
+	../3rd/frozen/frozen.c
 )
 
 set(gravatino_SOURCES

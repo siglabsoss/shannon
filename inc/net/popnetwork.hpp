@@ -34,7 +34,7 @@
 #include "json/json.h"
 #include "core/utilities.hpp"
 
-#define NETWORK_UDP_PACKET_MTU (1500)
+#define NETWORK_UDP_PACKET_MTU (1400)
 
 using boost::asio::ip::udp;
 using namespace std;

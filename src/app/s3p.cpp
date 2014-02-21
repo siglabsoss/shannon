@@ -23,6 +23,7 @@
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "net/popnetwork.hpp"
 #include "mdl/poppeak.hpp"
+#include "core/popgravitinoparser.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
@@ -120,12 +121,16 @@ int main(int argc, char *argv[])
 
 	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
-	PopNetwork<PopPeak> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
+	PopNetwork<char> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
 	PopTokenizer tokenizer;
 
-	basestationConnection.connect(tokenizer);
-	basestationConnection.connect(dump);
+	PopGravitinoParser gravitinoParser;
+
+	basestationConnection.connect(gravitinoParser);
+
+//	basestationConnection.connect(tokenizer);
+//	basestationConnection.connect(dump);
 
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();
@@ -144,7 +149,7 @@ int main(int argc, char *argv[])
 		if( c == '+' ) h_start_chan++;*/
 
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
-		boost::posix_time::microseconds workTime(10);
+		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);
 
 //		if( i % 1000 == 0)
