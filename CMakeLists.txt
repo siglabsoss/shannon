@@ -23,6 +23,7 @@ project(shannon CXX C)
 set(BOOST_ROOT ${PROJECT_SOURCE_DIR}/3rd/boost)
 set(Boost_NO_SYSTEM_PATHS true)
 set(Boost_NO_BOOST_CMAKE true)
+set(Boost_USE_STATIC_LIBS ON)
 
 set(shannon_VERSION_MAJOR 0)
 set(shannon_VERSION_MINOR 1)
