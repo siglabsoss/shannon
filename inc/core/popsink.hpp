@@ -49,23 +49,9 @@ class PopSink : public PopObject,
     public PopQueue<buffer_read_pointer<IN_TYPE> >
 {
 protected:
-    /**
-     * Class constructor.
-     * @param nInBuf Size of input buffer in number of samples. A value of
-     * zero indicates that the class can accept any number of input samples.
-     */
-    PopSink(const char* name, size_t nInBuf = 0) : PopObject(name), m_reqBufSize(nInBuf),
-        m_sourceBufIdx(0), m_timestampSourceBufIdx(0), m_pThread(0), m_rgSource(0)
-    {
-    }
 
-    /**
-     * Class destructor.
-     */
-    ~PopSink()
-    {
-        delete m_pThread;
-    }
+    PopSink(const char* name, size_t nInBuf = 0);
+    ~PopSink();
 
     /**
      * Needs to be implemented by child class to handle incoming data.
@@ -79,72 +65,13 @@ protected:
     virtual void init() = 0;
 
 public:
-    /**
-     * Start Thread
-     */
-    void start_thread()
-    {
-        if( 0 == m_pThread )
-        {
-            m_mutex.lock();
-            m_pThread = new boost::thread(boost::bind(&PopSink::run, this));
-            m_mutex.lock();
-        }
-    }
 
-    /**
-     * Returns requested sample size for sink.
-     */
-    size_t sink_size() {
-        return m_reqBufSize;
-    }
+    void start_thread();
+    size_t sink_size();
 
 private:
-    /**
-     * Thread loop.
-     */
-    void run()
-    {
-        buffer_read_pointer<IN_TYPE> buf;
-
-        init();
-
-        m_mutex.unlock();
-
-        while(1)
-        {
-        	this->wait_and_pop( buf );
-
-            process( buf.data, buf.len, buf.timestamp_data, buf.timestamp_len );
-        }
-    }
-
-    /**
-     * Called by connecting block to unblock data.
-     */
+    void run();
     void unblock(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size );
-//    {
-//        // check to for a valid amount of input samples
-//        if( 0 != m_reqBufSize )
-//            if( size != m_reqBufSize )
-//                throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
-//
-//        if( 0 == size )
-//            throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
-//
-//        if( m_pThread )
-//            this->push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size ) );
-//        else
-//            process( in, size, timestamp_in, timestamp_size );
-//    }
-
-    /**
-     * Helper function when the amount of data received is apriori known.
-     */
-//    int unblock(IN_TYPE* const buf)
-//    {
-//        return unblock( buf, m_reqBufSize );
-//    }
 
     /// In Buffer size in number of samples
     size_t m_reqBufSize;

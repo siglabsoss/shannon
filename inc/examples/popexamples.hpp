@@ -43,19 +43,19 @@ public:
     }
 };
 
-class PopPoop : public PopSink<struct odd>
-{
-public:
-    PopPoop() : PopSink<struct odd>("PopPoop") { }
-    void process(const struct odd* data, size_t size)
-    {
-        printf("received %" PRIuPTR " struct odd from PopPoop\r\n", size);
-    }
-    void init()
-    {
-        
-    }
-};
+//class PopPoop : public PopSink<struct odd>
+//{
+//public:
+//    PopPoop() : PopSink<struct odd>("PopPoop") { }
+//    void process(const struct odd* data, size_t size)
+//    {
+//        printf("received %" PRIuPTR " struct odd from PopPoop\r\n", size);
+//    }
+//    void init()
+//    {
+//
+//    }
+//};
 
 struct PopMsg
 {
