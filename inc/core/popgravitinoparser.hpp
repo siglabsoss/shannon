@@ -133,6 +133,8 @@ public:
 
 		std::string str(command.begin(),command.end());
 
+		cout << str << endl;
+
 		const char *json = str.c_str();
 
 		struct json_token arr[POP_GRAVITINO_SUPPORTED_TOKENS];

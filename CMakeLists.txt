@@ -15,11 +15,13 @@
 
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_C_COMPILER "arm-linux-gnueabihf-gcc")
-set(CMAKE_CXX_COMPILER "arm-linux-gnueabihf-g++")
+# These enable Arm crosscompiler
+#set(CMAKE_C_COMPILER "arm-linux-gnueabihf-gcc")
+#set(CMAKE_CXX_COMPILER "arm-linux-gnueabihf-g++")
 
 project(shannon CXX C)
 
+# What does this do? Do we need it?
 set(BOOST_ROOT ${PROJECT_SOURCE_DIR}/3rd/boost)
 set(Boost_NO_SYSTEM_PATHS true)
 set(Boost_NO_BOOST_CMAKE true)
