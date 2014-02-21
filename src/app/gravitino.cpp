@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 	uart4.rx.connect(gps);
 	uart4.rx.start_thread();
 
-	PopNetwork<unsigned char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
+	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
 
 	PopGpsDevice fakeUpdates(1);
 

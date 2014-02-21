@@ -41,6 +41,8 @@ set(gravatino_SOURCES
 	../3rd/frozen/frozen.c
 	core/popparsegps.cpp
 	core/popgpsdevice.cpp
+	mdl/popradio.cpp
+	core/objectstash.cpp
 )
 
 set(dsp_SOURCES

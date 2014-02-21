@@ -6,7 +6,7 @@
 
 using namespace std;
 
-
+//#define POPPARSEGPS_VERBOSE
 
 namespace pop
 {
@@ -188,7 +188,9 @@ void PopParseGPS::gga(std::string &str)
 	token = strtok_r_single( &str[0], seps, &state );
 	while( token != NULL )
 	{
+#ifdef POPPARSEGPS_VERBOSE
 		cout << index << ": " << token << endl;
+#endif
 
 		switch(index)
 		{
@@ -206,7 +208,9 @@ void PopParseGPS::gga(std::string &str)
 				break;
 			case 6:
 				fixStatus = parseInt(token);
+#ifdef POPPARSEGPS_VERBOSE
 				cout << "Fix status: " << fixStatus << endl;
+#endif
 				break;
 			default:
 				break;
@@ -257,8 +261,9 @@ void PopParseGPS::parse()
 	}
 
 
-
+#ifdef POPPARSEGPS_VERBOSE
 	cout << "command: " << str << endl;
+#endif
 
 	found = str.find("$GPGSA");
 	if( found == 0 )
