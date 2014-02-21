@@ -22,6 +22,7 @@ set(shared_SOURCES
 	mdl/poptimestamp.cpp
 	core/popassert.c
 	core/popsource.cpp
+	core/popsink.cpp
 	core/objectstash.cpp
 	core/config.cpp
 	net/popnetwork.cpp

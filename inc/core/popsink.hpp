@@ -122,21 +122,21 @@ private:
     /**
      * Called by connecting block to unblock data.
      */
-    void unblock(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size )
-    {
-        // check to for a valid amount of input samples
-        if( 0 != m_reqBufSize )
-            if( size != m_reqBufSize )
-                throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
-
-        if( 0 == size )
-            throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
-
-        if( m_pThread )
-            this->push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size ) );
-        else
-            process( in, size, timestamp_in, timestamp_size );
-    }
+    void unblock(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size );
+//    {
+//        // check to for a valid amount of input samples
+//        if( 0 != m_reqBufSize )
+//            if( size != m_reqBufSize )
+//                throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
+//
+//        if( 0 == size )
+//            throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
+//
+//        if( m_pThread )
+//            this->push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size ) );
+//        else
+//            process( in, size, timestamp_in, timestamp_size );
+//    }
 
     /**
      * Helper function when the amount of data received is apriori known.
