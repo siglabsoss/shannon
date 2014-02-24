@@ -26,34 +26,41 @@ PopGpsDevice::PopGpsDevice(size_t chunk) : tx("PopSerialSource"), gps(0)
 // return non-zero to exit loop
 unsigned int PopGpsDevice::run_loop()
 {
+	// sleep first because we optionally return early in this function
+	boost::posix_time::milliseconds workTime(1000);
+	boost::this_thread::sleep(workTime);
+
 	double lat,lng,time;
 	static int i = 0;
 
 	cout << i++ << endl;
 
-	if( this->gps->gpsFixed() )
+	if( !this->gps->gpsFixed() )
 	{
-
-		boost::tie(lat, lng, time) = this->gps->getFix();
-		cout << "got gpx fix " << lat << ", " << lng << endl;
+		return 0; // bail with 0 which means we still want to loop
 	}
 
-//	unsigned char buf[3] = "{}";
-//	tx.process(buf, 2);
-	std::string json = this->radios[10000]->seralize();
-//	cout <<  << endl;
+	boost::tie(lat, lng, time) = this->gps->getFix();
+	cout << "got gpx fix " << lat << ", " << lng << endl;
+
+	PopRadio *r = this->radios[10000];
+
+	r->setLat(lat);
+	r->setLng(lng);
+
+	std::string json = r->seralize();
+//	cout << json.c_str() << endl;
 //	json.length();
 
 	char nul = 0;
 
-	// this should be wrapped into a single call to send a single packet
-	tx.process(&nul, 1);
-	tx.process(json.c_str(), json.length());
-	tx.process(&nul, 1);
+	std::stringstream buildPacket;
+	buildPacket << nul << json << nul;
+	std::string packet = buildPacket.str();
+
+	tx.process(packet.c_str(), packet.length());
 
 
-	boost::posix_time::milliseconds workTime(1000);
-	boost::this_thread::sleep(workTime);
 
 	return 0;
 }
