@@ -49,16 +49,16 @@ unsigned int PopGpsDevice::run_loop()
 	r->setLng(lng);
 
 	std::string json = r->seralize();
-//	cout <<  << endl;
+//	cout << json.c_str() << endl;
 //	json.length();
 
 	char nul = 0;
 
-	// this should be wrapped into a single call to send a single packet
-	tx.process(&nul, 1);
-	tx.process(json.c_str(), json.length());
-	tx.process(&nul, 1);
+	std::stringstream buildPacket;
+	buildPacket << nul << json << nul;
+	std::string packet = buildPacket.str();
 
+	tx.process(packet.c_str(), packet.length());
 
 
 
