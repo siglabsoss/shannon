@@ -71,7 +71,7 @@ public:
 //	PopTimestamp newest_time;
 //	size_t last_comb;
 
-	PopGravitinoParser() : PopSink<char>( "PopGravitinoParser" ), headValid(false)
+	PopGravitinoParser() : PopSink<char>( "PopGravitinoParser", 1 ), headValid(false)
 	{
 //		// FIXME: grab from real clock
 //		newest_time = start_time = PopTimestamp(1383178239.0 + 3);
@@ -99,7 +99,7 @@ public:
 //		cout << "in process with '" << data << "'" << endl;
 
 		if( data_size != 1 ) {
-			cout << "Error " << this->get_name() << " may only accept 1 character at a time";
+			cout << "Error " << this->get_name() << " may only accept 1 character at a time" << endl;
 			return;
 		}
 
