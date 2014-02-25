@@ -35,6 +35,7 @@ set(all_SOURCES
 	core/basestationfreq.c
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
+	core/popgravitinoparser.cpp
 )
 
 # Gravatinio only sources
