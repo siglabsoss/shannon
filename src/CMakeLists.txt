@@ -25,6 +25,7 @@ set(shared_SOURCES
 	core/objectstash.cpp
 	core/config.cpp
 	net/popnetwork.cpp
+	net/popwebhook.cpp
 	../3rd/frozen/frozen.c
 )
 

@@ -26,7 +26,7 @@ public:
 	float getTemp() const;
 	void setTemp(float temp);
 
-	std::string seralize();
+	std::string seralize() const;
 
 private:
 	double lat;

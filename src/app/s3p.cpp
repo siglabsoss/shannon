@@ -22,6 +22,7 @@
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "net/popnetwork.hpp"
+#include "net/popwebhook.hpp"
 #include "mdl/poppeak.hpp"
 #include "core/popgravitinoparser.hpp"
 
@@ -129,11 +130,12 @@ int main(int argc, char *argv[])
 
 	basestationConnection.connect(gravitinoParser);
 
-//	basestationConnection.connect(tokenizer);
-//	basestationConnection.connect(dump);
-
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();
+
+	PopWebhook hook(0);
+
+	gravitinoParser.tx.connect(hook);
 
 //	file.connect(tokenizer);
 

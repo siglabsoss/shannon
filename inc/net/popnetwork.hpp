@@ -22,17 +22,12 @@
 
 #include "core/popsink.hpp"
 #include "core/popsource.hpp"
-#include "popradio.h"
 
 #include <iostream>
-#include <stdexcept>
-#include <string>
 
 #include <boost/array.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
-#include "json/json.h"
-#include "core/utilities.hpp"
 
 #define NETWORK_UDP_PACKET_MTU (1400)
 

@@ -27,6 +27,8 @@ public:
 	bool headValid;
 	std::vector<unsigned char> command;
 	ObjectStash radios;
+	PopSource<PopRadio> tx;
+
 
 	PopGravitinoParser();
 	void init();

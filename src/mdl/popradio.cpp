@@ -15,7 +15,7 @@ PopRadio::~PopRadio()
 }
 
 
-std::string PopRadio::seralize()
+std::string PopRadio::seralize() const
 {
 
 	// construct programatically

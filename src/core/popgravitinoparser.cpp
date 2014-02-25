@@ -27,7 +27,7 @@ double parseDouble(const std::string &in)
 	return result;
 }
 
-PopGravitinoParser::PopGravitinoParser() : PopSink<char>( "PopGravitinoParser", 1 ), headValid(false)
+PopGravitinoParser::PopGravitinoParser() : PopSink<char>( "PopGravitinoParser", 1 ), headValid(false), tx("PopGravitinoParser")
 {
 }
 
@@ -135,8 +135,13 @@ void PopGravitinoParser::parse()
 	PopRadio *r = radios[serial];
 	r->setLat(lat);
 	r->setLng(lng);
+	r->setBatCurrent(0.0);
+	r->setBatVoltage(0.0);
+	r->setStatus(0);
 
-	cout << "built object: " << r->seralize() << endl;
+//	cout << "built object: " << r->seralize() << endl;
+
+	tx.process(r,1);
 
 }
 
