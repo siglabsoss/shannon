@@ -43,6 +43,7 @@ set(gravatino_SOURCES
 	core/popgpsdevice.cpp
 	mdl/popradio.cpp
 	core/objectstash.cpp
+	core/popjsonrpc.cpp
 )
 
 set(dsp_SOURCES
