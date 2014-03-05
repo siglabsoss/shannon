@@ -260,7 +260,7 @@ void PopParseGPS::parse()
 	cok = checksumOk(str, len);
 
 	if( !cok ) {
-		cout << "bad GPS checksum" << endl;
+//		cout << "bad GPS checksum (" << str << ")" << endl;
 		return;
 	}
 

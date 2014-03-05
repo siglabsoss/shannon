@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define POP_JSON_RPC_SUPPORTED_TOKENS (10)
+
 
 namespace pop
 {
@@ -83,14 +83,14 @@ void PopJsonRPC::parse()
 	const char *json = str.c_str();
 
 	struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS];
-	const struct json_token *tok, *tok2, *tok3;
+	const struct json_token *methodTok, *paramsTok, *idTok;
 
 	// Tokenize json string, fill in tokens array
 	int returnValue = parse_json(json, strlen(json), arr, POP_JSON_RPC_SUPPORTED_TOKENS);
 
 	if( returnValue == JSON_STRING_INVALID || returnValue == JSON_STRING_INCOMPLETE )
 	{
-		cout << "problem with json string" << endl;
+		cout << "problem with json string (" <<  str << ")" << endl;
 		return;
 	}
 
@@ -100,64 +100,77 @@ void PopJsonRPC::parse()
 		return;
 	}
 
-	std::string method;
+//	std::string method;
 	// Search for parameter "bar" and print it's value
-	tok = find_json_token(arr, "method");
-	if( !(tok && tok->type == JSON_TYPE_STRING) )
+	methodTok = find_json_token(arr, "method");
+	if( !(methodTok && methodTok->type == JSON_TYPE_STRING) )
 	{
 		return;
 	}
 	else
 	{
-		method = std::string(tok->ptr, tok->len);
+//		method = std::string(methodTok->ptr, methodTok->len);
 	}
 
 
-	tok2 = find_json_token(arr, "params");
-	if( !(tok2 && tok2->type == JSON_TYPE_ARRAY) )
+	paramsTok = find_json_token(arr, "params");
+	if( !(paramsTok && paramsTok->type == JSON_TYPE_ARRAY) )
 	{
 		return;
 	}
 
 	int methodId = -1;
-	tok3 = find_json_token(arr, "id");
-	if( !(tok3 && tok3->type == JSON_TYPE_NUMBER) )
+	idTok = find_json_token(arr, "id");
+	if( !(idTok && idTok->type == JSON_TYPE_NUMBER) )
 	{
-		return;
+//		return;
 	}
 	else
 	{
-		std::string sval = std::string(tok3->ptr, tok3->len);
-		methodId = std::stoi(sval);
-
-		if( methodId < 0 )
-			return;
+//		std::string sval = std::string(tok3->ptr, tok3->len);
+//		methodId = std::stoi(sval);
+//
+//		if( methodId < 0 )
+//			return;
 	}
 
 
 
 
-	execute(method, arr, methodId);
+	execute(methodTok, paramsTok, idTok, arr, str);
 
 }
 
-void PopJsonRPC::execute(std::string &method, json_token *tokens, int methodId)
+void PopJsonRPC::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
-	const struct json_token *tok;
+	std::string method = std::string(methodTok->ptr, methodTok->len);
+	const struct json_token *p0, *p1, *p2;
+
 	if( method.compare("log") == 0 )
 	{
-		tok = find_json_token(tokens, "params[0]");
-		if( tok && tok->type == JSON_TYPE_STRING )
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
 		{
-			rcp_log(std::string(tok->ptr, tok->len));
-			respond_int(0, methodId);
+			rcp_log(std::string(p0->ptr, p0->len));
+//			respond_int(0, methodId);
 		}
 	}
 
-	if( method.compare("count") == 0 )
+//	if( method.compare("count") == 0 )
+//	{
+//		int ret = rpc_count();
+//		respond_int(ret, methodId);
+//	}
+
+	if( method.compare("rx") == 0 )
 	{
-		int ret = rpc_count();
-		respond_int(ret, methodId);
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+			cout << "got rx" << endl;
+//			rcp_log(std::string(tok->ptr, tok->len));
+			//			respond_int(0, methodId);
+		}
 	}
 }
 

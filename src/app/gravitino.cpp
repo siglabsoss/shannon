@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 
 	PopJsonRPC rpc(1);
 
-	PopSerial uart2("/dev/ttyO2");
+	PopSerial uart2("/dev/ttyO1");
 
 	uart2.rx.connect(rpc);
 	rpc.rx.connect(uart2);
