@@ -33,7 +33,7 @@ unsigned int PopGpsDevice::run_loop()
 	double lat,lng,time;
 	static int i = 0;
 
-	cout << i++ << endl;
+	//cout << i++ << endl;
 
 	if( !this->gps->gpsFixed() )
 	{

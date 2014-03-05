@@ -39,6 +39,7 @@ set(gravatino_SOURCES
 	core/config.cpp
 	net/popnetwork.cpp
 	../3rd/frozen/frozen.c
+	../3rd/b64/b64.c
 	core/popparsegps.cpp
 	core/popgpsdevice.cpp
 	mdl/popradio.cpp
