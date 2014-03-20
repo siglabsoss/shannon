@@ -318,8 +318,8 @@ int b64_decode( const char *inbytes, unsigned count, char *outbytes, unsigned *c
 
             // because of the while loop above, we account for ipos already being incremented and subtract 1 for this comparison
             if( (ipos-1) < count ) {
-                len++;
                 if( v != 0 ) {
+                	len++;
                     in[ i ] = (unsigned char) (v - 1);
                 }
             }
