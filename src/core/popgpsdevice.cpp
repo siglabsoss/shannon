@@ -1,6 +1,7 @@
 #include "core/popgpsdevice.hpp"
 #include <iostream>
 #include <boost/asio.hpp>
+#include <unistd.h>
 
 using namespace std;
 

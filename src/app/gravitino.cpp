@@ -49,11 +49,11 @@ int main(int argc, char *argv[])
 
 	PopJsonRPC rpc(1);
 
-	PopSerial uart2("/dev/ttyO1");
+	PopSerial uart1("/dev/ttyO1");
 
-	uart2.rx.connect(rpc);
-	rpc.rx.connect(uart2);
-	uart2.rx.start_thread();
+	uart1.rx.connect(rpc);
+	rpc.rx.connect(uart1);
+	uart1.rx.start_thread();
 
 
 	PopParseGPS gps(1);
