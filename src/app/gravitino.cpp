@@ -63,12 +63,13 @@ int main(int argc, char *argv[])
 
 	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 0);
 
-	PopGpsDevice fakeUpdates(1);
+	PopGpsDevice updates(1);
 
-	fakeUpdates.tx.connect(json);
-	fakeUpdates.gps = &gps;
+	rpc.packets.connect(updates);
+	updates.tx.connect(json);
+	updates.gps = &gps;
 	json.wakeup();
-	fakeUpdates.tx.start_thread();
+	updates.tx.start_thread();
 
 
 

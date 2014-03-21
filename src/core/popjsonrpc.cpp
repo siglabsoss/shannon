@@ -246,70 +246,43 @@ void PopJsonRPC::packet_rx(std::string b64_serial, uint32_t offset, double clock
 	uint32_t maxOffset = 480000000; // in units of 10x
 	PopTimestamp now = get_microsec_system_time();
 
-	cout << "now: " << now << endl;
+//	cout << "now: " << now << endl;
 
 	PopTimestamp m_timestamp_offset;
 	// round system time to nearest second
 	m_timestamp_offset = PopTimestamp(round(now.get_real_secs()));
 
-	cout << "m_timestamp_offset: " << m_timestamp_offset << endl;
+//	cout << "m_timestamp_offset: " << m_timestamp_offset << endl;
 
 	double fraction = (double) offset / maxOffset;
 
 	m_timestamp_offset += PopTimestamp(fraction);
 
-	cout << "m_timestamp_offset: " << m_timestamp_offset << endl;
+//	cout << "m_timestamp_offset: " << m_timestamp_offset << endl;
 
 	// build a "packet"
-	boost::tuple<char[20], PopTimestamp> packet;// = boost::tuple<(char[20])b64_serial.c_str(), PopTimestamp>(0,m_timestamp_offset);
+	boost::tuple<char[20], PopTimestamp> packet;
 
 	strncpy(get<0>(packet), b64_serial.c_str(), 20);
 	get<1>(packet) = m_timestamp_offset;
-//	packet.
 
 
 	packets.process(&packet, 1);
 
 
-
-	// below we add the radio seconds (which count up since launch) to our offset which doesn't change.
-	// at this point the radio seconds are probably about 2.0001
-	// we want to subract the whole seconds from our m_timestamp_offset right now (one time) so we can just do a simple add below and get real time
-	// ( this uses the constructor to construct a temporary timestamp object holding just N whole seconds. then we use the -= overload to subtract it)
-//	m_timestamp_offset -= uhd::time_spec_t(md.time_spec.get_full_secs());
-
-
-	//                cout << "rounded to base: '" << m_timestamp_offset.get_full_secs() << "' '" <<  m_timestamp_offset.get_frac_secs()<< "' from now of: '" << now.get_full_secs()  << "' '" << now.get_frac_secs() << "'" << endl;
-
-
-
-// build a pop timestamp from uhd time + offset.
-// the time always applies to sample 0
-//PopTimestamp pop_stamp = PopTimestamp(md.time_spec + m_timestamp_offset);
-
-
-
-
-
-
-
-
-	cout << "in packet_rx: " << b64_serial << endl;
-	unsigned encodedCount = b64_serial.length();
-	char serialDecoded[encodedCount];
-	unsigned decodedCount;
-	b64_decode(b64_serial.c_str(), encodedCount, serialDecoded, &decodedCount);
-
-
-	cout << "Serial: ";
-
-	for(unsigned i = 0; i<decodedCount;i++)
-	{
-//		cout <<  serialDecoded[i];
-		printf("%02x", serialDecoded[i]);
-	}
-
-	cout << endl;
+//	cout << "in packet_rx: " << b64_serial << endl;
+//	unsigned encodedCount = b64_serial.length();
+//	char serialDecoded[encodedCount];
+//	unsigned decodedCount;
+//	b64_decode(b64_serial.c_str(), encodedCount, serialDecoded, &decodedCount);
+//
+//
+//	cout << "Serial: ";
+//	for(unsigned i = 0; i<decodedCount;i++)
+//	{
+//		printf("%02x", serialDecoded[i]);
+//	}
+//	cout << endl;
 
 }
 
