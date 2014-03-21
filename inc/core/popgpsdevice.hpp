@@ -2,10 +2,9 @@
 #define __POP_GPS_DEVICE_HPP_
 
 
-#include <core/popsource.hpp>
-
+#include <boost/tuple/tuple.hpp>
+#include "core/popsource.hpp"
 #include "core/popparsegps.hpp"
-#include "core/config.hpp"
 #include "core/objectstash.hpp"
 
 
@@ -15,7 +14,7 @@ namespace pop
 {
 
 
-class PopGpsDevice
+class PopGpsDevice: public PopSink<boost::tuple<char[20], PopTimestamp>>
 {
 public:
 	PopSource<char> tx;
@@ -25,7 +24,8 @@ public:
 	PopGpsDevice(size_t chunk);
 
 	unsigned int run_loop();
-	void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
+	void init();
+	void process(const boost::tuple<char[20], PopTimestamp>* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
 
 };
 

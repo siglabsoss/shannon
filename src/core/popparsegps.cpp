@@ -102,6 +102,10 @@ double parseDouble(std::string &in)
 bool checksumOk(std::string &str, unsigned len)
 {
 	unsigned char givenChecksum;
+
+	if( len < 5 )
+		return false;
+
 	std::string checkStr = str.substr(len - 3, 2);
 
 	givenChecksum = parseHex(checkStr);
@@ -256,7 +260,7 @@ void PopParseGPS::parse()
 	cok = checksumOk(str, len);
 
 	if( !cok ) {
-		cout << "bad GPS checksum" << endl;
+//		cout << "bad GPS checksum (" << str << ")" << endl;
 		return;
 	}
 

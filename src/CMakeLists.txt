@@ -27,6 +27,8 @@ set(shared_SOURCES
 	net/popnetwork.cpp
 	net/popwebhook.cpp
 	../3rd/frozen/frozen.c
+	../3rd/b64/b64.c
+	core/popjsonrpc.cpp
 )
 
 set(all_SOURCES
