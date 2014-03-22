@@ -25,7 +25,7 @@
 //#include "core/simulateartemis.hpp"
 #include "core/popserial.hpp"
 #include "core/popgpsdevice.hpp"
-#include "core/popjsonrpc.hpp"
+#include "core/popgravitinorpc.hpp"
 #include "core/popparsegps.hpp"
 
 
@@ -47,12 +47,12 @@ int main(int argc, char *argv[])
 
 
 
-	PopJsonRPC rpc(1);
+	PopGravitinoRPC rpc(1);
 
 	PopSerial uart1("/dev/ttyO1");
 
 	uart1.rx.connect(rpc);
-	rpc.rx.connect(uart1);
+	rpc.tx.connect(uart1);
 	uart1.rx.start_thread();
 
 

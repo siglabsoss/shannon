@@ -30,6 +30,7 @@ set(shared_SOURCES
 	core/popjsonrpc.cpp
 )
 
+# S3P and Shannon sources
 set(all_SOURCES
 	${shared_SOURCES}
 	mdl/popsymbol.cpp
@@ -46,6 +47,7 @@ set(gravatino_SOURCES
    ${shared_SOURCES}
 	core/popparsegps.cpp
 	core/popgpsdevice.cpp
+	core/popgravitinorpc.cpp
 )
 
 set(dsp_SOURCES

@@ -1,11 +1,12 @@
 #ifndef __POP_JSON_RPC_HPP_
 #define __POP_JSON_RPC_HPP_
 
-#include <boost/tuple/tuple.hpp>
+
 #include "core/popsink.hpp"
 #include "core/popsource.hpp"
 #include "frozen/frozen.h"
 
+// how many tokens do we support in messages
 #define POP_JSON_RPC_SUPPORTED_TOKENS (50)
 
 
@@ -13,12 +14,12 @@ namespace pop
 {
 
 
+// This class handles tx/rx of PopWi's JSON RPC implementation.  The PopSink that this class extends is the "rx"
 class PopJsonRPC : public PopSink<unsigned char>
 {
 public:
-	PopSink<unsigned char> *tx; // PopSink must be inherited b/c of virtual classes, so we fake out a pointer here
-	PopSource<unsigned char> rx;
-	PopSource<boost::tuple<char[20], PopTimestamp>> packets;
+	// This is the "tx" direction and responds to messages with JSON character responses
+	PopSource<unsigned char> tx;
 	bool headValid;
 	std::vector<unsigned char> command;
 
@@ -26,16 +27,15 @@ public:
 	PopJsonRPC(unsigned notused);
 	void init();
 	void process(const unsigned char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
-
 	void parse();
+	void rcp_log(std::string log);
 
-
-	void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);
-
+    /**
+     * Needs to be implemented by child class to handle the mapping between strings and function calls
+     */
+	virtual void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str) = 0;
 
 	void respond_int(int value, int methodId);
-
-	void packet_rx(std::string b64_serial, uint32_t offset, double clock_correction);
 };
 
 }
