@@ -47,7 +47,7 @@ set(gravatino_SOURCES
    ${shared_SOURCES}
 	core/popparsegps.cpp
 	core/popgpsdevice.cpp
-	core/popgravitinorpc.cpp
+	core/popartemisrpc.cpp
 )
 
 set(dsp_SOURCES

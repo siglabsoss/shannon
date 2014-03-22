@@ -25,7 +25,7 @@
 //#include "core/simulateartemis.hpp"
 #include "core/popserial.hpp"
 #include "core/popgpsdevice.hpp"
-#include "core/popgravitinorpc.hpp"
+#include "core/popartemisrpc.hpp"
 #include "core/popparsegps.hpp"
 
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
 
 
-	PopGravitinoRPC rpc(1);
+	PopArtemisRPC rpc(1);
 
 	PopSerial uart1("/dev/ttyO1");
 

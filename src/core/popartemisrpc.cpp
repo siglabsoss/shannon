@@ -1,4 +1,4 @@
-#include "core/popgravitinorpc.hpp"
+#include "core/popartemisrpc.hpp"
 #include "b64/b64.h"
 
 #include <iostream>
@@ -14,12 +14,12 @@ namespace pop
 
 
 
-PopGravitinoRPC::PopGravitinoRPC(unsigned notused) : PopJsonRPC(0)
+PopArtemisRPC::PopArtemisRPC(unsigned notused) : PopJsonRPC(0)
 {
 }
 
 
-void PopGravitinoRPC::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
+void PopArtemisRPC::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
 	std::string method = FROZEN_GET_STRING(methodTok);
 	const struct json_token *p0, *p1, *p2;
@@ -76,7 +76,7 @@ PopTimestamp get_microsec_system_time(void){
 
 //int b64_decode( const char *inbytes, unsigned count, char *outbytes, unsigned *countOut );
 
-void PopGravitinoRPC::packet_rx(std::string b64_serial, uint32_t offset, double clock_correction)
+void PopArtemisRPC::packet_rx(std::string b64_serial, uint32_t offset, double clock_correction)
 {
 	// the clock correction is 48million cycles of the internal clock divided by the number of cycles for the pps period
 	// this can be viewed as the crystal's tolerance (if we assume pps is 100% accurate)
