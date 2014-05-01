@@ -40,6 +40,7 @@ set(all_SOURCES
 	net/popnetworkjson.cpp
 	core/popgravitinoparser.cpp
 	net/popwebhook.cpp
+	dsp/prota/popsparsecorrelate.c
 )
 
 # Gravatinio only sources
