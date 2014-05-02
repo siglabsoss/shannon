@@ -8,13 +8,22 @@
 using namespace std;
 
 
+uint32_t parseUint32_t(std::string in)
+{
+	uint32_t result;
+	std::stringstream ss;
+	ss << in;
+	ss >> result;
+	return result;
+}
+
 
 namespace pop
 {
 
 
 
-PopArtemisRPC::PopArtemisRPC(unsigned notused) : PopJsonRPC(0)
+PopArtemisRPC::PopArtemisRPC(unsigned notused) : PopJsonRPC(0), handler(0)
 {
 }
 
@@ -22,7 +31,7 @@ PopArtemisRPC::PopArtemisRPC(unsigned notused) : PopJsonRPC(0)
 void PopArtemisRPC::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
 	std::string method = FROZEN_GET_STRING(methodTok);
-	const struct json_token *p0, *p1, *p2;
+	const struct json_token *params, *p0, *p1, *p2;
 
 	if( method.compare("log") == 0 )
 	{
@@ -60,24 +69,27 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 
 	if( method.compare("raw") == 0 )
 	{
-//		p0 = find_json_token(arr, "params[0]");
-//		p1 = find_json_token(arr, "params[1]");
-//		p2 = find_json_token(arr, "params[2]");
-//		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_NUMBER && p2 && p2->type == JSON_TYPE_NUMBER )
-		{
-			cout << "got raw" << endl;
-			cout << str << endl;
+		params = find_json_token(arr, "params");
 
-//			unsigned long offset;
-//			istringstream ( FROZEN_GET_STRING(p1) ) >> offset;
-//
-//			double clockCorrection;
-//
-//			istringstream ( FROZEN_GET_STRING(p2) ) >> clockCorrection;
-//
-//			packet_rx( FROZEN_GET_STRING(p0), (uint32_t)offset, clockCorrection );
-//			//			rcp_log(std::string(tok->ptr, tok->len));
-//			//			respond_int(0, methodId);
+//			cout << "got raw" << endl;
+//			cout << params->num_desc << endl;
+		int j;
+		char buf[128];
+
+		uint32_t values[params->num_desc];
+
+		for(j=0;j<params->num_desc;j++)
+		{
+			snprintf(buf, 128, "params[%d]", j);
+//			cout << FROZEN_GET_STRING(find_json_token(arr, buf)) << endl;
+			values[j] = parseUint32_t(FROZEN_GET_STRING(find_json_token(arr, buf)));
+
+//			cout << values[j] << endl;
+		}
+
+		if( handler )
+		{
+			handler->process(values, params->num_desc, 0, 0);
 		}
 	}
 }

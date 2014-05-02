@@ -49,6 +49,8 @@ set(gravatino_SOURCES
 	core/popparsegps.cpp
 	core/popgpsdevice.cpp
 	core/popartemisrpc.cpp
+	core/poppackethandler.cpp
+	dsp/prota/popsparsecorrelate.c
 )
 
 set(dsp_SOURCES

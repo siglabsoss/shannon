@@ -27,6 +27,7 @@
 #include "core/popgpsdevice.hpp"
 #include "core/popartemisrpc.hpp"
 #include "core/popparsegps.hpp"
+#include "core/poppackethandler.hpp"
 
 
 
@@ -54,6 +55,9 @@ int main(int argc, char *argv[])
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
 	uart0.rx.start_thread();
+
+	PopPacketHandler handler(1);
+	rpc.handler = &handler;
 
 
 	PopParseGPS gps(1);

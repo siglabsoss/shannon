@@ -74,7 +74,7 @@ uint32_t do_comb(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t com
 }
 
 
-uint32_t pop_correlate(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t combSize)
+uint32_t pop_correlate(const uint32_t* data, uint16_t dataSize, const uint32_t* comb, uint32_t combSize)
 {
 	uint32_t denseDataLength = data[dataSize-1] - data[0];
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
