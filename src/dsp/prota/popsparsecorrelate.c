@@ -4,7 +4,8 @@
 #include "dsp/prota/popsparsecorrelate.h"
 #include "core/util.h"
 
-#define BINARY_SEARCH_STEPS (100)
+// 1296 counts is 27us in 48mhz ticks
+#define QUICK_SEARCH_STEPS (300)
 
 
 uint32_t do_comb(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t combSize, uint32_t combOffset)
@@ -103,30 +104,40 @@ uint32_t pop_correlate(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32
 
 	int32_t xscore; //x(key)score
 	uint32_t maxScore = 0;
-	uint32_t maxScoreTime;
+	uint32_t maxScoreOffset;
 	uint32_t iterations;
 	iterations = denseDataLength - denseCombLength + 1;
 	uint32_t combOffset = 0;
 
-	for(combOffset = 0; combOffset < iterations; combOffset++)
+	// quick search
+	for(combOffset = 0; combOffset < iterations; combOffset += QUICK_SEARCH_STEPS)
 	{
+		xscore = do_comb(data, dataSize, comb, combSize, combOffset);
 
+		if( xscore > maxScore )
+		{
+			maxScore = xscore;
+			maxScoreOffset = combOffset;
+		}
+	}
+
+	uint32_t combSlowStart = MAX(0,(maxScoreOffset-QUICK_SEARCH_STEPS+1));
+	uint32_t combSlowEnd = MIN(iterations,(maxScoreOffset+QUICK_SEARCH_STEPS-1));
+
+	// slow search
+	for(combOffset = combSlowStart; combOffset < combSlowEnd; combOffset++)
+	{
 		xscore = do_comb(data, dataSize, comb, combSize, combOffset);
 
 		// score is ready
 		if( xscore > maxScore )
 		{
 			maxScore = xscore;
-			maxScoreTime = data[0] + combOffset;
+			maxScoreOffset = combOffset;
 		}
-
-//		printf("%d, ", xscore);
-
 	}
 
-	//printf("\r\nMaxScore: %d at %u\r\n", maxScore, maxScoreTime);
-
-	return maxScoreTime;
+	return data[0] + maxScoreOffset;
 }
 
 
