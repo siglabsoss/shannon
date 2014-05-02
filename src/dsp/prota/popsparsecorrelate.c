@@ -6,18 +6,18 @@
 
 #define DMA_SAMP(x) (0)
 
-int32_t pop_correlate(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t combSize)
+uint32_t pop_correlate(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t combSize)
 {
-	printf("hi\r\n");
-
 	uint32_t denseDataLength = data[dataSize-1] - data[0];
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
 
 	if( denseDataLength < denseCombLength )
 	{
 		printf("dense data size %d must not be less than dense comb size %d\r\n", denseDataLength, denseCombLength);
+		return 0;
 	}
 
+//	printf("\r\n\r\n");
 
 	/*
 	 * Matlab's xcorr(x,y)
@@ -41,6 +41,8 @@ int32_t pop_correlate(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_
 	int16_t j,k;
 	uint32_t diff;
 	int32_t xscore; //x(key)score
+	uint32_t maxScore = 0;
+	uint32_t maxScoreTime;
 	uint32_t start, head, now;
 	uint32_t nextSignal, nextComb;
 	uint32_t iterations;
@@ -62,6 +64,12 @@ int32_t pop_correlate(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_
 		nextComb = comb[MIN(k+1, combSize-1)] + start;
 		nextSignal = data[j+1];
 
+		// if comb_offset is large enough, we need to skip some edges in the data array, so this scans through edges
+		while (now > nextSignal)
+		{
+			j++;
+			nextSignal = data[j+1];
+		}
 
 
 
@@ -104,10 +112,22 @@ int32_t pop_correlate(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_
 			}
 		}
 
-		printf("Score: %d\r\n", xscore);
+		xscore = abs(xscore);
+
+		// score is ready
+		if( xscore > maxScore )
+		{
+			maxScore = xscore;
+			maxScoreTime = data[0] + comb_offset;
+		}
+
+//		printf("%d, ", xscore);
 
 	}
 
+	//printf("\r\nMaxScore: %d at %u\r\n", maxScore, maxScoreTime);
+
+	return maxScoreTime;
 }
 
 
