@@ -57,6 +57,29 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 			//			respond_int(0, methodId);
 		}
 	}
+
+	if( method.compare("raw") == 0 )
+	{
+//		p0 = find_json_token(arr, "params[0]");
+//		p1 = find_json_token(arr, "params[1]");
+//		p2 = find_json_token(arr, "params[2]");
+//		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_NUMBER && p2 && p2->type == JSON_TYPE_NUMBER )
+		{
+			cout << "got raw" << endl;
+			cout << str << endl;
+
+//			unsigned long offset;
+//			istringstream ( FROZEN_GET_STRING(p1) ) >> offset;
+//
+//			double clockCorrection;
+//
+//			istringstream ( FROZEN_GET_STRING(p2) ) >> clockCorrection;
+//
+//			packet_rx( FROZEN_GET_STRING(p0), (uint32_t)offset, clockCorrection );
+//			//			rcp_log(std::string(tok->ptr, tok->len));
+//			//			respond_int(0, methodId);
+		}
+	}
 }
 
 

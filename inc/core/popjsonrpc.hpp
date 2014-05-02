@@ -7,7 +7,7 @@
 #include "frozen/frozen.h"
 
 // how many tokens do we support in messages
-#define POP_JSON_RPC_SUPPORTED_TOKENS (50)
+#define POP_JSON_RPC_SUPPORTED_TOKENS (2000)
 
 
 namespace pop

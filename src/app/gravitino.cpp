@@ -49,11 +49,11 @@ int main(int argc, char *argv[])
 
 	PopArtemisRPC rpc(1);
 
-	PopSerial uart1("/dev/ttyO1");
+	PopSerial uart0("/dev/ttyO0");
 
-	uart1.rx.connect(rpc);
-	rpc.tx.connect(uart1);
-	uart1.rx.start_thread();
+	uart0.rx.connect(rpc);
+	rpc.tx.connect(uart0);
+	uart0.rx.start_thread();
 
 
 	PopParseGPS gps(1);
