@@ -92,7 +92,7 @@ void PopJsonRPC::parse()
 	if( returnValue == JSON_STRING_INVALID || returnValue == JSON_STRING_INCOMPLETE )
 	{
 		// skip printing this message for simple newline messages.  if one string matches, it returns 0 which we then multiply
-		if( ( str.compare("\r\n") * str.compare("\n") * str.compare("\r") ) != 0)
+		if( ( str.compare("\r\n\r\n") * str.compare("\r\n") * str.compare("\n") * str.compare("\r") ) != 0)
 		{
 			cout << "problem with json string (" <<  str << ")" << endl;
 		}
