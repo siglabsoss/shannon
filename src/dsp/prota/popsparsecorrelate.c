@@ -15,7 +15,8 @@ uint32_t do_comb(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t com
 	int32_t xscore; //x(key)score
 	uint32_t start, head, now;
 	uint32_t nextSignal, nextComb;
-	char pol; // signal polarity, comb polarity
+	uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
+	short pol; // signal polarity, comb polarity
 
 	xscore = 0; // the "score" of this convolution
 	now = start = head = data[0] + combOffset;
@@ -56,8 +57,14 @@ uint32_t do_comb(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t com
 			j++;
 			now = nextSignal;
 
+			// data modulous detected, carry this value forward for the rest of the xcorr
+			if( data[j+1] < data[j] )
+			{
+				modulusCorrection += 48000000;
+			}
+
 			// prep for next comparison
-			nextSignal = data[j+1];
+			nextSignal = data[j+1] + modulusCorrection;
 		}
 		else
 		{
@@ -76,8 +83,21 @@ uint32_t do_comb(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t com
 
 uint32_t pop_correlate(const uint32_t* data, uint16_t dataSize, const uint32_t* comb, uint32_t combSize)
 {
-	uint32_t denseDataLength = data[dataSize-1] - data[0];
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
+	uint32_t denseDataLength = 0;
+
+	uint16_t i;
+
+	// we are forced to scan through the input data to determine if any modulus events have occurred in order to get a real value for denseDataLength
+	for(i = 1; i < dataSize; i++)
+	{
+		if( data[i] < data[i-1] )
+		{
+			denseDataLength += 48000000;
+		}
+
+		denseDataLength += data[i]-data[i-1];
+	}
 
 	if( denseDataLength < denseCombLength )
 	{
