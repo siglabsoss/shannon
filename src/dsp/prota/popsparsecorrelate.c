@@ -8,7 +8,7 @@
 #define QUICK_SEARCH_STEPS (300)
 
 
-uint32_t do_comb(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t combSize, uint32_t combOffset)
+uint32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset)
 {
 	int16_t j,k;
 	uint32_t diff;
@@ -81,7 +81,7 @@ uint32_t do_comb(uint32_t* data, uint16_t dataSize, uint32_t* comb, uint32_t com
 }
 
 
-uint32_t pop_correlate(const uint32_t* data, uint16_t dataSize, const uint32_t* comb, uint32_t combSize)
+uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize)
 {
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
 	uint32_t denseDataLength = 0;
@@ -102,6 +102,7 @@ uint32_t pop_correlate(const uint32_t* data, uint16_t dataSize, const uint32_t* 
 	if( denseDataLength < denseCombLength )
 	{
 		printf("dense data size %d must not be less than dense comb size %d\r\n", denseDataLength, denseCombLength);
+		//FIXME: this is not an appropriate way of returning an error condition
 		return 0;
 	}
 
@@ -187,7 +188,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 	for(i=0;i<combSize;i++)
 	{
 		comb[i] = countsPerBit * i;
-		printf("combx %u\r\n", comb[i]);
+//		printf("combx %u\r\n", comb[i]);
 	}
 
 
@@ -292,7 +293,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 
 
 
-
+	return 0;
 
 
 //	printf("calculated index of %u\r\n", index);
