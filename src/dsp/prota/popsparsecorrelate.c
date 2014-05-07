@@ -160,7 +160,143 @@ uint32_t pop_correlate(const uint32_t* data, uint16_t dataSize, const uint32_t* 
 	return data[0] + maxScoreOffset;
 }
 
+// pass in a data array including the comb
+// pass in the sample which is the end of the comb
+uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t startSample)
+{
+	uint32_t denseDataLength = 0;
 
+//	startSample -= 4*2640; //FIXME: remove
+
+	uint16_t i;
+	int16_t j,k;
+	uint32_t diff;
+	int32_t xscore; //x(key)score
+	uint32_t start, head, now;
+	uint32_t nextSignal, nextComb;
+	uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
+	short pol; // signal polarity, comb polarity
+
+
+	uint32_t combSize = 20;
+	uint32_t comb[combSize];
+
+	double baud = 18181.81818;
+	//	baud = 36363.63636;
+	int countsPerBit = (1.0/baud) * 48000000.0;
+	for(i=0;i<combSize;i++)
+	{
+		comb[i] = countsPerBit * i;
+		printf("combx %u\r\n", comb[i]);
+	}
+
+
+
+
+	xscore = 0; // the "score" of this convolution
+	now = start = head = startSample;//start = head = data[0] + combOffset;
+	k = 0;
+	j = 0;
+
+	nextComb = comb[MIN(k+1, combSize-1)] + start;
+	nextSignal = data[j+1];
+
+	// if comb_offset is large enough, we need to skip some edges in the data array, so this scans through edges
+	while (now > nextSignal)
+	{
+		j++;
+		nextSignal = data[j+1];
+	}
+
+	short flag = 0;
+
+
+//	printf("calculated index of %u\r\n", j);
+
+	while(j < dataSize && k < combSize )
+	{
+
+		pol = ((j&1))?-1:1;
+
+		// it seems like sometimes dma forgets to transfer 1 byte, causing this problem
+		if( now >= head )
+		{
+			// calculate and sum score
+			diff = now - head;
+			xscore += diff * pol;
+
+			if( diff != 0 )
+			{
+				flag = 1;
+			}
+		}
+
+
+		// bump this number to the current edge
+		head = now;
+
+		if( nextComb > nextSignal )
+		{
+			// next event is a signal edge
+			j++;
+			now = nextSignal;
+
+			// data modulous detected, carry this value forward for the rest of the xcorr
+			if( data[j+1] < data[j] )
+			{
+				modulusCorrection += 48000000;
+			}
+
+			// prep for next comparison
+			nextSignal = data[j+1] + modulusCorrection;
+		}
+		else
+		{
+			// without this check some start conditions will trigger a false bit output
+			if( flag )
+			{
+				printf("bit was %d\r\n", xscore);
+				xscore = 0;
+			}
+
+			// next event is a comb edge
+			k++;
+			now = nextComb;
+
+			// prep for next comparison
+			nextComb = comb[MIN(k+1, combSize-1)] + start;
+		}
+	}
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//	printf("calculated index of %u\r\n", index);
+}
 
 
 
