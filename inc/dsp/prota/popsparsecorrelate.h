@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize);
-uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t startSample);
+uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, const uint16_t bits);
 
 #ifdef __cplusplus
 }

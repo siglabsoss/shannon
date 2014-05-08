@@ -72,7 +72,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 			if( data[i] > (prnCodeStart+combDenseLength+bitSyncDenseLength) && !flag2 )
 			{
 				flag2 = 1;
-				end = i-1;
+				end = MIN(i+1, size-1);
 			}
 		}
 
@@ -87,9 +87,15 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		bitSyncStart = pop_correlate(data+start, (end-start), bitSync, ARRAY_LEN(bitSync));
 
-		pop_data_demodulate(data, size, bitSyncStart);
+		printf("Bit sync method:\r\n");
+		pop_data_demodulate(data, size, bitSyncStart+bitSyncDenseLength, 8*2);
 
-//		printf("answer answer2 %d %d\r\n", prnCodeStart, bitSyncStart);
+		printf("PRN sync method:\r\n");
+		pop_data_demodulate(data, size, prnCodeStart+combDenseLength+bitSyncDenseLength, 8*2);
+
+
+
+		printf("answer answer2 %d %d\r\n", prnCodeStart, bitSyncStart);
 
 
 

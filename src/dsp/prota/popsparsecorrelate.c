@@ -163,7 +163,7 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 
 // pass in a data array including the comb
 // pass in the sample which is the end of the comb
-uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t startSample)
+uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, const uint16_t bits)
 {
 	uint32_t denseDataLength = 0;
 
@@ -179,11 +179,10 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 	short pol; // signal polarity, comb polarity
 
 
-	uint32_t combSize = 20;
+	uint32_t combSize = bits + 1;
 	uint32_t comb[combSize];
 
 	double baud = 18181.81818;
-	//	baud = 36363.63636;
 	int countsPerBit = (1.0/baud) * 48000000.0;
 	for(i=0;i<combSize;i++)
 	{
@@ -192,10 +191,8 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 	}
 
 
-
-
 	xscore = 0; // the "score" of this convolution
-	now = start = head = startSample;//start = head = data[0] + combOffset;
+	now = start = head = startSample;
 	kp = k = 0;
 	j = 0; // don't set jp, we are about to modify j
 
