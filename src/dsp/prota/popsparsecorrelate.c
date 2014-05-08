@@ -163,7 +163,7 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 
 // pass in a data array including the comb
 // pass in the sample which is the end of the comb
-uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, const uint16_t bits)
+uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize)
 {
 	uint32_t denseDataLength = 0;
 
@@ -177,9 +177,10 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 	uint32_t nextSignal, nextComb;
 	uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
 	short pol; // signal polarity, comb polarity
+	uint8_t dataByte = 0;
 
 
-	uint32_t combSize = bits + 1;
+	uint32_t combSize = (dataOutSize*8) + 1;
 	uint32_t comb[combSize];
 
 	double baud = 18181.81818;
@@ -227,8 +228,28 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 		// if the previous loop set 'now' to a comb edge, we are ready to record a bit
 		if( kp != k )
 		{
-			printf("bit was %d\r\n", xscore);
+			//printf("bit was %d (%d %d)\r\n", xscore, k, kp);
+
+			if( xscore > 0 )
+			{
+				dataByte <<= 1;
+				dataByte  |= 1;
+			}
+			else
+			{
+				dataByte <<= 1;
+			}
+
+			if( k % 8 == 0 )
+			{
+				dataOut[k/8] = dataByte;
+				printf("data: %02x\r\n", dataByte);
+				dataByte = 0;
+			}
+
+
 			xscore = 0;
+
 		}
 
 		kp = k;

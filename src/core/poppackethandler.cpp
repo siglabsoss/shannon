@@ -87,11 +87,14 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		bitSyncStart = pop_correlate(data+start, (end-start), bitSync, ARRAY_LEN(bitSync));
 
+
+		uint8_t dataRx[2];
+
 		printf("Bit sync method:\r\n");
-		pop_data_demodulate(data, size, bitSyncStart+bitSyncDenseLength, 8*2);
+		pop_data_demodulate(data, size, bitSyncStart+bitSyncDenseLength, dataRx, 2);
 
 		printf("PRN sync method:\r\n");
-		pop_data_demodulate(data, size, prnCodeStart+combDenseLength+bitSyncDenseLength, 8*2);
+		pop_data_demodulate(data, size, prnCodeStart+combDenseLength+bitSyncDenseLength, dataRx, 2);
 
 
 
