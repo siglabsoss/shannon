@@ -8,7 +8,7 @@
 #define QUICK_SEARCH_STEPS (300)
 
 
-uint32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset)
+int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset)
 {
 	int16_t j,k;
 	uint32_t diff;
@@ -77,11 +77,11 @@ uint32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* 
 		}
 	}
 
-	return abs(xscore);
+	return xscore;
 }
 
 
-uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize)
+uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* score)
 {
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
 	uint32_t denseDataLength = 0;
@@ -135,7 +135,7 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 	{
 		xscore = do_comb(data, dataSize, comb, combSize, combOffset);
 
-		if( xscore > maxScore )
+		if( abs(xscore) > abs(maxScore) )
 		{
 			maxScore = xscore;
 			maxScoreOffset = combOffset;
@@ -151,19 +151,21 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 		xscore = do_comb(data, dataSize, comb, combSize, combOffset);
 
 		// score is ready
-		if( xscore > maxScore )
+		if( abs(xscore) > abs(maxScore) )
 		{
 			maxScore = xscore;
 			maxScoreOffset = combOffset;
 		}
 	}
 
+	*score = maxScore;
+
 	return data[0] + maxScoreOffset;
 }
 
 // pass in a data array including the comb
 // pass in the sample which is the end of the comb
-uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize)
+uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert)
 {
 	uint32_t denseDataLength = 0;
 
@@ -242,6 +244,11 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 
 			if( k % 8 == 0 )
 			{
+				if(invert)
+				{
+					dataByte ^= 0xff;
+				}
+
 				dataOut[k/8] = dataByte;
 				printf("data: %02x\r\n", dataByte);
 				dataByte = 0;

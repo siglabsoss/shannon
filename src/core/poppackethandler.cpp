@@ -49,8 +49,11 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 	uint32_t prnCodeStart, bitSyncStart;
 
-	prnCodeStart = pop_correlate(data, size, comb, ARRAY_LEN(comb));
+	int32_t scorePrn, scoreBitSync;
 
+	prnCodeStart = pop_correlate(data, size, comb, ARRAY_LEN(comb), &scorePrn);
+
+	printf("score1: %d\r\n", scorePrn);
 
 
 	//uint32_t cooked[] = {0, 2640, 5280, 7920, 10560, 13200, 15840, 18480, 21120, 23760, 26400, 29040, 31680, 34320, 36960, 39600, 42240, 44880, 47520, 50160, 52800, 55440, 58080, 60720, 63360, 66000, 68640, 71280};
@@ -85,20 +88,22 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 //		printf("start end %d %d\r\n", start, end);
 
-		bitSyncStart = pop_correlate(data+start, (end-start), bitSync, ARRAY_LEN(bitSync));
+		bitSyncStart = pop_correlate(data+start, (end-start), bitSync, ARRAY_LEN(bitSync), &scoreBitSync);
+
+		printf("score2: %d\r\n", scoreBitSync);
 
 
 		uint8_t dataRx[2];
 
 		printf("Bit sync method:\r\n");
-		pop_data_demodulate(data, size, bitSyncStart+bitSyncDenseLength, dataRx, 2);
+		pop_data_demodulate(data, size, bitSyncStart+bitSyncDenseLength, dataRx, 2, (scorePrn<0?1:0));
 
-		printf("PRN sync method:\r\n");
-		pop_data_demodulate(data, size, prnCodeStart+combDenseLength+bitSyncDenseLength, dataRx, 2);
+//		printf("PRN sync method:\r\n");
+//		pop_data_demodulate(data, size, prnCodeStart+combDenseLength+bitSyncDenseLength, dataRx, 2);
 
 
 
-		printf("answer answer2 %d %d\r\n", prnCodeStart, bitSyncStart);
+		printf("answer answer2 %u %u\r\n", prnCodeStart, bitSyncStart);
 
 
 
