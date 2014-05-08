@@ -170,7 +170,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 //	startSample -= 4*2640; //FIXME: remove
 
 	uint16_t i;
-	int16_t j,k;
+	int16_t j,k,jp,kp;
 	uint32_t diff;
 	int32_t xscore; //x(key)score
 	uint32_t start, head, now;
@@ -196,8 +196,8 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 
 	xscore = 0; // the "score" of this convolution
 	now = start = head = startSample;//start = head = data[0] + combOffset;
-	k = 0;
-	j = 0;
+	kp = k = 0;
+	j = 0; // don't set jp, we are about to modify j
 
 	nextComb = comb[MIN(k+1, combSize-1)] + start;
 	nextSignal = data[j+1];
@@ -209,7 +209,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 		nextSignal = data[j+1];
 	}
 
-	short flag = 0;
+	jp = j;
 
 
 //	printf("calculated index of %u\r\n", j);
@@ -217,7 +217,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 	while(j < dataSize && k < combSize )
 	{
 
-		pol = ((j&1))?-1:1;
+		pol = ((jp&1))?-1:1;
 
 		// it seems like sometimes dma forgets to transfer 1 byte, causing this problem
 		if( now >= head )
@@ -225,12 +225,18 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 			// calculate and sum score
 			diff = now - head;
 			xscore += diff * pol;
-
-			if( diff != 0 )
-			{
-				flag = 1;
-			}
 		}
+
+		// if the previous loop set 'now' to a comb edge, we are ready to record a bit
+		if( kp != k )
+		{
+			printf("bit was %d\r\n", xscore);
+			xscore = 0;
+		}
+
+		kp = k;
+		jp = j;
+
 
 
 		// bump this number to the current edge
@@ -253,12 +259,6 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 		}
 		else
 		{
-			// without this check some start conditions will trigger a false bit output
-			if( flag )
-			{
-				printf("bit was %d\r\n", xscore);
-				xscore = 0;
-			}
 
 			// next event is a comb edge
 			k++;
@@ -267,28 +267,10 @@ uint32_t pop_data_demodulate(const uint32_t* data, uint16_t dataSize, uint32_t s
 			// prep for next comparison
 			nextComb = comb[MIN(k+1, combSize-1)] + start;
 		}
+
+
+
 	}
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-
-
-
-
-
-
-
-
 
 
 
