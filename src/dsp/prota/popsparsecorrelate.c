@@ -5,7 +5,7 @@
 #include "core/util.h"
 
 // 1296 counts is 27us in 48mhz ticks
-#define QUICK_SEARCH_STEPS (300)
+#define QUICK_SEARCH_STEPS (1296)
 
 
 int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset)
@@ -81,7 +81,7 @@ int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* c
 }
 
 
-uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* score)
+uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut)
 {
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
 	uint32_t denseDataLength = 0;
@@ -106,26 +106,11 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 		return 0;
 	}
 
-//	printf("\r\n\r\n");
 
-	/*
-	 * Matlab's xcorr(x,y)
-	 * takes y at the leftmost part of x (so that only 1 sample overlaps) and then slides y forwards
-	 *
-	 *
-	 *
-	 *
-	 *
-	 * xcorr(toDense([0 1     3     4     5     7     9]), toDense([0,1,2,4,6]))
-	 *
-	 *  1    -1    -1     1    -1     1     1    -1    -1     1
-	 *
-	 *  1    -1     1     1    -1    -1     1
-	 */
-
-	int32_t xscore; //x(key)score
-	uint32_t maxScore = 0;
-	uint32_t maxScoreOffset;
+	int32_t score, scoreLeft, scoreRight; //x(key)score
+	int32_t maxScoreQuick = 0, maxScoreBin = 0, maxScore = 0;
+	uint32_t maxScoreOffsetQuick, maxScoreOffset;
+	uint32_t scoreOffsetBinSearch, maxScoreOffsetRight;
 	uint32_t iterations;
 	iterations = denseDataLength - denseCombLength + 1;
 	uint32_t combOffset = 0;
@@ -133,34 +118,102 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 	// quick search
 	for(combOffset = 0; combOffset < iterations; combOffset += QUICK_SEARCH_STEPS)
 	{
-		xscore = do_comb(data, dataSize, comb, combSize, combOffset);
+		score = do_comb(data, dataSize, comb, combSize, combOffset);
 
-		if( abs(xscore) > abs(maxScore) )
+		if( abs(score) > abs(maxScoreQuick) )
 		{
-			maxScore = xscore;
-			maxScoreOffset = combOffset;
+			maxScoreQuick = score;
+			maxScoreOffsetQuick = combOffset;
 		}
 	}
 
-	uint32_t combSlowStart = MAX(0,(maxScoreOffset-QUICK_SEARCH_STEPS+1));
-	uint32_t combSlowEnd = MIN(iterations,(maxScoreOffset+QUICK_SEARCH_STEPS-1));
+
+
+
+//	printf("max: %u %d\r\n", maxScoreOffsetQuick, maxScoreQuick);
+
+	// we've found a peak
+	uint32_t searchStep = QUICK_SEARCH_STEPS;
+
+	maxScoreOffset = scoreOffsetBinSearch = maxScoreOffsetQuick;
+	maxScore = maxScoreQuick;
+
+
+	// warmup loop; we only need to do a single comb because the previous one was done in the quick search
+	scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1);
+
+	if( abs(maxScoreQuick) > abs(scoreRight) )
+	{
+		scoreOffsetBinSearch -= searchStep/2;
+	}
+	else
+	{
+		scoreOffsetBinSearch += searchStep/2;
+	}
+
+
+	while( searchStep != 1 )
+	{
+		searchStep /= 2;
+
+		scoreLeft = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch);
+
+		scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1);
+
+		if( abs(scoreLeft) > abs(scoreRight) )
+		{
+			if( abs(scoreLeft) > abs(maxScore) )
+			{
+				maxScore = scoreLeft;
+				maxScoreOffset = scoreOffsetBinSearch;
+			}
+
+			scoreOffsetBinSearch -= searchStep/2;
+			maxScoreBin = scoreLeft;
+		}
+		else
+		{
+			if( abs(scoreRight) > abs(maxScore) )
+			{
+				maxScore = scoreRight;
+				maxScoreOffset = scoreOffsetBinSearch+1;
+			}
+
+			scoreOffsetBinSearch += searchStep/2;
+			maxScoreBin = scoreRight;
+		}
+	}
+
+
+	printf("Max offset bin:   %u\r\n", maxScoreOffset);
+
+
+
+
+//	printf("\r\n");
+
+	uint32_t combSlowStart = MAX(0,(maxScoreOffsetQuick-QUICK_SEARCH_STEPS+1));
+	uint32_t combSlowEnd = MIN(iterations,(maxScoreOffsetQuick+QUICK_SEARCH_STEPS-1));
 
 	// slow search
 	for(combOffset = combSlowStart; combOffset < combSlowEnd; combOffset++)
 	{
-		xscore = do_comb(data, dataSize, comb, combSize, combOffset);
+		score = do_comb(data, dataSize, comb, combSize, combOffset);
+//		printf("%d, %d\r\n", combOffset, score);
 
 		// score is ready
-		if( abs(xscore) > abs(maxScore) )
+		if( abs(score) > abs(maxScoreQuick) )
 		{
-			maxScore = xscore;
-			maxScoreOffset = combOffset;
+			maxScoreQuick = score;
+			maxScoreOffsetQuick = combOffset;
 		}
 	}
 
-	*score = maxScore;
+	printf("Max offset brute: %u\r\n", maxScoreOffsetQuick);
 
-	return data[0] + maxScoreOffset;
+	*scoreOut = maxScoreQuick;
+
+	return data[0] + maxScoreOffsetQuick;
 }
 
 // pass in a data array including the comb
