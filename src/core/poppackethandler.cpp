@@ -116,7 +116,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		if( dataRx[0] == 0xf0 )
 		{
-			char dataTx[2] = {0xf4, 0x42};
+			char dataTx[2] = {0x54, 0x42};
 			if( rpc )
 			{
 				rpc->packet_tx(dataTx, 2);

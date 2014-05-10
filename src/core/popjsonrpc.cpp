@@ -33,13 +33,13 @@ void ppp(std::string p)
 }
 
 
-PopJsonRPC::PopJsonRPC(unsigned notused) : PopSink<unsigned char>("PopJsonRPCSink", 1), tx("PopJsonRPCResponse"), headValid(false)
+PopJsonRPC::PopJsonRPC(unsigned notused) : PopSink<char>("PopJsonRPCSink", 1), tx("PopJsonRPCResponse"), headValid(false)
 {
 }
 
 void PopJsonRPC::init() {}
 
-void PopJsonRPC::process(const unsigned char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopJsonRPC::process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 	if( size != 1 ) {
 		cout << "Error " << this->get_name() << " may only accept 1 character at a time";
@@ -132,7 +132,7 @@ void PopJsonRPC::respond_int(int value, int methodId)
 	ss << "{\"result\":" << value << ", \"error\": null, \"id\": " << methodId << "}";
 
 	std::string str = ss.str();
-	unsigned char *buff;
+	char *buff;
 
 	buff = tx.get_buffer(1);
 	buff[0] = '\0';

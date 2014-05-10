@@ -9,11 +9,11 @@ namespace pop
 {
 
 
-class PopParseGPS : public PopSink<unsigned char>
+class PopParseGPS : public PopSink<char>
 {
 public:
 	bool headValid;
-	std::vector<unsigned char> command;
+	std::vector<char> command;
 	bool gpsFix;
 	double lat;
 	double lng;
@@ -21,7 +21,7 @@ public:
 
 public:
 	PopParseGPS(unsigned notused);
-	void process(const unsigned char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
+	void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
 	void init() {}
 	void gga(std::string &str);
 	void parse();
