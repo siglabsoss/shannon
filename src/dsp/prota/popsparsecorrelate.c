@@ -182,38 +182,19 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 			scoreOffsetBinSearch += searchStep/2;
 			maxScoreBin = scoreRight;
 		}
-	}
 
-
-	printf("Max offset bin:   %u\r\n", maxScoreOffset);
-
-
-
-
-//	printf("\r\n");
-
-	uint32_t combSlowStart = MAX(0,(maxScoreOffsetQuick-QUICK_SEARCH_STEPS+1));
-	uint32_t combSlowEnd = MIN(iterations,(maxScoreOffsetQuick+QUICK_SEARCH_STEPS-1));
-
-	// slow search
-	for(combOffset = combSlowStart; combOffset < combSlowEnd; combOffset++)
-	{
-		score = do_comb(data, dataSize, comb, combSize, combOffset);
-//		printf("%d, %d\r\n", combOffset, score);
-
-		// score is ready
-		if( abs(score) > abs(maxScoreQuick) )
+		if( searchStep == 1 && scoreLeft == scoreRight )
 		{
-			maxScoreQuick = score;
-			maxScoreOffsetQuick = combOffset;
+			//FIXME: this condition can be fixed by curve fitting the searched spots
+			printf("Flat peak detected, start of frame will be slightly wrong\r\n");
 		}
 	}
 
-	printf("Max offset brute: %u\r\n", maxScoreOffsetQuick);
+//	printf("Max offset bin:   %u\r\n", maxScoreOffset);
 
-	*scoreOut = maxScoreQuick;
+	*scoreOut = maxScore;
 
-	return data[0] + maxScoreOffsetQuick;
+	return data[0] + maxScoreOffset;
 }
 
 // pass in a data array including the comb
