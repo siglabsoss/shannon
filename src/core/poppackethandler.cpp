@@ -1,13 +1,14 @@
 #include <iostream>
+#include <boost/timer.hpp>
+
 #include "core/poppackethandler.hpp"
 #include "core/util.h"
-
-//extern "C" {
 #include "dsp/prota/popsparsecorrelate.h"
-//}
+
+
+
 
 using namespace std;
-
 
 namespace pop
 {
@@ -51,9 +52,24 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 	int32_t scorePrn, scoreBitSync;
 
+
+	boost::timer t; // start timing
+
 	prnCodeStart = pop_correlate(data, size, comb, ARRAY_LEN(comb), &scorePrn);
 
-	printf("score1: %d\r\n", scorePrn);
+	double elapsed_time = t.elapsed();
+
+//	if( elapsed_time > 1.0 )
+//	{
+//		printf("\r\n");
+//		size_t j = 0;
+//		for(j = 0; j<size;j++)
+//		{
+//			printf("%u, ", data[j]);
+//		}
+//	}
+
+	printf("\r\ntime %f\r\n", elapsed_time);
 
 
 	//uint32_t cooked[] = {0, 2640, 5280, 7920, 10560, 13200, 15840, 18480, 21120, 23760, 26400, 29040, 31680, 34320, 36960, 39600, 42240, 44880, 47520, 50160, 52800, 55440, 58080, 60720, 63360, 66000, 68640, 71280};
@@ -90,7 +106,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		bitSyncStart = pop_correlate(data+start, (end-start), bitSync, ARRAY_LEN(bitSync), &scoreBitSync);
 
-		printf("score2: %d\r\n", scoreBitSync);
+//		printf("score2: %d\r\n", scoreBitSync);
 
 
 		uint8_t dataRx[2];
@@ -103,7 +119,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 
-		printf("answer answer2 %u %u\r\n", prnCodeStart, bitSyncStart);
+//		printf("answer answer2 %u %u\r\n", prnCodeStart, bitSyncStart);
 
 
 
@@ -111,7 +127,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //		{
 //			printf("%d, ", data[i]);
 //		}
-
+//
 
 
 
@@ -120,7 +136,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //		pop_data_demodulate(data, size, answer+combDenseLength);
 	}
 
-	printf("\r\nMaxScore: %u\r\n", prnCodeStart);
+//	printf("\r\nMaxScore: %u\r\n", prnCodeStart);
 
 }
 

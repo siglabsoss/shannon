@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
 
 	PopPacketHandler handler(1);
 	rpc.handler = &handler;
+	handler.rpc = &rpc;
 
 
 	PopParseGPS gps(1);
