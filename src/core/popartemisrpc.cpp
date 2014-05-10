@@ -180,4 +180,40 @@ void PopArtemisRPC::packet_rx(std::string b64_serial, uint32_t offset, double cl
 
 }
 
+
+void PopArtemisRPC::packet_tx(char* data, uint32_t size)
+{
+	printf("tx\r\n");
+	// b64_length_encoded() tells us the worst case size for the b64 string, we need 1 more char
+	char b64_encoded[b64_length_encoded(size)+1];
+	unsigned encodedCount;
+
+	b64_encode(data, size, b64_encoded, &encodedCount);
+
+	// pack in a null to make C happy
+	b64_encoded[encodedCount] = '\0';
+//	for(int i = 0; i < encodedCount; i++)
+//	{
+//		printf("%c", b64_encoded[i]);
+//	}
+
+//	printf("\r\n");
+
+
+//	this->tx.process("c", 1);
+
+//	putchar('\0');
+//	printf( "{\"method\":\"tx\",\"params\":[\"%s\"]}", b64_encoded);
+//	putchar('\0');
+//
+//        				printf( "%lu, ", corrected);
+//        				printf( "%g", correction );
+//
+//        				printf( "]}");
+
+
+
+
+}
+
 }

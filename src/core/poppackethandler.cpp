@@ -4,7 +4,7 @@
 #include "core/poppackethandler.hpp"
 #include "core/util.h"
 #include "dsp/prota/popsparsecorrelate.h"
-
+#include "core/popartemisrpc.hpp"
 
 
 
@@ -14,7 +14,7 @@ namespace pop
 {
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1), rpc(0)
 {
 
 }
@@ -113,6 +113,15 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		printf("Bit sync method:\r\n");
 		pop_data_demodulate(data, size, bitSyncStart+bitSyncDenseLength, dataRx, 2, (scorePrn<0?1:0));
+
+		if( dataRx[0] == 0xf0 )
+		{
+			char dataTx[2] = {0xf4, 0x42};
+			if( rpc )
+			{
+				rpc->packet_tx(dataTx, 2);
+			}
+		}
 
 //		printf("PRN sync method:\r\n");
 //		pop_data_demodulate(data, size, prnCodeStart+combDenseLength+bitSyncDenseLength, dataRx, 2);

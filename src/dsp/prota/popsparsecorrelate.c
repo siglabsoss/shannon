@@ -283,7 +283,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 					dataByte ^= 0xff;
 				}
 
-				dataOut[k/8] = dataByte;
+				dataOut[(k/8)-1] = dataByte;
 				printf("data: %02x\r\n", dataByte);
 				dataByte = 0;
 			}
