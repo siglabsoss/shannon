@@ -2,6 +2,7 @@
 #include <string>
 
 #include "core/popartemisrpc.hpp"
+#include "core/basestationfreq.h"
 #include "b64/b64.h"
 #include "core/util.h"
 
@@ -134,7 +135,7 @@ void PopArtemisRPC::packet_rx(std::string b64_serial, uint32_t offset, double cl
 		cout << "Artemis probably doesn't have pps, dropping packet\r\n" << endl;
 	}
 
-	uint32_t maxOffset = 480000000; // in units of 10x
+	uint32_t maxOffset = ARTEMIS_CLOCK_SPEED_HZ*10; // in units of 10x
 	PopTimestamp now = get_microsec_system_time();
 
 //	cout << "now: " << now << endl;
@@ -181,39 +182,28 @@ void PopArtemisRPC::packet_rx(std::string b64_serial, uint32_t offset, double cl
 }
 
 
-void PopArtemisRPC::packet_tx(char* data, uint32_t size)
+void PopArtemisRPC::packet_tx(char* data, uint32_t size, uint32_t txTime)
 {
-	printf("tx\r\n");
+	unsigned encodedCount;
 	// b64_length_encoded() tells us the worst case size for the b64 string, we need 1 more char
 	char b64_encoded[b64_length_encoded(size)+1];
-	unsigned encodedCount;
 
+	// b64 encode data
 	b64_encode(data, size, b64_encoded, &encodedCount);
 
-	// pack in a null to make C happy
+	// pack in a null so we can %s with printf
 	b64_encoded[encodedCount] = '\0';
-//	for(int i = 0; i < encodedCount; i++)
-//	{
-//		printf("%c", b64_encoded[i]);
-//	}
 
-//	printf("\r\n");
+	// Guaranteed to be longer than our entire json message
+	char buf[64+encodedCount];
 
+	// leading null
+	this->tx.process("\0", 1);
 
-//	this->tx.process("c", 1);
+	unsigned jsonSize = snprintf(buf, 64+encodedCount, "{\"method\":\"tx\",\"params\":[\"%s\", %u]}", b64_encoded, txTime );
+	this->tx.process(buf, jsonSize);
 
-//	putchar('\0');
-//	printf( "{\"method\":\"tx\",\"params\":[\"%s\"]}", b64_encoded);
-//	putchar('\0');
-//
-//        				printf( "%lu, ", corrected);
-//        				printf( "%g", correction );
-//
-//        				printf( "]}");
-
-
-
-
+	this->tx.process("\0", 1);
 }
 
 }

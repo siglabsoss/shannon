@@ -5,7 +5,7 @@
 #include "core/util.h"
 #include "dsp/prota/popsparsecorrelate.h"
 #include "core/popartemisrpc.hpp"
-
+#include "core/basestationfreq.h"
 
 
 using namespace std;
@@ -117,9 +117,13 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		if( dataRx[0] == 0xf0 )
 		{
 			char dataTx[2] = {0x54, 0x42};
+
+			// add .5 seconds
+			uint32_t txTime = (prnCodeStart + (ARTEMIS_CLOCK_SPEED_HZ/2)) % ARTEMIS_CLOCK_SPEED_HZ;
+
 			if( rpc )
 			{
-				rpc->packet_tx(dataTx, 2);
+				rpc->packet_tx(dataTx, 2, txTime);
 			}
 		}
 

@@ -121,7 +121,7 @@ public:
 
 
 
-	PopSerial(std::string devicePath, unsigned baud = 115200) : PopSink<char>("PopSerialSink", 1), rx("PopSerialSource"), path(devicePath), handle(devicePath, baud)
+	PopSerial(std::string devicePath, unsigned baud = 115200) : PopSink<char>("PopSerialSink", 0), rx("PopSerialSource"), path(devicePath), handle(devicePath, baud)
     {
 		tx = this;
 

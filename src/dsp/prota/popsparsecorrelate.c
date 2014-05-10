@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
 #include "dsp/prota/popsparsecorrelate.h"
+#include "core/basestationfreq.h"
 #include "core/util.h"
 
 // 1296 counts is 27us in 48mhz ticks
@@ -60,7 +62,7 @@ int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* c
 			// data modulous detected, carry this value forward for the rest of the xcorr
 			if( data[j+1] < data[j] )
 			{
-				modulusCorrection += 48000000;
+				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
 			}
 
 			// prep for next comparison
@@ -93,7 +95,7 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 	{
 		if( data[i] < data[i-1] )
 		{
-			denseDataLength += 48000000;
+			denseDataLength += ARTEMIS_CLOCK_SPEED_HZ;
 		}
 
 		denseDataLength += data[i]-data[i-1];
@@ -220,7 +222,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 	uint32_t comb[combSize];
 
 	double baud = 18181.81818;
-	int countsPerBit = (1.0/baud) * 48000000.0;
+	int countsPerBit = (1.0/baud) * ARTEMIS_CLOCK_SPEED_HZ;
 	for(i=0;i<combSize;i++)
 	{
 		comb[i] = countsPerBit * i;
@@ -310,7 +312,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 			// data modulous detected, carry this value forward for the rest of the xcorr
 			if( data[j+1] < data[j] )
 			{
-				modulusCorrection += 48000000;
+				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
 			}
 
 			// prep for next comparison
