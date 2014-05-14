@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 	PopArtemisRPC rpc(1);
 
-	PopSerial uart0("/dev/ttyO0");
+	PopSerial uart0("/dev/ttyUSB0");
 
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
 
 	PopParseGPS gps(1);
-	PopSerial uart4("/dev/ttyO4", 4800);
+	PopSerial uart4("/dev/tty1", 4800);
 	uart4.rx.connect(gps);
 	uart4.rx.start_thread();
 

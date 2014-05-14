@@ -15,3 +15,7 @@ Doxyfile
 
 # all recorded sample data
 *.raw
+
+# KDevelop
+.kdev4
+shannon.kdev4
