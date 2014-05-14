@@ -86,20 +86,23 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 	{
 		params = find_json_token(arr, "params");
 
-//			cout << "got raw" << endl;
-//			cout << params->num_desc << endl;
 		int j;
 		char buf[128];
-
 		uint32_t values[params->num_desc];
+		uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
 
 		for(j=0;j<params->num_desc;j++)
 		{
 			snprintf(buf, 128, "params[%d]", j);
-//			cout << FROZEN_GET_STRING(find_json_token(arr, buf)) << endl;
-			values[j] = parseUint32_t(FROZEN_GET_STRING(find_json_token(arr, buf)));
+			values[j] = parseUint32_t(FROZEN_GET_STRING(find_json_token(arr, buf))) + modulusCorrection;
 
-//			cout << values[j] << endl;
+			if( values[j] < values[j-1] && j != 0)
+			{
+				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
+
+				// bump current sample as well
+				values[j] += ARTEMIS_CLOCK_SPEED_HZ;
+			}
 		}
 
 		if( handler )

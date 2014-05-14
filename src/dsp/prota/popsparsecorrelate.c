@@ -17,7 +17,6 @@ int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* c
 	int32_t xscore; //x(key)score
 	uint32_t start, head, now;
 	uint32_t nextSignal, nextComb;
-	uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
 	short pol; // signal polarity, comb polarity
 
 	xscore = 0; // the "score" of this convolution
@@ -59,14 +58,8 @@ int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* c
 			j++;
 			now = nextSignal;
 
-			// data modulous detected, carry this value forward for the rest of the xcorr
-			if( data[j+1] < data[j] )
-			{
-				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
-			}
-
 			// prep for next comparison
-			nextSignal = data[j+1] + modulusCorrection;
+			nextSignal = data[j+1];
 		}
 		else
 		{
@@ -110,7 +103,7 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 
 
 	int32_t score, scoreLeft, scoreRight; //x(key)score
-	int32_t maxScoreQuick = 0, maxScoreBin = 0, maxScore = 0;
+	int32_t maxScoreQuick = 0, maxScore = 0;
 	uint32_t maxScoreOffsetQuick, maxScoreOffset;
 	uint32_t scoreOffsetBinSearch, maxScoreOffsetRight;
 	uint32_t iterations;
@@ -171,7 +164,6 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 			}
 
 			scoreOffsetBinSearch -= searchStep/2;
-			maxScoreBin = scoreLeft;
 		}
 		else
 		{
@@ -182,7 +174,6 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 			}
 
 			scoreOffsetBinSearch += searchStep/2;
-			maxScoreBin = scoreRight;
 		}
 
 		if( searchStep == 1 && scoreLeft == scoreRight )
@@ -213,7 +204,6 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 	int32_t xscore; //x(key)score
 	uint32_t start, head, now;
 	uint32_t nextSignal, nextComb;
-	uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
 	short pol; // signal polarity, comb polarity
 	uint8_t dataByte = 0;
 
@@ -309,14 +299,8 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 			j++;
 			now = nextSignal;
 
-			// data modulous detected, carry this value forward for the rest of the xcorr
-			if( data[j+1] < data[j] )
-			{
-				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
-			}
-
 			// prep for next comparison
-			nextSignal = data[j+1] + modulusCorrection;
+			nextSignal = data[j+1];
 		}
 		else
 		{
