@@ -40,7 +40,7 @@ namespace pop
 	: PopSink<float>("PopNetworkJson", 4), PopSource<float>("PopNetworkJson"), socket_(io_service, udp::endpoint(udp::v4(), incoming_port)),
 	incoming_port_(incoming_port), outgoing_port_(outgoing_port), mp_buf(0),
 	m_buf_read_idx(0), m_buf_write_idx(0),
-	m_buf_size(NETWORK_BUFFER_SIZE_BYTES / sizeof(NETWORK_STREAM_DATA_TYPE))
+	m_buf_size(NETWORK_BUFFER_SIZE_BYTES / sizeof(NETWORK_STREAM_DATA_TYPE)), m_pThread(0)
 	{
 //		recv_buffer_.resize(12000);
 
