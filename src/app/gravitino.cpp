@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 	PopArtemisRPC rpc(1);
 
-	PopSerial uart0("/dev/ttyO0");
+	PopSerial uart0("/dev/ttyUSB0", 1000000);
 
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
@@ -62,9 +62,9 @@ int main(int argc, char *argv[])
 
 
 	PopParseGPS gps(1);
-	PopSerial uart4("/dev/ttyO4", 4800);
-	uart4.rx.connect(gps);
-	uart4.rx.start_thread();
+//	PopSerial uart4("/dev/tty4", 4800);
+//	uart4.rx.connect(gps);
+//	uart4.rx.start_thread();
 
 	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 0);
 
