@@ -110,7 +110,7 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 
 
 	int32_t score, scoreLeft, scoreRight; //x(key)score
-	int32_t maxScoreQuick = 0, maxScoreBin = 0, maxScore = 0;
+	int32_t maxScoreQuick = 0, maxScore = 0;
 	uint32_t maxScoreOffsetQuick, maxScoreOffset;
 	uint32_t scoreOffsetBinSearch, maxScoreOffsetRight;
 	uint32_t iterations;
@@ -171,7 +171,6 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 			}
 
 			scoreOffsetBinSearch -= searchStep/2;
-			maxScoreBin = scoreLeft;
 		}
 		else
 		{
@@ -182,7 +181,6 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 			}
 
 			scoreOffsetBinSearch += searchStep/2;
-			maxScoreBin = scoreRight;
 		}
 
 		if( searchStep == 1 && scoreLeft == scoreRight )
