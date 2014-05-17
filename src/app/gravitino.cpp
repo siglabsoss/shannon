@@ -56,6 +56,10 @@ int main(int argc, char *argv[])
 	rpc.tx.connect(uart0);
 	uart0.rx.start_thread();
 
+	// Send a "set_role_base_station" RPC to the Artemis board to force it into
+	// base station mode.
+	rpc.set_role_base_station();
+
 	PopPacketHandler handler(1);
 	rpc.handler = &handler;
 	handler.rpc = &rpc;

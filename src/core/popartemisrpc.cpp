@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #include <iostream>
 #include <string>
 
@@ -197,12 +199,29 @@ void PopArtemisRPC::packet_tx(char* data, uint32_t size, uint32_t txTime)
 	// Guaranteed to be longer than our entire json message
 	char buf[64+encodedCount];
 
-	// leading null
+	unsigned jsonSize = snprintf(buf, 64+encodedCount, "{\"method\":\"tx\",\"params\":[\"%s\", %u]}", b64_encoded, txTime );
+	send_rpc(buf, jsonSize);
+}
+
+void PopArtemisRPC::set_role_base_station()
+{
+	static const char RPC_STRING[] =
+		"{ \"method\": \"set_role_base_station\", \"params\": [] }";
+
+	// Subtract one from the string size to exclude the trailing '\0' character.
+	send_rpc(RPC_STRING, sizeof(RPC_STRING) - 1);
+}
+
+void PopArtemisRPC::send_rpc(const char *rpc_string, size_t length)
+{
+	// Leading null. Send this character as a precaution, in case the previous
+	// RPC was not terminated properly. It's safe to do this because if Artemis
+	// receives two null characters in a row, it will just ignore the empty RPC.
 	this->tx.process("\0", 1);
 
-	unsigned jsonSize = snprintf(buf, 64+encodedCount, "{\"method\":\"tx\",\"params\":[\"%s\", %u]}", b64_encoded, txTime );
-	this->tx.process(buf, jsonSize);
+	this->tx.process(rpc_string, length);
 
+	// Trailing null
 	this->tx.process("\0", 1);
 }
 

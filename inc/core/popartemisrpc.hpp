@@ -1,6 +1,8 @@
 #ifndef __POP_GRAV_RPC_HPP_
 #define __POP_GRAV_RPC_HPP_
 
+#include <stddef.h>
+
 #include <boost/tuple/tuple.hpp>
 
 #include "core/popjsonrpc.hpp"
@@ -22,9 +24,13 @@ public:
 	void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);
 	void packet_rx(std::string b64_serial, uint32_t offset, double clock_correction);
 	void packet_tx(char* data, uint32_t size, uint32_t txTime);
+	void set_role_base_station();
 	void mock(void);
 
 	PopPacketHandler* handler;
+
+private:
+	void send_rpc(const char *rpc_string, size_t length);
 };
 
 }
