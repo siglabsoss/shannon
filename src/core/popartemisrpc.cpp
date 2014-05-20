@@ -118,7 +118,7 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 
 		// last sample is different
 		snprintf(buf, 128, "params[%d]", params->num_desc-1);
-		values[params->num_desc-1] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf))) + modulusCorrection;
+		values[params->num_desc-1] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf)));
 
 		if( handler )
 		{
