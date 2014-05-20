@@ -13,11 +13,11 @@ namespace pop
 
 class PopArtemisRPC;
 
-class PopPacketHandler : public PopSink<uint32_t>
+class PopPacketHandler : public PopSink<uint64_t>
 {
 public:
        PopPacketHandler(unsigned notused);
-       void process(const uint32_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
+       void process(const uint64_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
        void init() {}
        PopArtemisRPC* rpc;
 

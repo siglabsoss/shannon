@@ -35,6 +35,7 @@
 
 // Speed of Artemis Clock
 #define ARTEMIS_CLOCK_SPEED_HZ (48000000)
+#define ARTEMIS_PIT_SPEED_HZ   (19200000)
 
 
 
