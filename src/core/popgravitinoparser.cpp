@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include <iostream>
 #include <string>
 #include <stdint.h>
@@ -140,22 +138,6 @@ PopTimestamp get_microsec_system_time(void){
 			long(time_dur.fractional_seconds()),
 			double(pt::time_duration::ticks_per_second())
 	);
-}
-
-
-
-
-void PopGravitinoParser::send_rpc(const char *rpc_string, size_t length)
-{
-	// Leading null. Send this character as a precaution, in case the previous
-	// RPC was not terminated properly. It's safe to do this because if Artemis
-	// receives two null characters in a row, it will just ignore the empty RPC.
-	this->tx.process("\0", 1);
-
-	this->tx.process(rpc_string, length);
-
-	// Trailing null
-	this->tx.process("\0", 1);
 }
 
 }
