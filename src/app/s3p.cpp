@@ -126,16 +126,16 @@ int main(int argc, char *argv[])
 
 	PopTokenizer tokenizer;
 
-	PopGravitinoParser gravitinoParser;
+	PopGravitinoParser gravitinoParser(0);
 
 	basestationConnection.connect(gravitinoParser);
 
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();
 
-	PopWebhook hook(0);
+	//PopWebhook hook(0);
 
-	gravitinoParser.tx.connect(hook);
+	//gravitinoParser.tx.connect(hook);
 
 //	file.connect(tokenizer);
 
