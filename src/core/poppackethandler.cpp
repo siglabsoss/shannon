@@ -104,7 +104,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 			}
 		}
 
-		if( !flag1 && !flag2 )
+		if( !flag1 || !flag2 )
 		{
 			printf("data was not longer than comb + bit sync code %d %d\r\n", data2[size-1], (prnCodeStart+combDenseLength+bitSyncDenseLength) );
 
@@ -156,6 +156,27 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 			{
 				rpc->packet_tx(dataTx, 2, txTime, pitTxTime);
 			}
+
+//			printf("last pit %llu\r\n", pitLastSampleTime);
+//			printf("calc pit %llu\r\n", pitPrnCodeStart);
+//			printf("%f\r\n\r\n", (pitLastSampleTime-pitPrnCodeStart)/19200000.0);
+//
+//			printf("code start %lu\r\n", prnCodeStart);
+//			printf("last  samp %lu\r\n", lastTime);
+//			printf("%f\r\n\r\n", (lastTime-prnCodeStart)/48000000.0);
+//
+//			printf("%lu\r\n", (txTime - prnCodeStart));
+//			printf("%f\r\n\r\n", (txTime - prnCodeStart)/48000000.0);
+//
+//			printf("%llu    (%llu - %llu)\r\n", (pitTxTime - pitPrnCodeStart), pitTxTime, pitPrnCodeStart);
+//			printf("%f\r\n\r\n", (pitTxTime - pitPrnCodeStart)/19200000.0);
+
+
+
+
+
+
+			printf("\r\n");
 //		}
 
 	}
