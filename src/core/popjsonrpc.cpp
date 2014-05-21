@@ -119,7 +119,7 @@ void PopJsonRPC::parse()
 		return;
 	}
 
-	// "id" key is optional.  It's absense means the message will not get a response
+	// "id" key is optional.  It's absence means the message will not get a response
 
 	execute(methodTok, paramsTok, idTok, arr, str);
 }
