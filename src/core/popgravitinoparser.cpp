@@ -1,149 +1,161 @@
-#include <core/popgravitinoparser.hpp>
+#include <stddef.h>
+
+#include <iostream>
+#include <string>
+#include <stdint.h>
+
+#include "core/popgravitinoparser.hpp"
+#include "core/basestationfreq.h"
+#include "b64/b64.h"
+#include "core/util.h"
+
 
 
 using namespace std;
 
-#include <frozen/frozen.h>
+
+uint32_t parseUint32_t(std::string in)
+{
+	uint32_t result;
+	std::stringstream ss;
+	ss << in;
+	ss >> result;
+	return result;
+}
+
+uint64_t parseUint64_t(std::string in)
+{
+	uint64_t result;
+	std::stringstream ss;
+	ss << in;
+	ss >> result;
+	return result;
+}
 
 namespace pop
 {
 
 
-long parseLong(const std::string &in)
-{
-	long result;
-	std::stringstream ss;
-	ss << in;
-	ss >> result;
-	return result;
-}
 
-double parseDouble(const std::string &in)
-{
-	double result;
-	std::stringstream ss;
-	ss << in;
-	ss >> result;
-	return result;
-}
-
-PopGravitinoParser::PopGravitinoParser() : PopSink<char>( "PopGravitinoParser", 1 ), headValid(false), tx("PopGravitinoParser")
+PopGravitinoParser::PopGravitinoParser(unsigned notused) : PopJsonRPC(0)
 {
 }
 
-void PopGravitinoParser::init()
+// call this from main() after all functions are setup to test data demodulation
+//FIXME: remove in final version
+// void PopArtemisRPC::mock(void)
+// {
+// 	if( handler )
+// 	{
+// 		handler->process(values, ARRAY_LEN(values), 0, 0);
+// 	}
+// }
+
+void PopGravitinoParser::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
-}
-
-void PopGravitinoParser::process(const char* data, size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size)
-{
-	if( data_size != 1 ) {
-		cout << "Error " << this->get_name() << " may only accept 1 character at a time" << endl;
-		return;
-	}
-
-	char c = data[0];
-
-	if( !headValid )
-	{
-		if( c == 0 )
-			headValid = true;
-	}
-	else
-	{
-
-		if( c == 0 )
-		{
-			parse();
-			command.erase(command.begin(),command.end());
-		}
-		else
-		{
-			command.push_back(c);
-		}
-	}
-}
-
-void PopGravitinoParser::parse()
-{
-	unsigned len = command.size();
-	if( len == 0 )
-		return;
-
-	std::string str(command.begin(),command.end());
-
 	cout << str << endl;
+	std::string method = FROZEN_GET_STRING(methodTok);
+	const struct json_token *params, *p0, *p1, *p2;
 
-	const char *json = str.c_str();
-
-	struct json_token arr[POP_GRAVITINO_SUPPORTED_TOKENS];
-	const struct json_token *tok, *tok2, *tok3;
-
-	// Tokenize json string, fill in tokens array
-	int returnValue = parse_json(json, strlen(json), arr, POP_GRAVITINO_SUPPORTED_TOKENS);
-
-	if( returnValue == JSON_STRING_INVALID || returnValue == JSON_STRING_INCOMPLETE )
+	if( method.compare("log") == 0 )
 	{
-		cout << "problem with json string" << endl;
-		return;
-	}
-
-	if( returnValue == JSON_TOKEN_ARRAY_TOO_SMALL )
-	{
-		cout << "problem with json string (too many things for us to parse)" << endl;
-		return;
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+			rcp_log(FROZEN_GET_STRING(p0));
+//			respond_int(0, methodId);
+		}
 	}
 
 
-
-	long serial;
-	double lat,lng;
-
-	std::string method, serialString;
-
-	tok = find_json_token(arr, "serial");
-	if( !(tok && tok->type == JSON_TYPE_NUMBER) )
-	{
-		return;
-	}
-	else
-	{
-		serial = parseLong(std::string(tok->ptr, tok->len));
-	}
-
-	tok = find_json_token(arr, "lat");
-	if( !(tok && tok->type == JSON_TYPE_NUMBER) )
-	{
-		return;
-	}
-	else
-	{
-		lat = parseDouble(std::string(tok->ptr, tok->len));
-	}
-
-	tok = find_json_token(arr, "lng");
-	if( !(tok && tok->type == JSON_TYPE_NUMBER) )
-	{
-		return;
-	}
-	else
-	{
-		lng = parseDouble(std::string(tok->ptr, tok->len));
-	}
-
-
-	PopRadio *r = radios[serial];
-	r->setLat(lat);
-	r->setLng(lng);
-	r->setBatCurrent(0.0);
-	r->setBatVoltage(0.0);
-	r->setStatus(0);
-
-//	cout << "built object: " << r->seralize() << endl;
-
-	tx.process(r,1);
-
+// 	if( method.compare("rx") == 0 )
+// 	{
+// 		p0 = find_json_token(arr, "params[0]");
+// 		p1 = find_json_token(arr, "params[1]");
+// 		p2 = find_json_token(arr, "params[2]");
+// 		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_NUMBER && p2 && p2->type == JSON_TYPE_NUMBER )
+// 		{
+// 			cout << "got rx" << endl;
+// 			cout << str << endl;
+// 
+// 			unsigned long offset;
+// 			istringstream ( FROZEN_GET_STRING(p1) ) >> offset;
+// 
+// 			double clockCorrection;
+// 
+// 			istringstream ( FROZEN_GET_STRING(p2) ) >> clockCorrection;
+// 
+// 			packet_rx( FROZEN_GET_STRING(p0), (uint32_t)offset, clockCorrection );
+// //			rcp_log(std::string(tok->ptr, tok->len));
+// 			//			respond_int(0, methodId);
+// 		}
+// 	}
+// 
+// 	if( method.compare("raw") == 0 )
+// 	{
+// 		params = find_json_token(arr, "params");
+// 
+// 		int j;
+// 		char buf[128];
+// 		uint64_t values[params->num_desc];
+// 		uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
+// 
+// 		for(j=0;j<params->num_desc-1;j++)
+// 		{
+// 			snprintf(buf, 128, "params[%d]", j);
+// 			values[j] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf))) + modulusCorrection;
+// 
+// 			if( values[j] < values[j-1] && j != 0)
+// 			{
+// 				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
+// 
+// 				// bump current sample as well
+// 				values[j] += ARTEMIS_CLOCK_SPEED_HZ;
+// 			}
+// 
+// //			printf("val = %u", values[j]);
+// 		}
+// 
+// 		// last sample is different
+// 		snprintf(buf, 128, "params[%d]", params->num_desc-1);
+// 		values[params->num_desc-1] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf)));
+// 
+// 		if( handler )
+// 		{
+// 			handler->process(values, params->num_desc, 0, 0);
+// 		}
+// 	}
 }
 
-} //namespace
 
+
+// code pulled from '/home/joel/uhd/host/lib/types/time_spec.cpp
+// because that file was compiled with incorrect flags and get_system_time() returns garbage
+namespace pt = boost::posix_time;
+PopTimestamp get_microsec_system_time(void){
+	pt::ptime time_now = pt::microsec_clock::universal_time();
+	pt::time_duration time_dur = time_now - pt::from_time_t(0);
+	return PopTimestamp(
+			time_t(time_dur.total_seconds()),
+			long(time_dur.fractional_seconds()),
+			double(pt::time_duration::ticks_per_second())
+	);
+}
+
+
+
+
+void PopGravitinoParser::send_rpc(const char *rpc_string, size_t length)
+{
+	// Leading null. Send this character as a precaution, in case the previous
+	// RPC was not terminated properly. It's safe to do this because if Artemis
+	// receives two null characters in a row, it will just ignore the empty RPC.
+	this->tx.process("\0", 1);
+
+	this->tx.process(rpc_string, length);
+
+	// Trailing null
+	this->tx.process("\0", 1);
+}
+
+}
