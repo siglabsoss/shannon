@@ -27,6 +27,7 @@
 #include "core/popgpsdevice.hpp"
 #include "core/popartemisrpc.hpp"
 #include "core/popparsegps.hpp"
+#include "core/poppackethandler.hpp"
 
 
 
@@ -49,15 +50,23 @@ int main(int argc, char *argv[])
 
 	PopArtemisRPC rpc(1);
 
-	PopSerial uart1("/dev/ttyO1");
+	PopSerial uart0("/dev/ttyUSB0");
 
-	uart1.rx.connect(rpc);
-	rpc.tx.connect(uart1);
-	uart1.rx.start_thread();
+	uart0.rx.connect(rpc);
+	rpc.tx.connect(uart0);
+	uart0.rx.start_thread();
+
+	// Send a "set_role_base_station" RPC to the Artemis board to force it into
+	// base station mode.
+	rpc.set_role_base_station();
+
+	PopPacketHandler handler(1);
+	rpc.handler = &handler;
+	handler.rpc = &rpc;
 
 
 	PopParseGPS gps(1);
-	PopSerial uart4("/dev/ttyO4", 4800);
+	PopSerial uart4("/dev/tty1", 4800);
 	uart4.rx.connect(gps);
 	uart4.rx.start_thread();
 

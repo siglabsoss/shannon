@@ -42,12 +42,12 @@ char* strtok_r_single(char *str, const char *delim, char **nextp)
 	return ret;
 }
 
-PopParseGPS::PopParseGPS(unsigned notused) : PopSink<unsigned char>("PopParseGPS", 1), headValid(false), gpsFix(false), lat(0.0), lng(0.0)
+PopParseGPS::PopParseGPS(unsigned notused) : PopSink<char>("PopParseGPS", 1), headValid(false), gpsFix(false), lat(0.0), lng(0.0)
 {
 
 }
 
-void PopParseGPS::process(const unsigned char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopParseGPS::process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 	char c = data[0];
 
@@ -101,7 +101,7 @@ double parseDouble(std::string &in)
 
 bool checksumOk(std::string &str, unsigned len)
 {
-	unsigned char givenChecksum;
+	char givenChecksum;
 
 	if( len < 5 )
 		return false;
@@ -114,7 +114,7 @@ bool checksumOk(std::string &str, unsigned len)
 	// this extracts bytes according to http://www.gpsinformation.org/dale/nmea.htm
 	std::string checkedBytes = str.substr(1, len - 5);
 
-	unsigned char calculatedChecksum = 0x00;
+	char calculatedChecksum = 0x00;
 
 	// loop and xor
 	for(char& c : checkedBytes) {

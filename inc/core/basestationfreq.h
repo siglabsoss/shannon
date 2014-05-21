@@ -33,6 +33,9 @@
 #define CHANNELS_USED (10)
 
 
+// Speed of Artemis Clock
+#define ARTEMIS_CLOCK_SPEED_HZ (48000000)
+
 
 
 #ifdef __cplusplus

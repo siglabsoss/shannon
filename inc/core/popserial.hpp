@@ -49,7 +49,7 @@ public:
         boost::asio::write(serial,boost::asio::buffer(s.c_str(),s.size()));
     }
 
-    void write(const unsigned char *data, size_t size)
+    void write(const char *data, size_t size)
     {
     	boost::asio::write(serial,boost::asio::buffer(data,size));
     }
@@ -110,18 +110,18 @@ private:
 
 
 
-class PopSerial : public PopSink<unsigned char>
+class PopSerial : public PopSink<char>
 {
 public:
-	 PopSink<unsigned char> *tx;
-	 PopSource<unsigned char> rx; // serial receive generates characters
+	 PopSink<char> *tx;
+	 PopSource<char> rx; // serial receive generates characters
 	 string path;
 	 SimpleSerial handle;
 
 
 
 
-	PopSerial(std::string devicePath, unsigned baud = 115200) : PopSink<unsigned char>("PopSerialSink", 1), rx("PopSerialSource"), path(devicePath), handle(devicePath, baud)
+	PopSerial(std::string devicePath, unsigned baud = 115200) : PopSink<char>("PopSerialSink", 0), rx("PopSerialSource"), path(devicePath), handle(devicePath, baud)
     {
 		tx = this;
 
@@ -144,7 +144,7 @@ public:
     // return non-zero to exit loop
     unsigned int run_loop()
     {
-    	unsigned char* buf = rx.get_buffer(1);
+    	char* buf = rx.get_buffer(1);
 
     	buf[0] = handle.readChar();
 
@@ -162,7 +162,7 @@ public:
     	return 0;
     }
 
-    void process(const unsigned char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+    void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
     	handle.write(data, size);
     }
