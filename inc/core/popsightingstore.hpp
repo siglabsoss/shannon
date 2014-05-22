@@ -21,14 +21,14 @@ namespace pop
 {
 
 class PopMultilateration;
-class PopTrackerLocationSink;
+class PopTrackerLocationStore;
 struct PopSighting;
 
 class PopSightingStore
 {
 public:
 	PopSightingStore(const PopMultilateration* multilateration,
-					 PopTrackerLocationSink* tracker_location_sink);
+					 PopTrackerLocationStore* tracker_location_store);
 	~PopSightingStore();
 
 	void add_sighting(const PopSighting& sighting);
@@ -76,7 +76,7 @@ private:
 		get_sighting_range(time_t full_secs, uint64_t tracker_id) const;
 
 	const PopMultilateration* const multilateration_;
-	PopTrackerLocationSink* const tracker_location_sink_;
+	PopTrackerLocationStore* const tracker_location_store_;
 
 	MapType the_map_;
 };

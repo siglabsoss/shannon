@@ -41,7 +41,7 @@ set(all_SOURCES
 	core/popgravitinoparser.cpp
 	core/popmultilateration.cpp
 	core/popsightingstore.cpp
-	core/poptrackerlocationsink.cpp
+	core/poptrackerlocationstore.cpp
 	net/popwebhook.cpp
 	dsp/prota/popsparsecorrelate.c
 )

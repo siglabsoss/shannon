@@ -20,7 +20,7 @@
 #include "core/popmultilateration.hpp"
 #include "core/popsighting.hpp"
 #include "core/popsightingstore.hpp"
-#include "core/poptrackerlocationsink.hpp"
+#include "core/poptrackerlocationstore.hpp"
 
 using std::make_pair;
 using std::pair;
@@ -33,12 +33,12 @@ const int PopSightingStore::MIN_NUM_BASESTATIONS = 3;
 
 PopSightingStore::PopSightingStore(
 	const PopMultilateration* multilateration,
-	PopTrackerLocationSink* tracker_location_sink)
+	PopTrackerLocationStore* tracker_location_store)
 	: multilateration_(multilateration),
-	  tracker_location_sink_(tracker_location_sink)
+	  tracker_location_store_(tracker_location_store)
 {
 	assert(multilateration != NULL);
-	assert(tracker_location_sink != NULL);
+	assert(tracker_location_store != NULL);
 }
 
 PopSightingStore::~PopSightingStore()
@@ -121,8 +121,8 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 		double lng = 0.0;
 		multilateration_->calculate_location(sightings, &lat, &lng);
 
-		tracker_location_sink_->report_device_location(tracker_id, full_secs,
-													   lat, lng);
+		tracker_location_store_->report_device_location(tracker_id, full_secs,
+														lat, lng);
 	}
 }
 

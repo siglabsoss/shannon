@@ -7,8 +7,8 @@
 *
 ******************************************************************************/
 
-#ifndef __POP_TRACKER_LOCATION_SINK__
-#define __POP_TRACKER_LOCATION_SINK__
+#ifndef __POP_TRACKER_LOCATION_STORE__
+#define __POP_TRACKER_LOCATION_STORE__
 
 #include <stdint.h>
 #include <time.h>
@@ -16,10 +16,10 @@
 namespace pop
 {
 
-class PopTrackerLocationSink
+class PopTrackerLocationStore
 {
 public:
-	PopTrackerLocationSink();
+	PopTrackerLocationStore();
 
 	void report_device_location(uint64_t tracker_id, time_t full_secs,
 								double lat, double lng);

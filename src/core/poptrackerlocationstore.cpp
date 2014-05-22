@@ -12,18 +12,18 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "core/poptrackerlocationsink.hpp"
+#include "core/poptrackerlocationstore.hpp"
 
 namespace pop
 {
 
-PopTrackerLocationSink::PopTrackerLocationSink()
+PopTrackerLocationStore::PopTrackerLocationStore()
 {
 }
 
-void PopTrackerLocationSink::report_device_location(uint64_t tracker_id,
-													time_t full_secs,
-													double lat, double lng)
+void PopTrackerLocationStore::report_device_location(uint64_t tracker_id,
+													 time_t full_secs,
+													 double lat, double lng)
 {
 	printf("tracker_id == %" PRIu64 ", full_secs == %" PRId64 ", lat == %0.8f, "
 		   "lng == %0.8f\n",
