@@ -1,8 +1,14 @@
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "core/popgravitinoparser.hpp"
+#include "core/popsighting.hpp"
+#include "core/popsightingstore.hpp"
 #include "core/basestationfreq.h"
 #include "b64/b64.h"
 #include "core/util.h"
@@ -11,32 +17,30 @@
 
 using namespace std;
 
-
-uint32_t parseUint32_t(std::string in)
+namespace
 {
-	uint32_t result;
-	std::stringstream ss;
+
+template<typename T>
+T parseNumber(const string& in)
+{
+	T result;
+	stringstream ss;
 	ss << in;
 	ss >> result;
 	return result;
 }
 
-uint64_t parseUint64_t(std::string in)
-{
-	uint64_t result;
-	std::stringstream ss;
-	ss << in;
-	ss >> result;
-	return result;
 }
 
 namespace pop
 {
 
-
-
-PopGravitinoParser::PopGravitinoParser(unsigned notused) : PopJsonRPC(0)
+PopGravitinoParser::PopGravitinoParser(unsigned notused,
+									   PopSightingStore* sighting_store)
+	: PopJsonRPC(0),
+	  sighting_store_(sighting_store)
 {
+	assert(sighting_store != NULL);
 }
 
 // call this from main() after all functions are setup to test data demodulation
@@ -53,7 +57,7 @@ void PopGravitinoParser::execute(const struct json_token *methodTok, const struc
 {
 	cout << str << endl;
 	std::string method = FROZEN_GET_STRING(methodTok);
-	const struct json_token *params, *p0, *p1, *p2;
+	const struct json_token *params, *p0, *p1, *p2, *p3, *p4, *p5;
 
 	if( method.compare("log") == 0 )
 	{
@@ -66,63 +70,36 @@ void PopGravitinoParser::execute(const struct json_token *methodTok, const struc
 	}
 
 
-// 	if( method.compare("rx") == 0 )
-// 	{
-// 		p0 = find_json_token(arr, "params[0]");
-// 		p1 = find_json_token(arr, "params[1]");
-// 		p2 = find_json_token(arr, "params[2]");
-// 		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_NUMBER && p2 && p2->type == JSON_TYPE_NUMBER )
-// 		{
-// 			cout << "got rx" << endl;
-// 			cout << str << endl;
-// 
-// 			unsigned long offset;
-// 			istringstream ( FROZEN_GET_STRING(p1) ) >> offset;
-// 
-// 			double clockCorrection;
-// 
-// 			istringstream ( FROZEN_GET_STRING(p2) ) >> clockCorrection;
-// 
-// 			packet_rx( FROZEN_GET_STRING(p0), (uint32_t)offset, clockCorrection );
-// //			rcp_log(std::string(tok->ptr, tok->len));
-// 			//			respond_int(0, methodId);
-// 		}
-// 	}
-// 
-// 	if( method.compare("raw") == 0 )
-// 	{
-// 		params = find_json_token(arr, "params");
-// 
-// 		int j;
-// 		char buf[128];
-// 		uint64_t values[params->num_desc];
-// 		uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
-// 
-// 		for(j=0;j<params->num_desc-1;j++)
-// 		{
-// 			snprintf(buf, 128, "params[%d]", j);
-// 			values[j] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf))) + modulusCorrection;
-// 
-// 			if( values[j] < values[j-1] && j != 0)
-// 			{
-// 				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
-// 
-// 				// bump current sample as well
-// 				values[j] += ARTEMIS_CLOCK_SPEED_HZ;
-// 			}
-// 
-// //			printf("val = %u", values[j]);
-// 		}
-// 
-// 		// last sample is different
-// 		snprintf(buf, 128, "params[%d]", params->num_desc-1);
-// 		values[params->num_desc-1] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf)));
-// 
-// 		if( handler )
-// 		{
-// 			handler->process(values, params->num_desc, 0, 0);
-// 		}
-// 	}
+	if( method.compare("bx_rx") == 0 )
+	{
+		// basestation name, lat, lng, tracker id, full seconds, frac seconds
+		p0 = find_json_token(arr, "params[0]");
+		p1 = find_json_token(arr, "params[1]");
+		p2 = find_json_token(arr, "params[2]");
+		p3 = find_json_token(arr, "params[3]");
+		p4 = find_json_token(arr, "params[4]");
+		p5 = find_json_token(arr, "params[5]");
+
+		if( p0 && p0->type == JSON_TYPE_STRING &&
+			p1 && p1->type == JSON_TYPE_NUMBER &&
+			p2 && p2->type == JSON_TYPE_NUMBER &&
+			p3 && p3->type == JSON_TYPE_NUMBER &&
+			p4 && p4->type == JSON_TYPE_NUMBER &&
+			p5 && p5->type == JSON_TYPE_NUMBER )
+		{
+			PopSighting sighting;
+
+			sighting.hostname = FROZEN_GET_STRING(p0);
+			sighting.lat = parseNumber<double>(FROZEN_GET_STRING(p1));
+			sighting.lng = parseNumber<double>(FROZEN_GET_STRING(p2));
+			// TODO(snyderek): What is the data type of the tracker ID?
+			sighting.tracker_id = parseNumber<uint64_t>(FROZEN_GET_STRING(p3));
+			sighting.full_secs = parseNumber<time_t>(FROZEN_GET_STRING(p4));
+			sighting.frac_secs = parseNumber<double>(FROZEN_GET_STRING(p5));
+
+			sighting_store_->add_sighting(sighting);
+		}
+	}
 }
 
 

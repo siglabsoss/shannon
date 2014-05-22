@@ -15,13 +15,15 @@
 namespace pop
 {
 
+class PopSightingStore;
+
 // FIX THIS COMMENT
 // This class handles all RPC between the Artemis board and Gravitino instance of shannon on the BBB.  Character tx/rx are handled by the parent class PopJsonRPC.
 // The member function execute() is called by the parent class when valid json RPC is received.  It then generates binary objects on the "packet" PopSource
 class PopGravitinoParser : public PopJsonRPC
 {
 public:
-	PopGravitinoParser(unsigned notused);
+	PopGravitinoParser(unsigned notused, PopSightingStore* sighting_store);
 	//PopSource<boost::tuple<char[20], PopTimestamp>> packets;
 
 	void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);
@@ -31,6 +33,9 @@ public:
 	void mock(void);
 
 	//PopPacketHandler* handler;
+
+private:
+	PopSightingStore* const sighting_store_;
 };
 
 }

@@ -25,6 +25,9 @@
 #include "net/popwebhook.hpp"
 #include "mdl/poppeak.hpp"
 #include "core/popgravitinoparser.hpp"
+#include "core/popmultilateration.hpp"
+#include "core/popsightingstore.hpp"
+#include "core/poptrackerlocationstore.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
@@ -126,7 +129,11 @@ int main(int argc, char *argv[])
 
 	PopTokenizer tokenizer;
 
-	PopGravitinoParser gravitinoParser(0);
+	PopMultilateration multilateration;
+	PopTrackerLocationStore tracker_location_store;
+	PopSightingStore sighting_store(&multilateration, &tracker_location_store);
+
+	PopGravitinoParser gravitinoParser(0, &sighting_store);
 
 	basestationConnection.connect(gravitinoParser);
 
