@@ -17,6 +17,10 @@
 namespace pop
 {
 
+// Multilateration function that calculates the global position of a tracker,
+// given the times when the tracking signal was received by different base
+// stations. The function is implemented as a class in case there's any one-time
+// initialization we wish to perform.
 class PopMultilateration
 {
 public:

@@ -25,6 +25,8 @@ void PopTrackerLocationStore::report_device_location(uint64_t tracker_id,
 													 time_t full_secs,
 													 double lat, double lng)
 {
+	// TODO(snyderek): Store the tracker device location.
+
 	printf("tracker_id == %" PRIu64 ", full_secs == %" PRId64 ", lat == %0.8f, "
 		   "lng == %0.8f\n",
 		   tracker_id, full_secs, lat, lng);

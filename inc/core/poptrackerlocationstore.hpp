@@ -16,6 +16,9 @@
 namespace pop
 {
 
+// In-memory store of tracker locations that have been computed by
+// multilateration. The actual computation is performed in the
+// PopMultilateration class.
 class PopTrackerLocationStore
 {
 public:

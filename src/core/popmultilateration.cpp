@@ -31,6 +31,8 @@ void PopMultilateration::calculate_location(
 	assert(lat != NULL);
 	assert(lng != NULL);
 
+	// TODO(snyderek): Perform the multilateration calculation.
+
 	*lat = 0.0;
 	*lng = 0.0;
 }

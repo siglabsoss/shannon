@@ -24,6 +24,7 @@ class PopMultilateration;
 class PopTrackerLocationStore;
 struct PopSighting;
 
+// In-memory store of tracker sightings reported by base stations.
 class PopSightingStore
 {
 public:

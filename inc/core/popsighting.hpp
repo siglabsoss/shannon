@@ -18,6 +18,7 @@
 namespace pop
 {
 
+// A single tracker sighting reported by a base station.
 struct PopSighting
 {
 	// Host name of the base station.

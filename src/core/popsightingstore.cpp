@@ -89,6 +89,9 @@ bool PopSightingStore::MapKeyCompare::operator()(const MapKey& a,
 	return false;
 }
 
+// Builds a vector of all sightings for the given time and tracker. If there are
+// at least three sightings, performs multilateration and stores the computed
+// tracker location.
 void PopSightingStore::aggregate_sightings(time_t full_secs,
 										   uint64_t tracker_id)
 {
@@ -126,6 +129,15 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 	}
 }
 
+// Returns a (begin, end) iterator pair for the range of map entries that match
+// the given (full_secs, tracker_id) partial key. You can use this range to
+// iterate over the subset of key-value pairs in 'the_map_'.
+//
+// The first iterator points to the first map entry that is greater than or
+// equal to the partial key. The second iterator points to the first map entry
+// that is strictly greater than the partial key [or end() if no such key
+// exists]. If no matching entries are found, the two returned iterators will be
+// equal.
 pair<PopSightingStore::MapType::const_iterator,
 	 PopSightingStore::MapType::const_iterator>
 PopSightingStore::get_sighting_range(time_t full_secs,
@@ -140,10 +152,15 @@ PopSightingStore::get_sighting_range(time_t full_secs,
 	range.first = the_map_.lower_bound(key);
 
 	++key.tracker_id;
-	if (key.tracker_id > 0)
+	// Check for integer overflow.
+	if (key.tracker_id > 0) {
+		// Normal case.
 		range.second = the_map_.lower_bound(key);
-	else
+	} else {
+		// tracker_id was already the maximum uint64_t value. Use the_map_.end()
+		// as the end of the range.
 		range.second = the_map_.end();
+	}
 
 	return range;
 }
