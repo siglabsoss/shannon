@@ -39,6 +39,9 @@ set(all_SOURCES
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
 	core/popgravitinoparser.cpp
+	core/popmultilateration.cpp
+	core/popsightingstore.cpp
+	core/poptrackerlocationsink.cpp
 	net/popwebhook.cpp
 	dsp/prota/popsparsecorrelate.c
 )
