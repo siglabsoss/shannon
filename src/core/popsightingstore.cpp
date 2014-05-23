@@ -17,11 +17,14 @@
 #include <utility>
 #include <vector>
 
+#include <boost/thread/mutex.hpp>
+
 #include "core/popmultilateration.hpp"
 #include "core/popsighting.hpp"
 #include "core/popsightingstore.hpp"
 #include "core/poptrackerlocationstore.hpp"
 
+using boost::mutex;
 using std::make_pair;
 using std::pair;
 using std::vector;
@@ -43,6 +46,8 @@ PopSightingStore::PopSightingStore(
 
 PopSightingStore::~PopSightingStore()
 {
+	mutex::scoped_lock lock(the_map_mtx_);
+
 	// Clean up the memory used by the map values.
 	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end();
 		 ++it) {
@@ -62,14 +67,20 @@ void PopSightingStore::add_sighting(const PopSighting& sighting)
 	value->lng = sighting.lng;
 	value->frac_secs = sighting.frac_secs;
 
-	// If multiple sightings are received with the same (full_secs, serial,
-	// hostname) key, only the first sighting will be recorded.
-	// TODO(snyderek): Is this the desired behavior?
-	if (!the_map_.insert(make_pair(key, value)).second) {
-		// The key already exists in the map. Delete the newly allocated value
-		// to avoid a memory leak.
-		delete value;
+	bool inserted = false;
+	{
+		mutex::scoped_lock lock(the_map_mtx_);
+
+		// If multiple sightings are received with the same (full_secs, serial,
+		// hostname) key, only the first sighting will be recorded.
+		// TODO(snyderek): Is this the desired behavior?
+		inserted = the_map_.insert(make_pair(key, value)).second;
 	}
+
+	// If the key already exists in the map, delete the newly allocated map
+	// value to avoid a memory leak.
+	if (!inserted)
+		delete value;
 
 	aggregate_sightings(sighting.full_secs, sighting.tracker_id);
 
@@ -97,25 +108,30 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 {
 	vector<PopSighting> sightings;
 
-	const pair<MapType::const_iterator, MapType::const_iterator> range =
-		get_sighting_range(full_secs, tracker_id);
+	{
+		mutex::scoped_lock lock(the_map_mtx_);
 
-	for (MapType::const_iterator it = range.first; it != range.second; ++it) {
-		const MapKey& key = it->first;
-		const MapValue& value = *it->second;
+		const pair<MapType::const_iterator, MapType::const_iterator> range =
+			get_sighting_range(full_secs, tracker_id);
 
-		assert(key.full_secs == full_secs);
-		assert(key.tracker_id == tracker_id);
+		for (MapType::const_iterator it = range.first; it != range.second;
+			 ++it) {
+			const MapKey& key = it->first;
+			const MapValue& value = *it->second;
 
-		sightings.resize(sightings.size() + 1);
-		PopSighting* const sighting = &sightings.back();
+			assert(key.full_secs == full_secs);
+			assert(key.tracker_id == tracker_id);
 
-		sighting->hostname = key.hostname;
-		sighting->tracker_id = tracker_id;
-		sighting->lat = value.lat;
-		sighting->lng = value.lng;
-		sighting->full_secs = full_secs;
-		sighting->frac_secs = value.frac_secs;
+			sightings.resize(sightings.size() + 1);
+			PopSighting* const sighting = &sightings.back();
+
+			sighting->hostname = key.hostname;
+			sighting->tracker_id = tracker_id;
+			sighting->lat = value.lat;
+			sighting->lng = value.lng;
+			sighting->full_secs = full_secs;
+			sighting->frac_secs = value.frac_secs;
+		}
 	}
 
 	if (sightings.size() >=
@@ -138,6 +154,8 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 // that is strictly greater than the partial key [or end() if no such key
 // exists]. If no matching entries are found, the two returned iterators will be
 // equal.
+//
+// the_map_mtx_ must be locked when this function is called.
 pair<PopSightingStore::MapType::const_iterator,
 	 PopSightingStore::MapType::const_iterator>
 PopSightingStore::get_sighting_range(time_t full_secs,

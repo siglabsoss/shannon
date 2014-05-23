@@ -17,6 +17,8 @@
 #include <string>
 #include <utility>
 
+#include <boost/thread/mutex.hpp>
+
 namespace pop
 {
 
@@ -80,6 +82,7 @@ private:
 	PopTrackerLocationStore* const tracker_location_store_;
 
 	MapType the_map_;
+	mutable boost::mutex the_map_mtx_;
 };
 
 }
