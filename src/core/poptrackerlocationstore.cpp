@@ -21,9 +21,9 @@ PopTrackerLocationStore::PopTrackerLocationStore()
 {
 }
 
-void PopTrackerLocationStore::report_device_location(uint64_t tracker_id,
-													 time_t full_secs,
-													 double lat, double lng)
+void PopTrackerLocationStore::report_tracker_location(uint64_t tracker_id,
+													  time_t full_secs,
+													  double lat, double lng)
 {
 	// TODO(snyderek): Store the tracker device location.
 

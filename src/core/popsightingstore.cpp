@@ -140,8 +140,8 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 		double lng = 0.0;
 		multilateration_->calculate_location(sightings, &lat, &lng);
 
-		tracker_location_store_->report_device_location(tracker_id, full_secs,
-														lat, lng);
+		tracker_location_store_->report_tracker_location(tracker_id, full_secs,
+														 lat, lng);
 	}
 }
 

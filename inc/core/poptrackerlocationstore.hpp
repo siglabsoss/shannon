@@ -24,8 +24,8 @@ class PopTrackerLocationStore
 public:
 	PopTrackerLocationStore();
 
-	void report_device_location(uint64_t tracker_id, time_t full_secs,
-								double lat, double lng);
+	void report_tracker_location(uint64_t tracker_id, time_t full_secs,
+								 double lat, double lng);
 
 private:
 };
