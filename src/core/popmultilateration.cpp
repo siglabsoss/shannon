@@ -111,12 +111,11 @@ void PopMultilateration::calculate_location(
 	}
 
 	// Do the multilateration.
-	double x, y, z;
-	tie(x, y, z) = calculate_3input_location(sets);
+	double temp_lat = 0.0, temp_lng = 0.0, temp_alt = 0.0;
+	tie(temp_lat, temp_lng, temp_alt) = calculate_3input_location(sets);
 
-	// Convert the (x,y,z) coordinates back to lat/long.
-	double alt;
-	tie(*lat, *lng, alt) = geo_helper_.turn_xyz_into_llh(x, y, z, "wgs84");
+	*lat = temp_lat;
+	*lng = temp_lng - 180;
 }
 
 // Take 3 positions readings in the format:
