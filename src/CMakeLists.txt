@@ -116,10 +116,18 @@ target_link_libraries(gravitino ${Boost_LIBRARIES})
 	
 
 
+# MORE TESTS
+# TODO(snyderek): Move these tests into app/test.cpp.
+add_executable(geohelper_test ${all_SOURCES} core/geohelper_test.cpp)
+target_link_libraries(geohelper_test ${Boost_LIBRARIES})
+
+add_executable(popmultilateration_test ${all_SOURCES} core/popmultilateration_test.cpp)
+target_link_libraries(popmultilateration_test ${Boost_LIBRARIES})
+
 
 
 # list of the different files that contain main()
-set(executable_list shannon s3p gravitino)
+set(executable_list shannon s3p gravitino geohelper_test popmultilateration_test)
 
 # iterate and build each executuable, and add make runx shortcut
 foreach(executable ${executable_list}) 
