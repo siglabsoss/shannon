@@ -28,8 +28,7 @@ using std::vector;
 namespace
 {
 
-// TODO(dss): Should we use a more accurate value for the speed of light?
-const double SPEED_OF_LIGHT_M_PER_S = 3e8;
+const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
 
 double sqr(double x)
 {
