@@ -326,7 +326,88 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 //	printf("calculated index of %u\r\n", index);
 }
 
+unsigned encode_ota_factor(void)
+{
+	return 4;
+}
 
+void decode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out_size)
+{
+	size_t i,j;
+
+	int delta = 1;
+	int bit, prev;
+	int bit0, bit1, bit2, bit3;
+
+	*out_size = in_size/4;
+
+	for(i = 0; i < *out_size; i++)
+	{
+		out[i] = 0x00;
+	}
+
+	uint8_t byte_out = 0;
+	for(i = 0; i < in_size; i++)
+	{
+		uint8_t byte_in = in[i];
+
+		for(j = 0; j < 2; j++)
+		{
+			byte_out <<= 1;
+			bit3 = (byte_in & 0x80)?1:-1;
+			bit2 = (byte_in & 0x40)?1:-1;
+			bit1 = (byte_in & 0x20)?1:-1;
+			bit0 = (byte_in & 0x10)?1:-1;
+
+			bit = bit3+bit2+bit1+bit0 > 0;
+
+			if( bit )
+			{
+				byte_out |= 0x01;
+			}
+
+			byte_in <<= 4;
+		}
+
+		if( i % 4 == 3 )
+		{
+			out[i/4] = byte_out;
+			byte_out = 0;
+		}
+	}
+}
+
+
+void encode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out_size)
+{
+	size_t i,j;
+
+	int delta = 1;
+	int bit, prev;
+
+	*out_size = in_size*4;
+
+	for(i = 0; i < *out_size; i++)
+	{
+		out[i] = 0x00;
+	}
+
+	for(i = 0; i < in_size; i++)
+	{
+		uint8_t byte = in[i];
+		for(j = 0; j < 8; j++)
+		{
+			bit = (byte & 0x80)?1:0;
+
+			if( bit )
+			{
+				out[(j/2)+(4*i)] |= 0x0f << ((j%2==0)?4:0);
+			}
+
+			byte <<= 1;
+		}
+	}
+}
 
 
 

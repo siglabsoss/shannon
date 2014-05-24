@@ -34,6 +34,9 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 	uint32_t comb[] = {0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 997920, 1003200, 1029600, 1135200, 1193280, 1240800, 1251360, 1383360, 1404480, 1483680, 1520640, 1647360, 1694880, 1800480, 1879680, 1921920, 1932480, 1958880, 2085600, 2122560, 2164800, 2180640, 2196480, 2244000, 2344320, 2428800, 2434080, 2476320, 2550240, 2872320, 3067680, 3278880, 3410880, 3669600, 3738240, 3806880, 3838560, 3944160, 3986400, 4134240, 4239840, 4297920, 4345440, 4414080, 4419360, 4593600, 4678080, 4736160, 4878720, 4894560, 5116320, 5221920, 5253600, 5290560, 5512320, 5639040, 5834400, 6019200, 6225120, 6383520, 6452160, 6494400, 6600000, 6668640, 6916800, 7138560, 7170240, 7186080, 7223040, 7275840, 7370880, 7571520, 7587360, 7597920, 7751040, 7898880, 7904160, 7930560, 8110080, 8310720, 8469120, 8500800, 8580000, 8748960, 8880960, 8954880, 8986560, 9086880, 9150240, 9176640, 9229440, 9451200, 9572640, 9625440, 9757440, 9884160, 10047840, 10142880, 10243200};
 	uint32_t combDenseLength = comb[ARRAY_LEN(comb)-1];
 
+	// Full comb + bitsync
+	// [0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 997920, 1003200, 1029600, 1135200, 1193280, 1240800, 1251360, 1383360, 1404480, 1483680, 1520640, 1647360, 1694880, 1800480, 1879680, 1921920, 1932480, 1958880, 2085600, 2122560, 2164800, 2180640, 2196480, 2244000, 2344320, 2428800, 2434080, 2476320, 2550240, 2872320, 3067680, 3278880, 3410880, 3669600, 3738240, 3806880, 3838560, 3944160, 3986400, 4134240, 4239840, 4297920, 4345440, 4414080, 4419360, 4593600, 4678080, 4736160, 4878720, 4894560, 5116320, 5221920, 5253600, 5290560, 5512320, 5639040, 5834400, 6019200, 6225120, 6383520, 6452160, 6494400, 6600000, 6668640, 6916800, 7138560, 7170240, 7186080, 7223040, 7275840, 7370880, 7571520, 7587360, 7597920, 7751040, 7898880, 7904160, 7930560, 8110080, 8310720, 8469120, 8500800, 8580000, 8748960, 8880960, 8954880, 8986560, 9086880, 9150240, 9176640, 9229440, 9451200, 9572640, 9625440, 9757440, 9884160, 10047840, 10142880, 10243200, 10264320, 10269600, 10274880, 10280160, 10285440, 10288080, 10290720, 10293360, 10296000, 10298640, 10301280, 10303920, 10306560]
+
 
 
 	size_t i,j;
@@ -44,17 +47,22 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 	uint32_t data2[size-1];
 
+//	printf("\r\n");
 	for(i=0;i<(size-1);i++)
 	{
 		data2[i] = (uint32_t)data[i];
+//		printf("%u, ", data2[i]);
 	}
+//	printf("\r\n\r\n");
 
 
 	boost::timer t; // start timing
 
 	prnCodeStart = pop_correlate(data2, size-1, comb, ARRAY_LEN(comb), &scorePrn);
 
-//	printf("Score: %d\r\n", scorePrn);
+
+	printf("Score: %d\r\n", scorePrn);
+	printf("Start: %d\r\n", prnCodeStart);
 //	if( abs(scorePrn) < )
 
 	double elapsed_time = t.elapsed();
@@ -73,15 +81,6 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 	}
 
 	printf("\r\ntime %f\r\n", elapsed_time);
-
-	if( elapsed_time > 0.75 )
-	{
-		printf("\r\nSkipping TX, xcorr took too long\r\n");
-		return;
-	}
-
-
-	//uint32_t cooked[] = {0, 2640, 5280, 7920, 10560, 13200, 15840, 18480, 21120, 23760, 26400, 29040, 31680, 34320, 36960, 39600, 42240, 44880, 47520, 50160, 52800, 55440, 58080, 60720, 63360, 66000, 68640, 71280};
 
 
 	if( prnCodeStart != 0 )
@@ -125,11 +124,35 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 //		printf("score2: %d\r\n", scoreBitSync);
 
+		printf("Bit sync Start: %d  data start: %d\r\n", bitSyncStart, bitSyncStart+bitSyncDenseLength);
+		printf("prn data start: %d\r\n", prnCodeStart+combDenseLength+bitSyncDenseLength);
 
-		uint8_t dataRx[2];
+
+		uint8_t dataRx[8];
 
 //		printf("Bit sync method:\r\n");
-		pop_data_demodulate(data2, size-1, bitSyncStart+bitSyncDenseLength, dataRx, 2, (scorePrn<0?1:0));
+//		pop_data_demodulate(data2, size-1, bitSyncStart+bitSyncDenseLength, dataRx, 2, (scorePrn<0?1:0));
+
+		printf("PRN sync method:\r\n");
+		pop_data_demodulate(data2, size-1, prnCodeStart+combDenseLength+bitSyncDenseLength, dataRx, 8, (scorePrn<0?1:0));
+
+		uint8_t data_decode[2];
+
+		uint32_t data_decode_size;
+
+		decode_ota_bytes(dataRx, 8, data_decode, &data_decode_size);
+
+		printf("----------------\r\n\r\n");
+
+		printf("data: %02x\r\n", data_decode[0]);
+		printf("data: %02x\r\n", data_decode[1]);
+
+		uint8_t bitSyncRx[3];
+
+		printf("\r\n\r\n");
+
+
+
 
 //		if( dataRx[0] == 0xf0 )
 //		{
