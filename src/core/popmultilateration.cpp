@@ -141,6 +141,11 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(x2, y2, z2, t2) = sets[1];
 	tie(x3, y3, z3, t3) = sets[2];
 
+	printf("Input data:\n");
+	printf("%f %f %f %f\n", x1, y1, z1, t1);
+	printf("%f %f %f %f\n", x2, y2, z2, t2);
+	printf("%f %f %f %f\n", x3, y3, z3, t3);
+
 	double ox, oy, oz;
 	tie(ox, oy, oz) = make_tuple(-x1, -y1, -z1); // save the origin...
 
