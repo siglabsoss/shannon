@@ -38,6 +38,7 @@ set(all_SOURCES
 	core/basestationfreq.c
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
+	core/geohelper.cpp
 	core/popgravitinoparser.cpp
 	core/popmultilateration.cpp
 	core/popsightingstore.cpp

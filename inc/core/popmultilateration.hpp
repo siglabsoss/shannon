@@ -10,13 +10,11 @@
 #ifndef __POP_MULTILATERATION__
 #define __POP_MULTILATERATION__
 
-#include <map>
-#include <string>
 #include <vector>
 
-#include <boost/thread/mutex.hpp>
 #include <boost/tuple/tuple.hpp>
 
+#include "core/geohelper.hpp"
 #include "core/popsighting.hpp"
 
 namespace pop
@@ -39,17 +37,7 @@ private:
 		const std::vector<boost::tuple<double, double, double, double> >& sets)
 		const;
 
-	boost::tuple<double, double, double> get_abe_values(
-		const std::string& coord_system) const;
-
-	boost::tuple<double, double, double> turn_llh_into_xyz(
-		double lat_dec, double long_dec, double height,
-		const std::string& coord_system) const;
-	boost::tuple<double, double, double> turn_xyz_into_llh(
-		double x, double y, double z, const std::string& coord_system) const;
-
-	std::map<std::string, boost::tuple<double, double, double> > abe_values_;
-	mutable boost::mutex abe_values_mtx_;
+	const GeoHelper geo_helper_;
 };
 
 }

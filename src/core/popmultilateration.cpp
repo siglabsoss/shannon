@@ -12,21 +12,17 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include <string>
 #include <vector>
 
-#include <boost/thread/mutex.hpp>
 #include <boost/tuple/tuple.hpp>
 
+#include "core/geohelper.hpp"
 #include "core/popmultilateration.hpp"
 #include "core/popsighting.hpp"
 
 using boost::make_tuple;
-using boost::mutex;
 using boost::tie;
 using boost::tuple;
-using std::map;
-using std::string;
 using std::vector;
 
 namespace
@@ -86,11 +82,6 @@ namespace pop
 
 PopMultilateration::PopMultilateration()
 {
-	// For each co-ordinate system we do, what are the A, B and E2 values?
-	// List is A, B, E^2 (E^2 calculated after)
-	abe_values_["wgs84"] = make_tuple(6378137.0, 6356752.3141, -1.0);
-	abe_values_["osgb"] = make_tuple(6377563.396, 6356256.91, -1.0);
-	abe_values_["osie"] = make_tuple(6377340.189, 6356034.447, -1.0);
 }
 
 void PopMultilateration::calculate_location(
@@ -112,8 +103,8 @@ void PopMultilateration::calculate_location(
 		// TODO(snyderek): Should the base stations report their altitudes in
 		// addition to lat/long?
 		double x, y, z;
-		tie(x, y, z) = turn_llh_into_xyz(sighting.lat, sighting.lng, 0.0,
-										 "wgs84");
+		tie(x, y, z) = geo_helper_.turn_llh_into_xyz(sighting.lat, sighting.lng,
+													 0.0, "wgs84");
 
 		sets[i] = make_tuple(x, y, z, sighting.frac_secs);
 	}
@@ -124,7 +115,7 @@ void PopMultilateration::calculate_location(
 
 	// Convert the (x,y,z) coordinates back to lat/long.
 	double alt;
-	tie(*lat, *lng, alt) = turn_xyz_into_llh(x, y, z, "wgs84");
+	tie(*lat, *lng, alt) = geo_helper_.turn_xyz_into_llh(x, y, z, "wgs84");
 }
 
 // Take 3 positions readings in the format:
@@ -169,7 +160,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 
 	tie(px, py, pz) = make_tuple(x3, y3, z3);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
-	tie(lat, lon, alt) = turn_xyz_into_llh(px, py, pz, "wgs84");
+	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
 	printf("Verify Result: %f %f %f\n", lat, lon-180.0, alt);
 	//
 
@@ -190,7 +181,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = make_tuple(x3, y3, z3);
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
-	tie(lat, lon, alt) = turn_xyz_into_llh(px, py, pz, "wgs84");
+	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
 	printf("Verify Result: %f %f %f\n", lat, lon-180.0, alt);
 	//
 
@@ -216,7 +207,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_y(px, py, pz, -theta2); // This should still be 0
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
-	tie(lat, lon, alt) = turn_xyz_into_llh(px, py, pz, "wgs84");
+	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
 	printf("Verify Result: %f %f %f\n", lat, lon-180.0, alt);
 	//
 
@@ -235,7 +226,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_y(px, py, pz, -theta2); // This should still be 0
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
-	tie(lat, lon, alt) = turn_xyz_into_llh(px, py, pz, "wgs84");
+	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
 	printf("Verify Result: %f %f %f\n", lat, lon-180.0, alt);
 	//
 
@@ -294,7 +285,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_y(px, py, pz, -theta2);
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz);
-	tie(lat, lon, alt) = turn_xyz_into_llh(px, py, pz, "wgs84");
+	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
 	printf("Result: %f %f %f\n", lat, lon-180.0, alt);
 
 	tie(px, py, pz) = make_tuple(Xb, 0.0, 0.0);
@@ -302,94 +293,12 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_y(px, py, pz, -theta2);
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz);
-	tie(lat, lon, alt) = turn_xyz_into_llh(px, py, pz, "wgs84");
+	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
 	printf("Result: %f %f %f\n", lat, lon-180.0, alt);
 
 
 
 	return make_tuple(lat, lon, alt);
-}
-
-tuple<double, double, double> PopMultilateration::get_abe_values(
-	const string& coord_system) const
-{
-	mutex::scoped_lock lock(abe_values_mtx_);
-
-	// FIXME: The following line causes a segmentation fault. Figure out why.
-	const map<string, tuple<double, double, double> >::const_iterator it =
-		abe_values_.find(coord_system);
-	assert(it != abe_values_.end());
-	return it->second;
-}
-
-// Geographical helper functions for nmea_info.py and friends
-//
-// Helps with geographic functions, including:
-//  Lat+Long+Height -> XYZ
-//  XYZ -> Lat+Long+Height
-//  Lat+Long -> other Lat+Long (Helmert Transform)
-//  Lat+Long -> easting/northing (OS GB+IE Only)
-//  easting/northing -> Lat+Long (OS GB+IE Only)
-//  OS easting/northing -> OS 6 figure ref
-//
-// See http://gagravarr.org/code/ for updates and information
-//
-// GPL
-//
-// Nick Burch - v0.06 (30/05/2007)
-
-// Translated to C++ by PopWi.
-
-// ##############################################################
-// #             Generic Transform Functions                    #
-// ##############################################################
-
-tuple<double, double, double> PopMultilateration::turn_llh_into_xyz(
-	double lat_dec, double long_dec, double height,
-	const string& coord_system) const
-{
-	// Convert Lat, Long and Height into 3D Cartesian x,y,z
-	// See http://www.ordnancesurvey.co.uk/gps/docs/convertingcoordinates3D.pdf
-
-	double a, b, e2;
-// 	tie(a, b, e2) = get_abe_values(coord_system);
-	tie(a, b, e2) = make_tuple(6378137.0, 6356752.3141, -1.0);
-
-	const double theta = lat_dec  / 360.0 * 2.0 * M_PI;
-	const double landa = long_dec / 360.0 * 2.0 * M_PI;
-
-	const double v = a / sqrt( 1.0 - e2 * (sin(theta) * sin(theta)) );
-	const double x = (v + height) * cos(theta) * cos(landa);
-	const double y = (v + height) * cos(theta) * sin(landa);
-	const double z = ( (1.0 - e2) * v + height ) * sin(theta);
-
-	return make_tuple(x,y,z);
-}
-
-tuple<double, double, double> PopMultilateration::turn_xyz_into_llh(
-	double x, double y, double z, const string& coord_system) const
-{
-	// Convert 3D Cartesian x,y,z into Lat, Long and Height
-	// See http://www.ordnancesurvey.co.uk/gps/docs/convertingcoordinates3D.pdf
-
-	double a, b, e2;
-// 	tie(a, b, e2) = get_abe_values(coord_system);
-	tie(a, b, e2) = make_tuple(6378137.0, 6356752.3141, -1.0);
-
-	const double p = sqrt(x*x + y*y);
-
-	double lng = atan(y/x);
-	const double lat_init = atan( z / (p * (1.0 - e2)) );
-	const double v = a / sqrt( 1.0 - e2 * (sin(lat_init) * sin(lat_init)) );
-	double lat = atan( (z + e2*v*sin(lat_init)) / p );
-
-	const double height = (p / cos(lat)) - v; // Ignore if a bit out
-
-	// Turn from radians back into degrees
-	lng = lng / 2.0 / M_PI * 360.0;
-	lat = lat / 2.0 / M_PI * 360.0;
-
-	return make_tuple(lat,lng,height);
 }
 
 }
