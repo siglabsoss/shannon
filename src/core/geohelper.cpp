@@ -68,8 +68,7 @@ tuple<double, double, double> GeoHelper::turn_llh_into_xyz(
 	// See http://www.ordnancesurvey.co.uk/gps/docs/convertingcoordinates3D.pdf
 
 	double a, b, e2;
-// 	tie(a, b, e2) = get_abe_values(coord_system);
-	tie(a, b, e2) = make_tuple(6378137.0, 6356752.3141, -1.0);
+	tie(a, b, e2) = get_abe_values(coord_system);
 
 	const double theta = lat_dec  / 360.0 * 2.0 * M_PI;
 	const double landa = long_dec / 360.0 * 2.0 * M_PI;
@@ -89,8 +88,7 @@ tuple<double, double, double> GeoHelper::turn_xyz_into_llh(
 	// See http://www.ordnancesurvey.co.uk/gps/docs/convertingcoordinates3D.pdf
 
 	double a, b, e2;
-// 	tie(a, b, e2) = get_abe_values(coord_system);
-	tie(a, b, e2) = make_tuple(6378137.0, 6356752.3141, -1.0);
+	tie(a, b, e2) = get_abe_values(coord_system);
 
 	const double p = sqrt(x*x + y*y);
 
