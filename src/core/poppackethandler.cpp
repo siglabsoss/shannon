@@ -67,7 +67,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 	double elapsed_time = t.elapsed();
 
-	if( elapsed_time > 4.0 )
+	if( prnCodeStart == 0 || elapsed_time > 4.0 )
 	{
 		printf("\r\n");
 
@@ -105,14 +105,17 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 		if( !flag1 || !flag2 )
 		{
-			printf("data was not longer than comb + bit sync code %d %d\r\n", data2[size-1], (prnCodeStart+combDenseLength+bitSyncDenseLength) );
 
-//			printf("\r\n");
-//			for(j = 0; j<size;j++)
-//			{
-//				printf("%u, ", data[j]);
-//			}
-//			printf("\r\n");
+
+			printf("\r\n");
+			for(i=0;i<(size-1);i++)
+			{
+				data2[i] = (uint32_t)data[i];
+				printf("%u, ", data2[i]);
+			}
+			printf("\r\n\r\n");
+
+			printf("data was not longer than comb + bit sync code %d %d\r\n", data2[size-1], (prnCodeStart+combDenseLength+bitSyncDenseLength) );
 
 			return;
 		}
