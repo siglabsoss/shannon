@@ -404,10 +404,9 @@ FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint
 //	printf("calculated index of %u\r\n", index);
 }
 
-
-unsigned encode_ota_factor(void)
+unsigned ota_length_encoded(unsigned len)
 {
-	return 4;
+	return len*4;
 }
 
 void decode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out_size)

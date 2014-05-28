@@ -18,7 +18,7 @@ uint32_t shannon_pop_data_demodulate(const uint32_t* data, const uint16_t dataSi
 uint32_t pop_data_demodulate(const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert);
 void decode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out_size);
 void encode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out_size);
-unsigned encode_ota_factor(void);
+unsigned ota_length_encoded(unsigned len);
 uint32_t comb_dense_length(void);
 
 #ifdef __cplusplus
