@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <string.h>
 
 //#include "phy/popsparsecorrelate.h"
 #include "dsp/prota/popsparsecorrelate.h"
@@ -487,12 +489,134 @@ void encode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out
 	}
 }
 
+uint16_t ota_struct_size(OTA_PACKET_TYPE_T type)
+{
+	switch(type)
+	{
+	case OTA_PACKET_POLL:
+		return sizeof(ota_packet_poll_data_t);
+		break;
+	case OTA_PACKET_RPC:
+		return sizeof(ota_packet_rpc_data_t);
+		break;
+	default:
+		return 4;
+	}
+
+	return 4;
+}
+
+
+// helper to set size and checksum before transmitting a packet
+void ota_packet_prepare_tx(ota_packet_t* p)
+{
+	ota_packet_set_size(p);
+	ota_packet_set_checksum(p);
+}
+
+void ota_packet_set_size(ota_packet_t* p)
+{
+//	printf("size: %ld  position %d\r\n\r\n", sizeof(*p), (int)offsetof(ota_packet_t,checksum) );
+//	printf("data position %d\r\n\r\n", (int)offsetof(ota_packet_t,data) );
+//	printf("size: %ld\r\n", sizeof(p->size));
+//	printf("size: %ld\r\n", sizeof(p->size));
+//	printf("checksum: %ld\r\n", sizeof(p->checksum));
+//	printf("type: %ld\r\n", sizeof(p->type));
+//	printf("data: %ld\r\n", sizeof(p->data));
+//	printf("data.poll: %ld\r\n", sizeof(p->data.poll));
+//	printf("data.rpc: %ld\r\n", sizeof(p->data.rpc));
+	p->size = ota_struct_size(p->type) + (int)offsetof(ota_packet_t,data);
+}
+
+// returns actual checksum byte for packet
+uint8_t ota_packet_checksum(ota_packet_t* p)
+{
+	// this assumes that "size" is the first parameter in the struct after checksum
+	uint8_t* head = (uint8_t*)p + (int)offsetof(ota_packet_t,size);
+	unsigned size = p->size - (int)offsetof(ota_packet_t,size);
+
+	size = MIN(size, sizeof(ota_packet_t) - (int)offsetof(ota_packet_t,size));
+
+	return crcSlow(head, size);
+}
+
+// size must be set or else this will not work correctly
+void ota_packet_set_checksum(ota_packet_t* p)
+{
+	uint8_t checksum = ota_packet_checksum(p);
+	printf("checksum: %d\r\n", checksum);
+	p->checksum = checksum;
+}
+
+// returns non-zero if checksum is ok
+short ota_packet_checksum_good(ota_packet_t* p)
+{
+	uint8_t checksum = ota_packet_checksum(p);
+	return (checksum == p->checksum);
+}
+
+// fills all bytes in packet with 0
+void ota_packet_zero_fill(ota_packet_t* p)
+{
+	memset(p, 0, sizeof(*p) );
+}
 
 
 
 
 
+/*
+ * The width of the CRC calculation and result.
+ * Modify the typedef for a 16 or 32-bit CRC standard.
+ * http://www.barrgroup.com/Embedded-Systems/How-To/CRC-Calculation-C-Code
+ */
+#define crc_t uint8_t
+#define WIDTH  (8 * sizeof(crc_t))
+#define TOPBIT (1 << (WIDTH - 1))
+#define POLYNOMIAL 0xD8  /* 11011 followed by 0's */
 
+crc_t crcSlow(uint8_t const message[], int nBytes)
+{
+	crc_t  remainder = 0;
+	int byte;
+	uint8_t bit;
+
+
+	/*
+	 * Perform modulo-2 division, a byte at a time.
+	 */
+	for (byte = 0; byte < nBytes; ++byte)
+	{
+		/*
+		 * Bring the next byte into the remainder.
+		 */
+		remainder ^= (message[byte] << (WIDTH - 8));
+
+		/*
+		 * Perform modulo-2 division, a bit at a time.
+		 */
+		for (bit = 8; bit > 0; --bit)
+		{
+			/*
+			 * Try to divide the current data bit.
+			 */
+			if (remainder & TOPBIT)
+			{
+				remainder = (remainder << 1) ^ POLYNOMIAL;
+			}
+			else
+			{
+				remainder = (remainder << 1);
+			}
+		}
+	}
+
+	/*
+	 * The final remainder is the CRC result.
+	 */
+	return (remainder);
+
+}   /* crcSlow() */
 
 
 
