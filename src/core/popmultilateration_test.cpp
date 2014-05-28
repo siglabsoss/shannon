@@ -20,7 +20,7 @@ using std::vector;
 
 namespace {
 
-void Test1()
+void test1()
 {
 	PopMultilateration multilateration;
 
@@ -54,7 +54,7 @@ void Test1()
 	printf("lat == %f , lng == %f\n", lat, lng);
 }
 
-void Test2()
+void test2()
 {
 	PopMultilateration multilateration;
 
@@ -95,6 +95,6 @@ void Test2()
 
 int main()
 {
-	Test2();
+	test2();
 	return 0;
 }
