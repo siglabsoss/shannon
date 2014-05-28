@@ -119,7 +119,7 @@ void PopMultilateration::calculate_location(
 
 // Take 3 positions readings in the format:
 // [(x, y, z, time)] * 3
-// and return a location (x, y, z)
+// and return a location (latitude, longitude, altitude)
 // Based on the finalreport_trilateration.pdf, section 8.10
 
 tuple<double, double, double> PopMultilateration::calculate_3input_location(
