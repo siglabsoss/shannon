@@ -140,23 +140,23 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(x3, y3, z3, t3) = sets[2];
 
 	printf("Input data:\n");
-	printf("%f %f %f %f\n", x1, y1, z1, t1);
-	printf("%f %f %f %f\n", x2, y2, z2, t2);
-	printf("%f %f %f %f\n", x3, y3, z3, t3);
+	printf("%.16f %.16f %.16f %.16f\n", x1, y1, z1, t1);
+	printf("%.16f %.16f %.16f %.16f\n", x2, y2, z2, t2);
+	printf("%.16f %.16f %.16f %.16f\n", x3, y3, z3, t3);
 
 	double ox, oy, oz;
 	tie(ox, oy, oz) = make_tuple(-x1, -y1, -z1); // save the origin...
 
 	// Translate all coordinates to the origin of the first point:
-	printf(">  %f %f %f\n", x1, y1, z1); // Sanity check that this is 0
+	printf(">  %.16f %.16f %.16f\n", x1, y1, z1); // Sanity check that this is 0
 	tie(x1, y1, z1) = translate_xyz(x1, y1, z1, ox, oy, oz); // Better turn out to be 0!
 	tie(x2, y2, z2) = translate_xyz(x2, y2, z2, ox, oy, oz);
 	tie(x3, y3, z3) = translate_xyz(x3, y3, z3, ox, oy, oz);
 
 	printf("translated Locations:\n");
-	printf("%f %f %f\n", x1, y1, z1);
-	printf("%f %f %f\n", x2, y2, z2);
-	printf("%f %f %f\n", x3, y3, z3);
+	printf("%.16f %.16f %.16f\n", x1, y1, z1);
+	printf("%.16f %.16f %.16f\n", x2, y2, z2);
+	printf("%.16f %.16f %.16f\n", x3, y3, z3);
 
 	// Undo and verify...
 	double px, py, pz;
@@ -165,7 +165,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = make_tuple(x3, y3, z3);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Verify Result:  %f %f %f\n", lat, lon-180.0, alt);
+	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
 	//
 
 
@@ -175,7 +175,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 
 	// translate the coordinates in the Z plane to put p2 on a straight line...
 	tie(x1, y1, z1) = rotate_xyz_around_z(x1, y1, z1, theta1); // This should still be 0
-	printf(">  %f %f %f\n", x1, y1, z1); // sanity check that this is still 0
+	printf(">  %.16f %.16f %.16f\n", x1, y1, z1); // sanity check that this is still 0
 	tie(x2, y2, z2) = rotate_xyz_around_z(x2, y2, z2, theta1); // This should now be inline on Z
 	// y2 should be 0, or very very very close to 0 now.
 	tie(x3, y3, z3) = rotate_xyz_around_z(x3, y3, z3, theta1);
@@ -186,7 +186,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Verify Result:  %f %f %f\n", lat, lon-180.0, alt);
+	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
 	//
 
 
@@ -198,10 +198,10 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	// find the angle around y to rotate to get z2 to be 0...
 
 	const double theta2 = atan2(z2-z1, x2-x1);
-	printf("==1=  %f %f %f\n", x2, y2, z2);
+	printf("==1=  %.16f %.16f %.16f\n", x2, y2, z2);
 	tie(x1, y1, z1) = rotate_xyz_around_y(x1, y1, z1, theta2); // This should still be 0
 	tie(x2, y2, z2) = rotate_xyz_around_y(x2, y2, z2, theta2); // This should now be inline on Z
-	printf("==2=  %f %f %f\n", x2, y2, z2); // z2 should be very close to 0 now
+	printf("==2=  %.16f %.16f %.16f\n", x2, y2, z2); // z2 should be very close to 0 now
 	tie(x3, y3, z3) = rotate_xyz_around_y(x3, y3, z3, theta2);
 
 
@@ -212,7 +212,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Verify Result:  %f %f %f\n", lat, lon-180.0, alt);
+	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
 	//
 
 
@@ -222,7 +222,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(x1, y1, z1) = rotate_xyz_around_x(x1, y1, z1, theta3); // This should still be 0
 	tie(x2, y2, z2) = rotate_xyz_around_x(x2, y2, z2, theta3); // x2 and y2 should still be near 0
 	tie(x3, y3, z3) = rotate_xyz_around_x(x3, y3, z3, theta3); // z3 should be near 0.
-	printf("==3=  %f %f %f\n", x3, y3, z3); // z3 should be very close to 0 now
+	printf("==3=  %.16f %.16f %.16f\n", x3, y3, z3); // z3 should be very close to 0 now
 
 	// Undo and verify...
 	tie(px, py, pz) = make_tuple(x3, y3, z3);
@@ -231,7 +231,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Verify Result:  %f %f %f\n", lat, lon-180.0, alt);
+	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
 	//
 
 	// Ok, everything should be transformed into a coordinate system which is now
@@ -240,9 +240,9 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	// 3. point 3 is in the xy plane, with z = 0
 
 	printf("Locations:\n");
-	printf("%f %f %f\n", x1, y1, z1);
-	printf("%f %f %f\n", x2, y2, z2);
-	printf("%f %f %f\n", x3, y3, z3);
+	printf("%.16f %.16f %.16f\n", x1, y1, z1);
+	printf("%.16f %.16f %.16f\n", x2, y2, z2);
+	printf("%.16f %.16f %.16f\n", x3, y3, z3);
 
 
 	// Carrying on...
@@ -250,8 +250,8 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	const double R13 = from_time_to_distance(t3-t1);
 	const double R12 = from_time_to_distance(t2-t1);
 
-	printf("Distance difference r1-3:  %f km\n", R13/1000.0);
-	printf("Distance difference r1-2:  %f km\n", R12/1000.0);
+	printf("Distance difference r1-3:  %.16f km\n", R13/1000.0);
+	printf("Distance difference r1-2:  %.16f km\n", R12/1000.0);
 
 	// Equation 8.16:
 	const double u = (R13*(x2/R12) - x3) / y3;
@@ -272,15 +272,15 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	// dx^2 + ex + f = 0
 
 	const double subs=sqr(ve) - 4.0*d*f;
-	printf("e:  %f\n", ve);
-	printf("d:  %f\n", d);
-	printf("f:  %f\n", f);
-	printf("Sqrt of this:  %f\n", subs);
+	printf("e:  %.16f\n", ve);
+	printf("d:  %.16f\n", d);
+	printf("f:  %.16f\n", f);
+	printf("Sqrt of this:  %.16f\n", subs);
 
 	const double Xa = (-ve + sqrt(sqr(ve)-4.0*d*f)) / (2.0*d);
 	const double Xb = (-ve - sqrt(sqr(ve)-4.0*d*f)) / (2.0*d);
 
-	printf("X results:  %f %f\n", Xa, Xb);
+	printf("X results:  %.16f %.16f\n", Xa, Xb);
 
 	// now translate it all back...
 
@@ -290,7 +290,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz);
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Result:  %f %f %f\n", lat, lon-180.0, alt);
+	printf("Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
 
 	tie(px, py, pz) = make_tuple(Xb, 0.0, 0.0);
 	tie(px, py, pz) = rotate_xyz_around_x(px, py, pz, -theta3);
@@ -298,7 +298,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz);
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Result:  %f %f %f\n", lat, lon-180.0, alt);
+	printf("Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
 
 
 
