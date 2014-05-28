@@ -92,7 +92,7 @@ tuple<double, double, double> GeoHelper::turn_xyz_into_llh(
 
 	const double p = sqrt(x*x + y*y);
 
-	double lng = atan(y/x);
+	double lng = atan2(y, x);
 	const double lat_init = atan( z / (p * (1.0 - e2)) );
 	const double v = a / sqrt( 1.0 - e2 * (sin(lat_init) * sin(lat_init)) );
 	double lat = atan( (z + e2*v*sin(lat_init)) / p );
