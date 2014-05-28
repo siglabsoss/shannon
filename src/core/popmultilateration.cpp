@@ -114,7 +114,7 @@ void PopMultilateration::calculate_location(
 	tie(temp_lat, temp_lng, temp_alt) = calculate_3input_location(sets);
 
 	*lat = temp_lat;
-	*lng = temp_lng - 180;
+	*lng = temp_lng;
 }
 
 // Take 3 positions readings in the format:
@@ -165,7 +165,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = make_tuple(x3, y3, z3);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
+	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon, alt);
 	//
 
 
@@ -186,7 +186,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
+	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon, alt);
 	//
 
 
@@ -212,7 +212,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
+	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon, alt);
 	//
 
 
@@ -231,7 +231,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
+	printf("Verify Result:  %.16f %.16f %.16f\n", lat, lon, alt);
 	//
 
 	// Ok, everything should be transformed into a coordinate system which is now
@@ -290,7 +290,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz);
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
+	printf("Result:  %.16f %.16f %.16f\n", lat, lon, alt);
 
 	tie(px, py, pz) = make_tuple(Xb, 0.0, 0.0);
 	tie(px, py, pz) = rotate_xyz_around_x(px, py, pz, -theta3);
@@ -298,7 +298,7 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1);
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz);
 	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Result:  %.16f %.16f %.16f\n", lat, lon-180.0, alt);
+	printf("Result:  %.16f %.16f %.16f\n", lat, lon, alt);
 
 
 
