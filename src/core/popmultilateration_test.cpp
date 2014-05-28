@@ -39,6 +39,7 @@ int main()
 	double lat = 0.0, lng = 0.0;
 	multilateration.calculate_location(sightings, &lat, &lng);
 
+	// Should be "lat == 37.476365 , lng == -122.198803".
 	printf("lat == %f , lng == %f\n", lat, lng);
 
 	return 0;
