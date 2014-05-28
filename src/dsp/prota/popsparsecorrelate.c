@@ -1,16 +1,95 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
+//#include "phy/popsparsecorrelate.h"
 #include "dsp/prota/popsparsecorrelate.h"
+
+#ifdef POPWI_PLATFORM_ARTEMIS
+#include "phy/radio.h"
+#include "hal/cpu.h"
+#include "hal/dma.h"
+#else
 #include "core/basestationfreq.h"
 #include "core/util.h"
+#endif
+
+
+
+// Putting const here BREAKS this array!?? (it gets stored at 0x0)
+//uint32_t signal_comb[] = {0, 2640, 7920, 13200, 21120, 23760, 34320, 36960, 39600, 42240, 55440, 58080, 60720, 71280, 79200, 87120, 89760, 92400, 95040, 100320, 102960, 118800, 126720, 129360, 132000, 134640, 137280, 139920, 145200, 161040, 166320, 179520, 182160, 192720, 195360, 198000, 205920, 211200, 213840, 216480, 240240, 245520, 248160, 253440, 261360, 264000, 266640, 274560, 277200, 279840, 282480, 285120, 293040, 295680, 298320, 306240, 308880, 316800, 322080, 324720, 332640, 335280, 340560, 351120, 361680, 364320, 366960, 369600, 372240, 374880, 377520, 380160, 382800, 385440, 388080, 390720, 403920, 409200, 414480, 417120, 422400, 435600, 438240, 443520, 448800, 454080, 467280, 472560, 477840, 480480, 483120, 485760, 488400, 491040, 493680, 498960, 514800, 525360, 530640, 535920, 538560, 541200, 543840, 549120, 551760, 559680, 564960, 575520, 578160, 583440, 586080, 588720, 596640, 617760, 620400, 623040, 636240, 638880, 646800, 654720, 657360, 660000, 662640, 665280, 667920, 675840, 681120, 704880, 712800, 723360, 728640, 731280, 736560, 739200, 741840, 744480, 747120, 749760, 757680, 762960, 765600, 770880, 776160, 778800, 781440, 784080, 789360, 792000, 799920, 802560, 805200, 807840, 821040, 831600, 847440, 852720, 858000, 863280, 865920, 876480, 881760, 884400, 887040, 889680, 892320, 897600, 910800, 921360, 926640, 929280, 931920, 937200, 942480, 945120, 947760, 953040, 958320, 963600, 966240, 968880, 976800, 982080, 987360, 990000, 1000560, 1003200, 1005840, 1008480, 1011120, 1029600, 1045440, 1056000};
+// Chirp at 18181.81818
+//uint32_t signal_comb[] = {0, 84480, 168960, 253440, 337920, 422400, 506880, 591360, 675840, 760320, 844800, 929280, 1013760, 1098240, 1182720, 1267200, 1351680, 1436160, 1520640, 1605120, 1689600, 1774080, 1858560, 1943040, 2027520, 2112000, 2196480, 2280960, 2365440, 2449920, 2534400, 2618880, 2703360, 2787840, 2872320, 2956800, 3041280, 3125760, 3210240, 3231360, 3252480, 3273600, 3294720, 3315840, 3336960, 3358080, 3379200, 3400320, 3421440, 3442560, 3463680, 3484800, 3505920, 3527040, 3548160};
+uint32_t signal_comb[] = {0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 997920, 1003200, 1029600, 1135200, 1193280, 1240800, 1251360, 1383360, 1404480, 1483680, 1520640, 1647360, 1694880, 1800480, 1879680, 1921920, 1932480, 1958880, 2085600, 2122560, 2164800, 2180640, 2196480, 2244000, 2344320, 2428800, 2434080, 2476320, 2550240, 2872320, 3067680, 3278880, 3410880, 3669600, 3738240, 3806880, 3838560, 3944160, 3986400, 4134240, 4239840, 4297920, 4345440, 4414080, 4419360, 4593600, 4678080, 4736160, 4878720, 4894560, 5116320, 5221920, 5253600, 5290560, 5512320, 5639040, 5834400, 6019200, 6225120, 6383520, 6452160, 6494400, 6600000, 6668640, 6916800, 7138560, 7170240, 7186080, 7223040, 7275840, 7370880, 7571520, 7587360, 7597920, 7751040, 7898880, 7904160, 7930560, 8110080, 8310720, 8469120, 8500800, 8580000, 8748960, 8880960, 8954880, 8986560, 9086880, 9150240, 9176640, 9229440, 9451200, 9572640, 9625440, 9757440, 9884160, 10047840, 10142880, 10243200};
+#define COMB_THRESH_WEAK ((unsigned) (COMB_LENGTH * 0.5) )
+#define COMB_THRESH ((unsigned) (COMB_LENGTH * 0.55) )
+#define COMB_SIZE (ARRAY_LEN(signal_comb))
+
+
+
+
+#ifdef POPWI_PLATFORM_ARTEMIS
+
+#define DATA_SAMPLE(x) DMA2_3_SAMP((x))
+
+#define FN_ATTRIBUTES __attribute__((section(".ram")))
+
+// search this many steps +/- around the guess for Artemis
+#define GUESS_ERROR (10000)
+
+#else
+#define DATA_SAMPLE(x) data[x]
+#define FN_ATTRIBUTES
+#endif
+
+
+// forward declare
+FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, int32_t guess);
+FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert);
+
+
+// These wrappers are platform specific
+#ifdef POPWI_PLATFORM_ARTEMIS
+
+FN_ATTRIBUTES uint32_t artemis_pop_correlate(int32_t* scoreOut, int32_t guess)
+{
+	// first argument is not used inside
+	return core_pop_correlate((void*)0, DMA2_SAMPLES, signal_comb, COMB_SIZE, scoreOut, guess);
+}
+
+FN_ATTRIBUTES uint32_t artemis_pop_data_demodulate(const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert)
+{
+	// first argument is not used inside
+	return core_pop_data_demodulate((void*)0, DMA2_SAMPLES, startSample, dataOut, dataOutSize, invert);
+}
+#else
+
+uint32_t shannon_pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut)
+{
+	// last argument is not used inside
+	return core_pop_correlate(data, dataSize, comb, combSize, scoreOut, 0);
+}
+
+uint32_t shannon_pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert)
+{
+	// exactly the same arguments
+	return core_pop_data_demodulate(data, dataSize, startSample, dataOut, dataOutSize, invert);
+}
+#endif
+
+
+
+uint32_t comb_dense_length(void)
+{
+	return signal_comb[COMB_SIZE-1];
+}
+
 
 // 1296 counts is 27us in 48mhz ticks
 #define QUICK_SEARCH_STEPS (1296)
 
 
-int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset)
+
+FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset)
 {
 	int16_t j,k;
 	uint32_t diff;
@@ -20,18 +99,18 @@ int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* c
 	short pol; // signal polarity, comb polarity
 
 	xscore = 0; // the "score" of this convolution
-	now = start = head = data[0] + combOffset;
+	now = start = head = DATA_SAMPLE(0) + combOffset;
 	k = 0;
 	j = 0;
 
 	nextComb = comb[MIN(k+1, combSize-1)] + start;
-	nextSignal = data[j+1];
+	nextSignal = DATA_SAMPLE(j+1);
 
 	// if comb_offset is large enough, we need to skip some edges in the data array, so this scans through edges
 	while (now > nextSignal)
 	{
 		j++;
-		nextSignal = data[j+1];
+		nextSignal = DATA_SAMPLE(j+1);
 	}
 
 	while(j < dataSize && k < combSize )
@@ -59,7 +138,7 @@ int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* c
 			now = nextSignal;
 
 			// prep for next comparison
-			nextSignal = data[j+1];
+			nextSignal = DATA_SAMPLE(j+1);
 		}
 		else
 		{
@@ -76,7 +155,7 @@ int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* c
 }
 
 
-uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut)
+FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, int32_t guess)
 {
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
 	uint32_t denseDataLength = 0;
@@ -86,12 +165,12 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 	// we are forced to scan through the input data to determine if any modulus events have occurred in order to get a real value for denseDataLength
 	for(i = 1; i < dataSize; i++)
 	{
-		if( data[i] < data[i-1] )
+		if( DATA_SAMPLE(i) < DATA_SAMPLE(i-1) )
 		{
 			denseDataLength += ARTEMIS_CLOCK_SPEED_HZ;
 		}
 
-		denseDataLength += data[i]-data[i-1];
+		denseDataLength += DATA_SAMPLE(i)-DATA_SAMPLE(i-1);
 	}
 
 	if( denseDataLength < denseCombLength )
@@ -101,17 +180,22 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 		return 0;
 	}
 
+	int32_t score, scoreLeft, scoreRight, maxScoreQuick = 0, maxScore = 0; //x(key)score
+	uint32_t maxScoreOffsetQuick, maxScoreOffset, scoreOffsetBinSearch, maxScoreOffsetRight, iterations, combOffset;
 
-	int32_t score, scoreLeft, scoreRight; //x(key)score
-	int32_t maxScoreQuick = 0, maxScore = 0;
-	uint32_t maxScoreOffsetQuick, maxScoreOffset;
-	uint32_t scoreOffsetBinSearch, maxScoreOffsetRight;
-	uint32_t iterations;
+
+	// Artemis is given a "guess" of the start timer value when the start-of-frame should occur
+#ifdef POPWI_PLATFORM_ARTEMIS
+	iterations = guess - DATA_SAMPLE(0) + GUESS_ERROR + 1;
+	combOffset = guess - DATA_SAMPLE(0) - GUESS_ERROR;
+#else
 	iterations = denseDataLength - denseCombLength + 1;
-	uint32_t combOffset = 0;
+	combOffset = 0;
+#endif
+
 
 	// quick search
-	for(combOffset = 0; combOffset < iterations; combOffset += QUICK_SEARCH_STEPS)
+	for(; combOffset < iterations; combOffset += QUICK_SEARCH_STEPS)
 	{
 		score = do_comb(data, dataSize, comb, combSize, combOffset);
 
@@ -121,8 +205,6 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 			maxScoreOffsetQuick = combOffset;
 		}
 	}
-
-
 
 
 //	printf("max: %u %d\r\n", maxScoreOffsetQuick, maxScoreQuick);
@@ -187,17 +269,13 @@ uint32_t pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint
 
 	*scoreOut = maxScore;
 
-	return data[0] + maxScoreOffset;
+	return DATA_SAMPLE(0) + maxScoreOffset;
 }
 
 // pass in a data array including the comb
 // pass in the sample which is the end of the comb
-uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert)
+FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert)
 {
-	uint32_t denseDataLength = 0;
-
-//	startSample -= 4*2640; //FIXME: remove
-
 	uint16_t i;
 	int16_t j,k,jp,kp;
 	uint32_t diff;
@@ -226,13 +304,13 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 	j = 0; // don't set jp, we are about to modify j
 
 	nextComb = comb[MIN(k+1, combSize-1)] + start;
-	nextSignal = data[j+1];
+	nextSignal = DATA_SAMPLE(j+1);
 
 	// if comb_offset is large enough, we need to skip some edges in the data array, so this scans through edges
 	while (now > nextSignal)
 	{
 		j++;
-		nextSignal = data[j+1];
+		nextSignal = DATA_SAMPLE(j+1);
 	}
 
 	jp = j;
@@ -276,7 +354,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 				}
 
 				dataOut[(k/8)-1] = dataByte;
-				printf("data: %02x\r\n", dataByte);
+//				printf("data: %02x\r\n", dataByte);
 				dataByte = 0;
 			}
 
@@ -300,7 +378,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 			now = nextSignal;
 
 			// prep for next comparison
-			nextSignal = data[j+1];
+			nextSignal = DATA_SAMPLE(j+1);
 		}
 		else
 		{
@@ -325,6 +403,7 @@ uint32_t pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, cons
 
 //	printf("calculated index of %u\r\n", index);
 }
+
 
 unsigned encode_ota_factor(void)
 {
@@ -408,7 +487,6 @@ void encode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out
 		}
 	}
 }
-
 
 
 

@@ -58,7 +58,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 	boost::timer t; // start timing
 
-	prnCodeStart = pop_correlate(data2, size-1, comb, ARRAY_LEN(comb), &scorePrn);
+	prnCodeStart = shannon_pop_correlate(data2, size-1, comb, ARRAY_LEN(comb), &scorePrn);
 
 
 	printf("Score: %d\r\n", scorePrn);
@@ -123,7 +123,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 //		printf("start end %d %d\r\n", start, end);
 
-		bitSyncStart = pop_correlate(data2+start, (end-start), bitSync, ARRAY_LEN(bitSync), &scoreBitSync);
+		bitSyncStart = shannon_pop_correlate(data2+start, (end-start), bitSync, ARRAY_LEN(bitSync), &scoreBitSync);
 
 //		printf("score2: %d\r\n", scoreBitSync);
 
@@ -137,7 +137,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 //		pop_data_demodulate(data2, size-1, bitSyncStart+bitSyncDenseLength, dataRx, 2, (scorePrn<0?1:0));
 
 		printf("PRN sync method:\r\n");
-		pop_data_demodulate(data2, size-1, prnCodeStart+combDenseLength+bitSyncDenseLength, dataRx, 8, (scorePrn<0?1:0));
+		shannon_pop_data_demodulate(data2, size-1, prnCodeStart+combDenseLength+bitSyncDenseLength, dataRx, 8, (scorePrn<0?1:0));
 
 		uint8_t data_decode[2];
 
