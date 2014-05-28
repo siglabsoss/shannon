@@ -117,19 +117,10 @@ void PopMultilateration::calculate_location(
 	*lng = temp_lng;
 }
 
-// Take 3 positions readings in the format:
-// [(x, y, z, time)] * 3
-// and return a location (latitude, longitude, altitude)
-// Based on the finalreport_trilateration.pdf, section 8.10
-
 tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	const vector<tuple<double, double, double, double> >& sets) const
 {
 	assert(sets.size() == 3u);
-
-	// First establish coordinate system using point 1 (offset 0) as the
-	// origin, and point 2 as the vector for the coordinate system such
-	// that point 2 lies on the line y2=0, z2=0:
 
 	double x1, y1, z1, t1;
 	double x2, y2, z2, t2;
@@ -169,6 +160,47 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 	//
 
 
+	double Ax, Ay, Az;
+	tie(Ax, Ay, Az) = foo(ox, oy, oz,
+						  x1, y1, z1, t1,
+						  x2, y2, z2, t2,
+						  x3, y3, z3, t3);
+
+
+	double Bx, By, Bz;
+	tie(Bx, By, Bz) = foo(ox, oy, oz,
+						  x1, y1, z1, t1,
+						  x3, y3, z3, t3,
+						  x2, y2, z2, t2);
+
+	double Cx, Cy, Cz;
+	tie(Cx, Cy, Cz) = make_tuple(Ax + Bx, Ay + By, Az + Bz);
+
+	tie(Cx, Cy, Cz) = translate_xyz(Cx, Cy, Cz, -ox, -oy, -oz);
+
+	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(Cx, Cy, Cz, "wgs84");
+	printf("Result:  %.16f %.16f %.16f\n", lat, lon, alt);
+
+	return make_tuple(lat, lon, alt);
+}
+
+// Take 3 positions readings in the format:
+// [(x, y, z, time)] * 3
+// and return a location (x, y, z)
+// Based on the finalreport_trilateration.pdf, section 8.10
+
+tuple<double, double, double> PopMultilateration::foo(
+	double ox, double oy, double oz,
+	double x1, double y1, double z1, double t1,
+	double x2, double y2, double z2, double t2,
+	double x3, double y3, double z3, double t3) const
+{
+	static bool flag = true;
+
+	// First establish coordinate system using point 1 (offset 0) as the
+	// origin, and point 2 as the vector for the coordinate system such
+	// that point 2 lies on the line y2=0, z2=0:
+
 	// find the angle in the Z plane of the line between p1 and p2
 
 	const double theta1 = atan2(y2-y1, x2-x1) * -1.0;
@@ -182,6 +214,9 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 
 
 	// Undo and verify...
+	double px, py, pz;
+	double lat, lon, alt;
+
 	tie(px, py, pz) = make_tuple(x3, y3, z3);
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1); // This should still be 0
 	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz); // Better turn out to be 0!
@@ -284,25 +319,14 @@ tuple<double, double, double> PopMultilateration::calculate_3input_location(
 
 	// now translate it all back...
 
-	tie(px, py, pz) = make_tuple(Xa, 0.0, 0.0);
+	tie(px, py, pz) = make_tuple(flag ? Xa : Xb, 0.0, 0.0);
 	tie(px, py, pz) = rotate_xyz_around_x(px, py, pz, -theta3);
 	tie(px, py, pz) = rotate_xyz_around_y(px, py, pz, -theta2);
 	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1);
-	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz);
-	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Result:  %.16f %.16f %.16f\n", lat, lon, alt);
 
-	tie(px, py, pz) = make_tuple(Xb, 0.0, 0.0);
-	tie(px, py, pz) = rotate_xyz_around_x(px, py, pz, -theta3);
-	tie(px, py, pz) = rotate_xyz_around_y(px, py, pz, -theta2);
-	tie(px, py, pz) = rotate_xyz_around_z(px, py, pz, -theta1);
-	tie(px, py, pz) = translate_xyz(px, py, pz, -ox, -oy, -oz);
-	tie(lat, lon, alt) = geo_helper_.turn_xyz_into_llh(px, py, pz, "wgs84");
-	printf("Result:  %.16f %.16f %.16f\n", lat, lon, alt);
+	flag = !flag;
 
-
-
-	return make_tuple(lat, lon, alt);
+	return make_tuple(px, py, pz);
 }
 
 }

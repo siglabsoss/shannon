@@ -36,6 +36,11 @@ private:
 	boost::tuple<double, double, double> calculate_3input_location(
 		const std::vector<boost::tuple<double, double, double, double> >& sets)
 		const;
+	boost::tuple<double, double, double> foo(
+		double ox, double oy, double oz,
+		double x1, double y1, double z1, double t1,
+		double x2, double y2, double z2, double t2,
+		double x3, double y3, double z3, double t3) const;
 
 	const GeoHelper geo_helper_;
 };
