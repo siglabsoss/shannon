@@ -55,9 +55,12 @@ double o=4*rik*rik*((xi-h)*(xi-h)+(yi-j)*(yi-j)+zi*zi)-k*k;
 double s28=n/(2*m);     double s29=(o/m);       double s30=(s28*s28)-s29;
 double root=sqrt(s30);        cout<<endl;
 int z1=s28+root;              //cout<<"z1 = "<<z1 <<endl;
-int z2=s28-root;              cout<<"z2 = "<<z2 <<endl;
+int z2=s28-root;              //cout<<"z2 = "<<z2 <<endl;
 int x1=g*z1+h;                //cout<<"x1 = "<<x1 <<endl;
-int x2=g*z2+h;                cout<<"x2 = "<<x2 <<endl;
+int x2=g*z2+h;                //cout<<"x2 = "<<x2 <<endl;
 int y1=a*x1+b*z1+c;           //cout<<"y1 = "<<y1 <<endl;
-int y2=a*x2+b*z2+c;           cout<<"y2 = "<<y2 << endl;
+int y2=a*x2+b*z2+c;           //cout<<"y2 = "<<y2 << endl;
+
+cout << "(" << x1 << ", " << y1 << ", " << z1 << ")" << endl;
+cout << "(" << x2 << ", " << y2 << ", " << z2 << ")" << endl;
 }
