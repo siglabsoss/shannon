@@ -21,9 +21,11 @@ main()
 //double xi=-15102069; double xk=15338349; double xj=0;        double xl=26566800;
 //double yi=21482069;  double yk=15338349; double yj=6380000;  double yl=0;
 //double zi=3683495;   double zk=15338349; double zj=25789348; double zl=0;
-	
-double ti=86318311;  double tk=67335895; double tj=75293013; double tl=78283279;
-double xi=-15101069; double xk=15338349; double xj=0;        double xl=26566800;
+
+// mobile 3683495, 3683495, 3683495
+
+double ti=86320708;  double tk=67335914; double tj=75293013; double tl=78283279;
+double xi=-15102069; double xk=15338349; double xj=0;        double xl=26566800;
 double yi=21482069;  double yk=15338349; double yj=6380000;  double yl=0;
 double zi=3683495;   double zk=15338349; double zj=25789348; double zl=0;
 
