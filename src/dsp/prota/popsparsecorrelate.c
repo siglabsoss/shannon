@@ -462,23 +462,6 @@ void encode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out
 	}
 }
 
-uint16_t ota_struct_size(OTA_PACKET_TYPE_T type)
-{
-	switch(type)
-	{
-	case OTA_PACKET_POLL:
-		return sizeof(ota_packet_poll_data_t);
-		break;
-	case OTA_PACKET_RPC:
-		return sizeof(ota_packet_rpc_data_t);
-		break;
-	default:
-		return 4;
-	}
-
-	return 4;
-}
-
 
 // helper to set size and checksum before transmitting a packet
 void ota_packet_prepare_tx(ota_packet_t* p)
@@ -498,11 +481,11 @@ void ota_packet_set_size(ota_packet_t* p)
 //	printf("data: %ld\r\n", sizeof(p->data));
 //	printf("data.poll: %ld\r\n", sizeof(p->data.poll));
 //	printf("data.rpc: %ld\r\n", sizeof(p->data.rpc));
-	p->size = ota_struct_size(p->type) + (int)offsetof(ota_packet_t,data);
+	p->size = strlen(p->data) + (int)offsetof(ota_packet_t,data);
 }
 
 // returns actual checksum byte for packet
-uint8_t ota_packet_checksum(ota_packet_t* p)
+uint16_t ota_packet_checksum(ota_packet_t* p)
 {
 	// this assumes that "size" is the first parameter in the struct after checksum
 	uint8_t* head = (uint8_t*)p + (int)offsetof(ota_packet_t,size);
@@ -516,7 +499,7 @@ uint8_t ota_packet_checksum(ota_packet_t* p)
 // size must be set or else this will not work correctly
 void ota_packet_set_checksum(ota_packet_t* p)
 {
-	uint8_t checksum = ota_packet_checksum(p);
+	uint16_t checksum = ota_packet_checksum(p);
 	printf("checksum: %d\r\n", checksum);
 	p->checksum = checksum;
 }
@@ -524,7 +507,7 @@ void ota_packet_set_checksum(ota_packet_t* p)
 // returns non-zero if checksum is ok
 short ota_packet_checksum_good(ota_packet_t* p)
 {
-	uint8_t checksum = ota_packet_checksum(p);
+	uint16_t checksum = ota_packet_checksum(p);
 	return (checksum == p->checksum);
 }
 
@@ -533,6 +516,13 @@ void ota_packet_zero_fill(ota_packet_t* p)
 {
 	memset(p, 0, sizeof(*p) );
 }
+
+// fills all bytes in packet with 0
+void ota_packet_zero_fill_data(ota_packet_t* p)
+{
+	memset(p->data, 0, ARRAY_LEN(p->data) );
+}
+
 
 
 
@@ -543,7 +533,7 @@ void ota_packet_zero_fill(ota_packet_t* p)
  * Modify the typedef for a 16 or 32-bit CRC standard.
  * http://www.barrgroup.com/Embedded-Systems/How-To/CRC-Calculation-C-Code
  */
-#define crc_t uint8_t
+#define crc_t uint16_t
 #define WIDTH  (8 * sizeof(crc_t))
 #define TOPBIT (1 << (WIDTH - 1))
 #define POLYNOMIAL 0xD8  /* 11011 followed by 0's */

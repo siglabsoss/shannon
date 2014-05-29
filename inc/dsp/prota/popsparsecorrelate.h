@@ -9,40 +9,11 @@
 extern "C" {
 #endif
 
-
-typedef enum
-{
-	 OTA_PACKET_POLL = 0  // Polling for location and also possibly rx packets
-	,OTA_PACKET_RPC = 10
-} OTA_PACKET_TYPE_T;
-
-
-typedef struct {
-	uint16_t unused;
-} __attribute__((__packed__)) ota_packet_poll_data_t;
-
-typedef struct {
-	int32_t p0;
-	int32_t p1;
-	int32_t p2;
-	char name[32];
-} __attribute__((__packed__)) ota_packet_rpc_data_t;
-
-// just here wasting memory
-typedef struct {
-	char bloat[1024];
-} __attribute__((__packed__)) ota_packet_bloat_data_t;
-
 typedef struct
 {
-	uint8_t checksum;
+	uint16_t checksum;
 	uint16_t size; // this must be the first param after checksum
-	uint8_t type; // use OTA_PACKET_TYPE_T when setting this
-	union __attribute__((__packed__)) {
-		ota_packet_poll_data_t  poll;
-		ota_packet_rpc_data_t   rpc;
-		//ota_packet_bloat_data_t bloat;
-	} data;
+	char data[128];
 } __attribute__((__packed__)) ota_packet_t;
 
 
@@ -59,13 +30,14 @@ void decode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out
 void encode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out_size);
 unsigned ota_length_encoded(unsigned len);
 uint32_t comb_dense_length(void);
-uint8_t crcSlow(uint8_t const message[], int nBytes);
+uint16_t crcSlow(uint8_t const message[], int nBytes);
 void ota_packet_set_checksum(ota_packet_t* p);
 void ota_packet_zero_fill(ota_packet_t* p);
 short ota_packet_checksum_good(ota_packet_t* p);
 void ota_packet_prepare_tx(ota_packet_t* p);
 void ota_packet_set_size(ota_packet_t* p);
 uint32_t counts_per_bits(uint16_t bits);
+void ota_packet_zero_fill_data(ota_packet_t* p);
 
 
 
