@@ -16,8 +16,14 @@ using std::endl;
 
 main()
 {
-double ti=86320708;  double tk=67335895; double tj=75293013; double tl=78283279;
-double xi=-15102069; double xk=15338349; double xj=0;        double xl=26566800; 
+// originals
+//double ti=86320708;  double tk=67335895; double tj=75293013; double tl=78283279;
+//double xi=-15102069; double xk=15338349; double xj=0;        double xl=26566800;
+//double yi=21482069;  double yk=15338349; double yj=6380000;  double yl=0;
+//double zi=3683495;   double zk=15338349; double zj=25789348; double zl=0;
+	
+double ti=86318311;  double tk=67335895; double tj=75293013; double tl=78283279;
+double xi=-15101069; double xk=15338349; double xj=0;        double xl=26566800;
 double yi=21482069;  double yk=15338349; double yj=6380000;  double yl=0;
 double zi=3683495;   double zk=15338349; double zj=25789348; double zl=0;
 
@@ -33,8 +39,8 @@ double xik=xi-xk; double yji=yj-yi; double yki=yk-yi; double yjk=yj-yk;
 double ylk=yl-yk; double yik=yi-yk; double zji=zj-zi; double zki=zk-zi;
 double zik=zi-zk; double zjk=zj-zk; double zlk=zl-zk;
 
-double rij=abs((100000*(ti-tj))/333564); double rik=abs((100000*(ti-tk))/333564);
-double rkj=abs((100000*(tk-tj))/333564); double rkl=abs((100000*(tk-tl))/333564);
+double rij=abs((100000*(ti-tj))/333564.095); double rik=abs((100000*(ti-tk))/333564.095);
+double rkj=abs((100000*(tk-tj))/333564.095); double rkl=abs((100000*(tk-tl))/333564.095);
 
 double s9 =rik*xji-rij*xki; double s10=rij*yki-rik*yji; double s11=rik*zji-rij*zki;
 double s12=(rik*(rij*rij + xi*xi - xj*xj + yi*yi - yj*yj + zi*zi - zj*zj)
@@ -54,10 +60,13 @@ double n=8*rik*rik*(g*(xi-h)+i*(yi-j)+zi)+2*l*k;
 double o=4*rik*rik*((xi-h)*(xi-h)+(yi-j)*(yi-j)+zi*zi)-k*k;
 double s28=n/(2*m);     double s29=(o/m);       double s30=(s28*s28)-s29;
 double root=sqrt(s30);        cout<<endl;
-int z1=s28+root;              cout<<"z1 = "<<z1 <<endl;
+int z1=s28+root;              //cout<<"z1 = "<<z1 <<endl;
 int z2=s28-root;              //cout<<"z2 = "<<z2 <<endl;
-int x1=g*z1+h;                cout<<"x1 = "<<x1 <<endl;
+int x1=g*z1+h;                //cout<<"x1 = "<<x1 <<endl;
 int x2=g*z2+h;                //cout<<"x2 = "<<x2 <<endl;
-int y1=a*x1+b*z1+c;           cout<<"y1 = "<<y1 <<endl;
+int y1=a*x1+b*z1+c;           //cout<<"y1 = "<<y1 <<endl;
 int y2=a*x2+b*z2+c;           //cout<<"y2 = "<<y2 << endl;
+
+cout << "(" << x1 << ", " << y1 << ", " << z1 << ")" << endl;
+cout << "(" << x2 << ", " << y2 << ", " << z2 << ")" << endl;
 }
