@@ -79,6 +79,12 @@ uint32_t shannon_pop_data_demodulate(const uint32_t* data, const uint16_t dataSi
 #endif
 
 
+uint32_t counts_per_bits(uint16_t bits)
+{
+	const double baud = 18181.81818;
+	uint16_t counts = (1.0/baud) * ARTEMIS_CLOCK_SPEED_HZ;
+	return counts*bits;
+}
 
 uint32_t comb_dense_length(void)
 {
@@ -99,6 +105,10 @@ FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, con
 	uint32_t start, head, now;
 	uint32_t nextSignal, nextComb;
 	short pol; // signal polarity, comb polarity
+	
+
+
+
 
 	xscore = 0; // the "score" of this convolution
 	now = start = head = DATA_SAMPLE(0) + combOffset;
@@ -278,26 +288,16 @@ FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t d
 // pass in the sample which is the end of the comb
 FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert)
 {
-	uint16_t i;
-	int16_t j,k,jp,kp;
-	uint32_t diff;
+	size_t i;
+	size_t j,k,jp,kp;
 	int32_t xscore; //x(key)score
 	uint32_t start, head, now;
 	uint32_t nextSignal, nextComb;
-	short pol; // signal polarity, comb polarity
 	uint8_t dataByte = 0;
+	const size_t counts_per_bit = counts_per_bits(1);
 
 
 	uint32_t combSize = (dataOutSize*8) + 1;
-	uint32_t comb[combSize];
-
-	double baud = 18181.81818;
-	int countsPerBit = (1.0/baud) * ARTEMIS_CLOCK_SPEED_HZ;
-	for(i=0;i<combSize;i++)
-	{
-		comb[i] = countsPerBit * i;
-//		printf("combx %u\r\n", comb[i]);
-	}
 
 
 	xscore = 0; // the "score" of this convolution
@@ -305,7 +305,7 @@ FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint
 	kp = k = 0;
 	j = 0; // don't set jp, we are about to modify j
 
-	nextComb = comb[MIN(k+1, combSize-1)] + start;
+	nextComb = counts_per_bits(MIN(k+1, combSize-1)) + start;
 	nextSignal = DATA_SAMPLE(j+1);
 
 	// if comb_offset is large enough, we need to skip some edges in the data array, so this scans through edges
@@ -317,35 +317,24 @@ FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint
 
 	jp = j;
 
-
-//	printf("calculated index of %u\r\n", j);
-
 	while(j < dataSize && k < combSize )
 	{
-
-		pol = ((jp&1))?-1:1;
-
-		// it seems like sometimes dma forgets to transfer 1 byte, causing this problem
-		if( now >= head )
+		if(jp&1)
 		{
-			// calculate and sum score
-			diff = now - head;
-			xscore += diff * pol;
+			xscore -= now - head;
+		}
+		else
+		{
+			xscore += now - head;
 		}
 
 		// if the previous loop set 'now' to a comb edge, we are ready to record a bit
 		if( kp != k )
 		{
-			//printf("bit was %d (%d %d)\r\n", xscore, k, kp);
-
+			dataByte <<= 1;
 			if( xscore > 0 )
 			{
-				dataByte <<= 1;
-				dataByte  |= 1;
-			}
-			else
-			{
-				dataByte <<= 1;
+				dataByte |= 1;
 			}
 
 			if( k % 8 == 0 )
@@ -356,19 +345,13 @@ FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint
 				}
 
 				dataOut[(k/8)-1] = dataByte;
-//				printf("data: %02x\r\n", dataByte);
 				dataByte = 0;
 			}
-
-
 			xscore = 0;
-
 		}
 
 		kp = k;
 		jp = j;
-
-
 
 		// bump this number to the current edge
 		head = now;
@@ -390,20 +373,10 @@ FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint
 			now = nextComb;
 
 			// prep for next comparison
-			nextComb = comb[MIN(k+1, combSize-1)] + start;
+			nextComb += counts_per_bit;
 		}
-
-
-
-	}
-
-
-
-
+	} // while
 	return 0;
-
-
-//	printf("calculated index of %u\r\n", index);
 }
 
 unsigned ota_length_encoded(unsigned len)

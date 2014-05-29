@@ -41,7 +41,7 @@ typedef struct
 	union __attribute__((__packed__)) {
 		ota_packet_poll_data_t  poll;
 		ota_packet_rpc_data_t   rpc;
-		ota_packet_bloat_data_t bloat;
+		//ota_packet_bloat_data_t bloat;
 	} data;
 } __attribute__((__packed__)) ota_packet_t;
 
@@ -65,6 +65,7 @@ void ota_packet_zero_fill(ota_packet_t* p);
 short ota_packet_checksum_good(ota_packet_t* p);
 void ota_packet_prepare_tx(ota_packet_t* p);
 void ota_packet_set_size(ota_packet_t* p);
+uint32_t counts_per_bits(uint16_t bits);
 
 
 
