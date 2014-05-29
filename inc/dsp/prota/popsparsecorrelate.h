@@ -22,10 +22,10 @@ typedef struct {
 } __attribute__((__packed__)) ota_packet_poll_data_t;
 
 typedef struct {
-	char name[32];
 	int32_t p0;
 	int32_t p1;
 	int32_t p2;
+	char name[32];
 } __attribute__((__packed__)) ota_packet_rpc_data_t;
 
 // just here wasting memory

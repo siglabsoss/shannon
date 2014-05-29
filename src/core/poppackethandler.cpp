@@ -161,7 +161,19 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 			if( rpc )
 			{
-				rpc->packet_tx(dataTx, 2, txTime, pitTxTime);
+
+				ota_packet_t packet;
+				ota_packet_zero_fill(&packet);
+				packet.type = OTA_PACKET_RPC;
+				strcpy(packet.data.rpc.name, "xtal_set_pwm_counts");
+				packet.data.rpc.p0 = 0x2100;
+				packet.data.rpc.p1 = 0;
+				packet.data.rpc.p2 = 0;
+
+				ota_packet_prepare_tx(&packet);
+				printf("Checksum ok? %d\r\n", ota_packet_checksum_good(&packet)); // this should always be 1
+
+				rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
 			}
 
 			dataTx[1]++;
