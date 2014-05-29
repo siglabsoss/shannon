@@ -12,8 +12,6 @@
 
 #include <vector>
 
-#include <boost/tuple/tuple.hpp>
-
 #include "core/geohelper.hpp"
 #include "core/popsighting.hpp"
 
@@ -33,10 +31,6 @@ public:
 							double* lat, double* lng) const;
 
 private:
-	boost::tuple<double, double, double> calculate_3input_location(
-		const std::vector<boost::tuple<double, double, double, double> >& sets)
-		const;
-
 	const GeoHelper geo_helper_;
 };
 
