@@ -88,7 +88,6 @@ PopMultilateration::PopMultilateration()
 void PopMultilateration::calculate_location(
 	const vector<PopSighting>& sightings, double* lat, double* lng) const
 {
-	assert(sightings.size() >= 4u);
 	assert(lat != NULL);
 	assert(lng != NULL);
 
@@ -96,6 +95,7 @@ void PopMultilateration::calculate_location(
 	// only use the first four sightings in the computation.
 	// TODO(snyderek): Use any additional sightings to improve accuracy.
 	vector<tuple<double, double, double, double> > sets(4);
+	assert(sightings.size() >= sets.size());
 
 	for (vector<tuple<double, double, double, double> >::size_type i = 0;
 		 i < sets.size(); ++i) {
