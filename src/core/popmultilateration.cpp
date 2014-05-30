@@ -112,12 +112,12 @@ void PopMultilateration::calculate_location(
 	}
 
 	// Do the multilateration.
-	double x, y, z;
-	tie(x, y, z) = calculate_xyz_position(sets);
+	double tracker_x, tracker_y, tracker_z;
+	tie(tracker_x, tracker_y, tracker_z) = calculate_xyz_position(sets);
 
 	double temp_lat, temp_lng, temp_alt;
-	tie(temp_lat, temp_lng, temp_alt) = geo_helper_.turn_xyz_into_llh(x, y, z,
-																	  "wgs84");
+	tie(temp_lat, temp_lng, temp_alt) = geo_helper_.turn_xyz_into_llh(
+		tracker_x, tracker_y, tracker_z, "wgs84");
 
 	*lat = temp_lat;
 	*lng = temp_lng;
