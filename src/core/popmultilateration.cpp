@@ -8,6 +8,7 @@
 ******************************************************************************/
 
 #include <assert.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -35,10 +36,22 @@ namespace
 
 // The speed of light in meters per second
 const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
+// Approximate radius of the Earth in meters
+const double EARTH_RADIUS_M = 6371000.0;
 
 inline double sqr(double x)
 {
 	return x * x;
+}
+
+// Given a distance measured along a great circle between two points on the
+// Earth's surface, returns the straight-line distance between the two points in
+// Euclidean space. This function assumes that the Earth is spherical. All
+// distances are in meters.
+double spherical_distance_to_linear(double d)
+{
+	static const double EARTH_DIAMETER_M = EARTH_RADIUS_M * 2.0;
+	return EARTH_DIAMETER_M * sin(d / EARTH_DIAMETER_M);
 }
 
 // This function is the same as calculate_xyz, except that all coordinates
