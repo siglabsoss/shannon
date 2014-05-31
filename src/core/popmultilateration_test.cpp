@@ -74,7 +74,7 @@ void test2()
 	double lat = 0.0, lng = 0.0;
 	multilateration.calculate_location(sightings, &lat, &lng);
 
-	// Should be "lat == 38.6537065 , lng == -90.2477908" (St. Louis).
+	// Should be lat == 38.6537065 , lng == -90.2477908 (St. Louis).
 	printf("lat == %f , lng == %f\n", lat, lng);
 }
 
@@ -90,7 +90,7 @@ void test3()
 	double x, y, z;
 	tie(x, y, z) = calculate_xyz(sets);
 
-	// Should be "x == -21569.0, y == -4987383.0, z == 3962368.0".
+	// Should be x == -21569.0, y == -4987383.0, z == 3962368.0.
 	printf("x == %f, y == %f, z == %f\n", x, y, z);
 }
 
