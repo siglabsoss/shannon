@@ -39,7 +39,7 @@ private:
 	const GeoHelper geo_helper_;
 };
 
-// The following functions are exposed so that they can be called from tests.
+// The following function is exposed so that it can be called from tests.
 
 // Given sets of base station coordinates (x, y, z, frac_secs), returns the
 // (x, y, z) coordinates of the tracker.
