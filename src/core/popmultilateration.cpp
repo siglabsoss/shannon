@@ -8,7 +8,6 @@
 ******************************************************************************/
 
 #include <assert.h>
-#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -39,46 +38,6 @@ const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
 double sqr(double x)
 {
 	return x * x;
-}
-
-tuple<double, double, double> translate_xyz(double x, double y, double z,
-											double dx, double dy, double dz)
-{
-	return make_tuple(x+dx, y+dy, z+dz);
-}
-
-tuple<double, double, double> rotate_xyz_around_z(double x, double y, double z,
-												  double theta)
-{
-	return make_tuple(cos(theta)*x - sin(theta)*y,
-					  sin(theta)*x + cos(theta)*y,
-					  z);
-}
-
-tuple<double, double, double> rotate_xyz_around_x(double x, double y, double z,
-												  double theta)
-{
-	return make_tuple(x,
-					  cos(theta)*y - sin(theta)*z,
-					  sin(theta)*y + cos(theta)*z);
-}
-
-tuple<double, double, double> rotate_xyz_around_y(double x, double y, double z,
-												  double theta)
-{
-	return make_tuple(sin(theta)*z + cos(theta)*x,
-					  y,
-					  cos(theta)*z - sin(theta)*x);
-}
-
-double from_time_to_distance(double t)
-{
-	return SPEED_OF_LIGHT_M_PER_S * t;
-}
-
-double from_distance_to_time(double d)
-{
-	return d / SPEED_OF_LIGHT_M_PER_S;
 }
 
 // This function is the same as calculate_xyz, except that all coordinates
