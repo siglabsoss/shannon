@@ -14,11 +14,13 @@
 
 #include <map>
 #include <string>
+#include <tr1/unordered_map>
 #include <utility>
 #include <vector>
 
 #include <boost/thread/mutex.hpp>
 
+#include "core/popbasestation.hpp"
 #include "core/popmultilateration.hpp"
 #include "core/popsighting.hpp"
 #include "core/popsightingstore.hpp"
@@ -27,6 +29,8 @@
 using boost::mutex;
 using std::make_pair;
 using std::pair;
+using std::string;
+using std::tr1::unordered_map;
 using std::vector;
 
 namespace pop
@@ -44,11 +48,18 @@ PopSightingStore::PopSightingStore(
 
 PopSightingStore::~PopSightingStore()
 {
-	mutex::scoped_lock lock(the_map_mtx_);
+	mutex::scoped_lock lock(mtx_);
 
 	// Clean up the memory used by the map values.
 	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end();
 		 ++it) {
+		delete it->second;
+	}
+
+	// Clean up the memory used by the PopBaseStation objects.
+	for (unordered_map<string, PopBaseStation*>::const_iterator it =
+			 base_stations_.begin();
+		 it != base_stations_.end(); ++it) {
 		delete it->second;
 	}
 }
@@ -58,7 +69,7 @@ void PopSightingStore::add_sighting(const PopSighting& sighting)
 	MapKey key;
 	key.full_secs = sighting.full_secs;
 	key.tracker_id = sighting.tracker_id;
-	key.hostname = sighting.hostname;
+	key.base_station = GetBaseStation(sighting.hostname);
 
 	MapValue* const value = new MapValue();
 	value->lat = sighting.lat;
@@ -67,10 +78,10 @@ void PopSightingStore::add_sighting(const PopSighting& sighting)
 
 	bool inserted = false;
 	{
-		mutex::scoped_lock lock(the_map_mtx_);
+		mutex::scoped_lock lock(mtx_);
 
 		// If multiple sightings are received with the same (full_secs, serial,
-		// hostname) key, only the first sighting will be recorded.
+		// base_station) key, only the first sighting will be recorded.
 		// TODO(snyderek): Is this the desired behavior?
 		inserted = the_map_.insert(make_pair(key, value)).second;
 	}
@@ -92,8 +103,8 @@ bool PopSightingStore::MapKeyCompare::operator()(const MapKey& a,
 		return a.full_secs < b.full_secs;
 	if (a.tracker_id != b.tracker_id)
 		return a.tracker_id < b.tracker_id;
-	if (a.hostname != b.hostname)
-		return a.hostname < b.hostname;
+	if (a.base_station != b.base_station)
+		return a.base_station->hostname() < b.base_station->hostname();
 
 	return false;
 }
@@ -107,7 +118,7 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 	vector<PopSighting> sightings;
 
 	{
-		mutex::scoped_lock lock(the_map_mtx_);
+		mutex::scoped_lock lock(mtx_);
 
 		const pair<MapType::const_iterator, MapType::const_iterator> range =
 			get_sighting_range(full_secs, tracker_id);
@@ -123,7 +134,7 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 			sightings.resize(sightings.size() + 1);
 			PopSighting* const sighting = &sightings.back();
 
-			sighting->hostname = key.hostname;
+			sighting->hostname = key.base_station->hostname();
 			sighting->tracker_id = tracker_id;
 			sighting->lat = value.lat;
 			sighting->lng = value.lng;
@@ -154,7 +165,7 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 // exists]. If no matching entries are found, the two returned iterators will be
 // equal.
 //
-// the_map_mtx_ must be locked when this function is called.
+// mtx_ must be locked when this function is called.
 pair<PopSightingStore::MapType::const_iterator,
 	 PopSightingStore::MapType::const_iterator>
 PopSightingStore::get_sighting_range(time_t full_secs,
@@ -180,6 +191,23 @@ PopSightingStore::get_sighting_range(time_t full_secs,
 	}
 
 	return range;
+}
+
+// Returns a unique base station pointer for the given hostname.
+const PopBaseStation* PopSightingStore::GetBaseStation(const string& hostname)
+{
+	mutex::scoped_lock lock(mtx_);
+
+	const pair<unordered_map<string, PopBaseStation*>::iterator, bool>
+		insert_result = base_stations_.insert(
+			pair<string, PopBaseStation*>(hostname, NULL));
+
+	PopBaseStation** const base_station = &insert_result.first->second;
+
+	if (insert_result.second)
+		*base_station = new PopBaseStation(hostname);
+
+	return *base_station;
 }
 
 }

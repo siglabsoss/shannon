@@ -15,6 +15,7 @@
 
 #include <map>
 #include <string>
+#include <tr1/unordered_map>
 #include <utility>
 
 #include <boost/thread/mutex.hpp>
@@ -22,6 +23,7 @@
 namespace pop
 {
 
+class PopBaseStation;
 class PopMultilateration;
 class PopTrackerLocationStore;
 struct PopSighting;
@@ -47,9 +49,8 @@ private:
 		// TODO(snyderek): What is the correct data type?
 		uint64_t tracker_id;
 
-		// Host name of the base station.
-		// TODO(snyderek): Store this as a pointer to conserve memory.
-		std::string hostname;
+		// Base station that received the tracker signal.
+		const PopBaseStation* base_station;
 	};
 
 	struct MapValue
@@ -75,11 +76,14 @@ private:
 	std::pair<MapType::const_iterator, MapType::const_iterator>
 		get_sighting_range(time_t full_secs, uint64_t tracker_id) const;
 
+	const PopBaseStation* GetBaseStation(const std::string& hostname);
+
 	const PopMultilateration* const multilateration_;
 	PopTrackerLocationStore* const tracker_location_store_;
 
 	MapType the_map_;
-	mutable boost::mutex the_map_mtx_;
+	std::tr1::unordered_map<std::string, PopBaseStation*> base_stations_;
+	mutable boost::mutex mtx_;
 };
 
 }
