@@ -33,6 +33,12 @@ void test2()
 	sight.tracker_id = TRACKER_ID;
 	sight.full_secs = FULL_SECS;
 
+	sight.hostname = "Denver";
+	sight.lat = 39.7643389;
+	sight.lng = -104.8551115;
+	sight.frac_secs = 0.004223709183504543;
+	sightings.push_back(sight);
+
 	sight.hostname = "Los Angeles";
 	sight.lat = 34.0204989;
 	sight.lng = -118.4117325;
@@ -51,16 +57,16 @@ void test2()
 	sight.frac_secs = 0.005699991829013924;
 	sightings.push_back(sight);
 
-	sight.hostname = "Denver";
-	sight.lat = 39.7643389;
-	sight.lng = -104.8551115;
-	sight.frac_secs = 0.004223709183504543;
+	sight.hostname = "Calgary";
+	sight.lat = 51.013117;
+	sight.lng = -114.0741556;
+	sight.frac_secs = 0.007719569969969025;
 	sightings.push_back(sight);
 
 	double lat = 0.0, lng = 0.0;
 	multilateration.calculate_location(sightings, &lat, &lng);
 
-	// Should be "lat == 51.013117 , lng == -114.0741556" (Calgary).
+	// Should be "lat == 38.6537065 , lng == -90.2477908" (St. Louis).
 	printf("lat == %f , lng == %f\n", lat, lng);
 }
 
