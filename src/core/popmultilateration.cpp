@@ -81,6 +81,92 @@ double from_distance_to_time(double d)
 	return d / SPEED_OF_LIGHT_M_PER_S;
 }
 
+// This function is the same as calculate_xyz, except that all coordinates
+// (including the time value) must be translated so that sets[0] is
+// (0.0, 0.0, 0.0, 0.0). The returned coordinates will have to be translated
+// back to the original coordinate space to get a useful value.
+tuple<double, double, double> calculate_xyz_from_origin(
+	const vector<tuple<double, double, double, double> >& sets)
+{
+	assert(static_cast<int>(sets.size()) ==
+		   PopMultilateration::MIN_NUM_BASESTATIONS);
+
+	printf("\nInput:\n");
+	for (vector<tuple<double, double, double, double> >::const_iterator it =
+			 sets.begin();
+		 it != sets.end(); ++it) {
+		const tuple<double, double, double, double>& tup = *it;
+		printf("( %25.16f , %25.16f , %25.16f , %19.16f )\n",
+			   get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
+	}
+
+	const double v = SPEED_OF_LIGHT_M_PER_S;
+
+	vector<double> x(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> y(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> z(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> t(PopMultilateration::MIN_NUM_BASESTATIONS);
+
+	for (int m = 0; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
+		const tuple<double, double, double, double>& tup = sets[m];
+		x[m] = get<0>(tup);
+		y[m] = get<1>(tup);
+		z[m] = get<2>(tup);
+		t[m] = get<3>(tup);
+	}
+
+	vector<double> A(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> B(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> C(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> D(PopMultilateration::MIN_NUM_BASESTATIONS);
+
+	for (int m = 0; m < 2; ++m) {
+		A[m] = nan("NaN");
+		B[m] = nan("NaN");
+		C[m] = nan("NaN");
+		D[m] = nan("NaN");
+	}
+	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
+		A[m] = (2 * x[m]) / (v * t[m]) - (2 * x[1]) / (v * t[1]);
+		B[m] = (2 * y[m]) / (v * t[m]) - (2 * y[1]) / (v * t[1]);
+		C[m] = (2 * z[m]) / (v * t[m]) - (2 * z[1]) / (v * t[1]);
+		D[m] = v * t[m] - v * t[1]
+			   - (sqr(x[m]) + sqr(y[m]) + sqr(z[m])) / (v * t[m])
+			   + (sqr(x[1]) + sqr(y[1]) + sqr(z[1])) / (v * t[1]);
+	}
+
+	printf("\n");
+	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
+		printf("A[%d] == %20.16f , B[%d] == %20.16f , C[%d] == %20.16f , "
+			   "D[%d] == %26.16f\n",
+			   m, A[m], m, B[m], m, C[m], m, D[m]);
+	}
+
+	const double result_x =
+		-(B[2] * (C[4]*D[3] - C[3]*D[4]) + C[2] * (B[3]*D[4] - B[4]*D[3]) +
+				  (B[4]*C[3] - B[3]*C[4]) * D[2]) /
+		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
+				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
+	const double result_y =
+		(A[2] * (C[4]*D[3] - C[3]*D[4]) + C[2] * (A[3]*D[4] - A[4]*D[3]) +
+				 (A[4]*C[3] - A[3]*C[4]) * D[2]) /
+		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
+				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
+	const double result_z =
+		-(A[2] * (B[4]*D[3] - B[3]*D[4]) + B[2] * (A[3]*D[4] - A[4]*D[3]) +
+				  (A[4]*B[3] - A[3]*B[4]) * D[2]) /
+		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
+				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
+
+	const tuple<double, double, double> result =
+		make_tuple(result_x, result_y, result_z);
+
+	printf("\nOutput:\n( %25.16f , %25.16f , %25.16f )\n",
+		   get<0>(result), get<1>(result), get<2>(result));
+
+	return result;
+}
+
 }  // namespace
 
 PopMultilateration::PopMultilateration()
@@ -162,88 +248,6 @@ tuple<double, double, double> calculate_xyz(
 
 	printf("\nOutput:\n( %25.16f , %25.16f , %25.16f )\n\n====================="
 	       "===========================================================\n\n",
-		   get<0>(result), get<1>(result), get<2>(result));
-
-	return result;
-}
-
-tuple<double, double, double> calculate_xyz_from_origin(
-	const vector<tuple<double, double, double, double> >& sets)
-{
-	assert(static_cast<int>(sets.size()) ==
-		   PopMultilateration::MIN_NUM_BASESTATIONS);
-
-	printf("\nInput:\n");
-	for (vector<tuple<double, double, double, double> >::const_iterator it =
-			 sets.begin();
-		 it != sets.end(); ++it) {
-		const tuple<double, double, double, double>& tup = *it;
-		printf("( %25.16f , %25.16f , %25.16f , %19.16f )\n",
-			   get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
-	}
-
-	const double v = SPEED_OF_LIGHT_M_PER_S;
-
-	vector<double> x(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> y(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> z(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> t(PopMultilateration::MIN_NUM_BASESTATIONS);
-
-	for (int m = 0; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
-		const tuple<double, double, double, double>& tup = sets[m];
-		x[m] = get<0>(tup);
-		y[m] = get<1>(tup);
-		z[m] = get<2>(tup);
-		t[m] = get<3>(tup);
-	}
-
-	vector<double> A(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> B(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> C(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> D(PopMultilateration::MIN_NUM_BASESTATIONS);
-
-	for (int m = 0; m < 2; ++m) {
-		A[m] = nan("NaN");
-		B[m] = nan("NaN");
-		C[m] = nan("NaN");
-		D[m] = nan("NaN");
-	}
-	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
-		A[m] = (2 * x[m]) / (v * t[m]) - (2 * x[1]) / (v * t[1]);
-		B[m] = (2 * y[m]) / (v * t[m]) - (2 * y[1]) / (v * t[1]);
-		C[m] = (2 * z[m]) / (v * t[m]) - (2 * z[1]) / (v * t[1]);
-		D[m] = v * t[m] - v * t[1]
-			   - (sqr(x[m]) + sqr(y[m]) + sqr(z[m])) / (v * t[m])
-			   + (sqr(x[1]) + sqr(y[1]) + sqr(z[1])) / (v * t[1]);
-	}
-
-	printf("\n");
-	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
-		printf("A[%d] == %20.16f , B[%d] == %20.16f , C[%d] == %20.16f , "
-			   "D[%d] == %26.16f\n",
-			   m, A[m], m, B[m], m, C[m], m, D[m]);
-	}
-
-	const double result_x =
-		-(B[2] * (C[4]*D[3] - C[3]*D[4]) + C[2] * (B[3]*D[4] - B[4]*D[3]) +
-				  (B[4]*C[3] - B[3]*C[4]) * D[2]) /
-		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
-				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
-	const double result_y =
-		(A[2] * (C[4]*D[3] - C[3]*D[4]) + C[2] * (A[3]*D[4] - A[4]*D[3]) +
-				 (A[4]*C[3] - A[3]*C[4]) * D[2]) /
-		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
-				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
-	const double result_z =
-		-(A[2] * (B[4]*D[3] - B[3]*D[4]) + B[2] * (A[3]*D[4] - A[4]*D[3]) +
-				  (A[4]*B[3] - A[3]*B[4]) * D[2]) /
-		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
-				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
-
-	const tuple<double, double, double> result =
-		make_tuple(result_x, result_y, result_z);
-
-	printf("\nOutput:\n( %25.16f , %25.16f , %25.16f )\n",
 		   get<0>(result), get<1>(result), get<2>(result));
 
 	return result;
