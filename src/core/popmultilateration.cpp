@@ -26,6 +26,11 @@ using boost::tie;
 using boost::tuple;
 using std::vector;
 
+namespace pop
+{
+
+const int PopMultilateration::MIN_NUM_BASESTATIONS = 5;
+
 namespace
 {
 
@@ -76,12 +81,7 @@ double from_distance_to_time(double d)
 	return d / SPEED_OF_LIGHT_M_PER_S;
 }
 
-}
-
-namespace pop
-{
-
-const int PopMultilateration::MIN_NUM_BASESTATIONS = 5;
+}  // namespace
 
 PopMultilateration::PopMultilateration()
 {
