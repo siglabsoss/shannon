@@ -7,6 +7,9 @@
 *
 ******************************************************************************/
 
+// IMPORTANT: In this source file, all distances are measured in light-seconds
+// unless otherwise noted.
+
 #include <assert.h>
 #include <math.h>
 #include <stddef.h>
@@ -47,8 +50,6 @@ inline double sqr(double x)
 // Given a distance measured along a great circle between two points on the
 // Earth's surface, returns the straight-line distance between the two points in
 // Euclidean space. This function assumes that the Earth is spherical.
-//
-// IMPORTANT: The input and output values are measured in light-seconds.
 double spherical_distance_to_linear(double dist_light_seconds)
 {
 	static const double EARTH_DIAMETER_LIGHT_SECONDS =
@@ -73,11 +74,9 @@ tuple<double, double, double> calculate_xyz_from_origin(
 			 sets.begin();
 		 it != sets.end(); ++it) {
 		const tuple<double, double, double, double>& tup = *it;
-		printf("( %25.16f , %25.16f , %25.16f , %19.16f )\n",
+		printf("( %19.16f , %19.16f , %19.16f , %19.16f )\n",
 			   get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
 	}
-
-	const double v = SPEED_OF_LIGHT_M_PER_S;
 
 	vector<double> x(PopMultilateration::MIN_NUM_BASESTATIONS);
 	vector<double> y(PopMultilateration::MIN_NUM_BASESTATIONS);
@@ -104,18 +103,18 @@ tuple<double, double, double> calculate_xyz_from_origin(
 		D[m] = nan("NaN");
 	}
 	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
-		A[m] = (2 * x[m]) / (v * t[m]) - (2 * x[1]) / (v * t[1]);
-		B[m] = (2 * y[m]) / (v * t[m]) - (2 * y[1]) / (v * t[1]);
-		C[m] = (2 * z[m]) / (v * t[m]) - (2 * z[1]) / (v * t[1]);
-		D[m] = v * t[m] - v * t[1]
-			   - (sqr(x[m]) + sqr(y[m]) + sqr(z[m])) / (v * t[m])
-			   + (sqr(x[1]) + sqr(y[1]) + sqr(z[1])) / (v * t[1]);
+		A[m] = (2 * x[m]) / t[m] - (2 * x[1]) / t[1];
+		B[m] = (2 * y[m]) / t[m] - (2 * y[1]) / t[1];
+		C[m] = (2 * z[m]) / t[m] - (2 * z[1]) / t[1];
+		D[m] = t[m] - t[1]
+				   - (sqr(x[m]) + sqr(y[m]) + sqr(z[m])) / t[m]
+				   + (sqr(x[1]) + sqr(y[1]) + sqr(z[1])) / t[1];
 	}
 
 	printf("\n");
 	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
 		printf("A[%d] == %20.16f , B[%d] == %20.16f , C[%d] == %20.16f , "
-			   "D[%d] == %26.16f\n",
+			   "D[%d] == %20.16f\n",
 			   m, A[m], m, B[m], m, C[m], m, D[m]);
 	}
 
@@ -138,7 +137,7 @@ tuple<double, double, double> calculate_xyz_from_origin(
 	const tuple<double, double, double> result =
 		make_tuple(result_x, result_y, result_z);
 
-	printf("\nOutput:\n( %25.16f , %25.16f , %25.16f )\n",
+	printf("\nOutput:\n( %19.16f , %19.16f , %19.16f )\n",
 		   get<0>(result), get<1>(result), get<2>(result));
 
 	return result;
@@ -175,7 +174,10 @@ void PopMultilateration::calculate_location(
 
 		const double t = spherical_distance_to_linear(sighting.frac_secs);
 
-		sets[i] = make_tuple(x, y, z, t);
+		sets[i] = make_tuple(x / SPEED_OF_LIGHT_M_PER_S,
+							 y / SPEED_OF_LIGHT_M_PER_S,
+							 z / SPEED_OF_LIGHT_M_PER_S,
+							 t);
 	}
 
 	// Do the multilateration.
@@ -184,7 +186,10 @@ void PopMultilateration::calculate_location(
 
 	double temp_lat, temp_lng, temp_alt;
 	tie(temp_lat, temp_lng, temp_alt) = geo_helper_.turn_xyz_into_llh(
-		tracker_x, tracker_y, tracker_z, "wgs84");
+		tracker_x * SPEED_OF_LIGHT_M_PER_S,
+		tracker_y * SPEED_OF_LIGHT_M_PER_S,
+		tracker_z * SPEED_OF_LIGHT_M_PER_S,
+		"wgs84");
 
 	*lat = temp_lat;
 	*lng = temp_lng;
@@ -201,7 +206,7 @@ tuple<double, double, double> calculate_xyz(
 			 sets.begin();
 		 it != sets.end(); ++it) {
 		const tuple<double, double, double, double>& tup = *it;
-		printf("( %25.16f , %25.16f , %25.16f , %19.16f )\n",
+		printf("( %19.16f , %19.16f , %19.16f , %19.16f )\n",
 			   get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
 	}
 
@@ -225,7 +230,7 @@ tuple<double, double, double> calculate_xyz(
 	const tuple<double, double, double> result =
 		make_tuple(tracker_x + ox, tracker_y + oy, tracker_z + oz);
 
-	printf("\nOutput:\n( %25.16f , %25.16f , %25.16f )\n\n====================="
+	printf("\nOutput:\n( %19.16f , %19.16f , %19.16f )\n\n====================="
 	       "===========================================================\n\n",
 		   get<0>(result), get<1>(result), get<2>(result));
 

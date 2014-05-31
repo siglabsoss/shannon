@@ -42,7 +42,8 @@ private:
 // The following function is exposed so that it can be called from tests.
 
 // Given sets of base station coordinates (x, y, z, frac_secs), returns the
-// (x, y, z) coordinates of the tracker.
+// (x, y, z) coordinates of the tracker.  All distances are measured in
+// light-seconds.
 //
 // Prerequisite: sets.size() == 5
 boost::tuple<double, double, double> calculate_xyz(
