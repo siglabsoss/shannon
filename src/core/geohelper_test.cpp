@@ -23,6 +23,7 @@ int main()
 	tie(x, y, z) = geo_helper.turn_llh_into_xyz(lat_dec, long_dec, height,
 												coord_system);
 
+	// Should be x == -2699861.0, y == -4286555.0, z == 3862162.0.
 	printf("x == %f, y == %f, z == %f\n", x, y, z);
 
 	return 0;
