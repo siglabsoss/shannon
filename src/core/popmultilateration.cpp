@@ -35,7 +35,7 @@ namespace
 
 const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
 
-double sqr(double x)
+inline double sqr(double x)
 {
 	return x * x;
 }
