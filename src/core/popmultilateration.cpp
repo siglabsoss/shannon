@@ -173,7 +173,9 @@ void PopMultilateration::calculate_location(
 		tie(x, y, z) = geo_helper_.turn_llh_into_xyz(sighting.lat, sighting.lng,
 													 0.0, "wgs84");
 
-		sets[i] = make_tuple(x, y, z, sighting.frac_secs);
+		const double t = spherical_distance_to_linear(sighting.frac_secs);
+
+		sets[i] = make_tuple(x, y, z, t);
 	}
 
 	// Do the multilateration.
