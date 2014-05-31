@@ -81,6 +81,8 @@ double from_distance_to_time(double d)
 namespace pop
 {
 
+const int PopMultilateration::MIN_NUM_BASESTATIONS = 5;
+
 PopMultilateration::PopMultilateration()
 {
 }
@@ -94,7 +96,8 @@ void PopMultilateration::calculate_location(
 	// Convert all the sightings from lat/long to (x,y,z) coordinates. For now,
 	// only use the first five sightings in the computation.
 	// TODO(snyderek): Use any additional sightings to improve accuracy.
-	vector<tuple<double, double, double, double> > sets(5);
+	vector<tuple<double, double, double, double> > sets(
+		PopMultilateration::MIN_NUM_BASESTATIONS);
 	assert(sightings.size() >= sets.size());
 
 	for (vector<PopSighting>::size_type i = 0; i < sets.size(); ++i) {
@@ -167,7 +170,8 @@ tuple<double, double, double> calculate_xyz(
 tuple<double, double, double> calculate_xyz_from_origin(
 	const vector<tuple<double, double, double, double> >& sets)
 {
-	assert(sets.size() == 5u);
+	assert(static_cast<int>(sets.size()) ==
+		   PopMultilateration::MIN_NUM_BASESTATIONS);
 
 	printf("\nInput:\n");
 	for (vector<tuple<double, double, double, double> >::const_iterator it =
@@ -180,8 +184,12 @@ tuple<double, double, double> calculate_xyz_from_origin(
 
 	const double v = SPEED_OF_LIGHT_M_PER_S;
 
-	vector<double> x(5), y(5), z(5), t(5);
-	for (int m = 0; m < 5; ++m) {
+	vector<double> x(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> y(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> z(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> t(PopMultilateration::MIN_NUM_BASESTATIONS);
+
+	for (int m = 0; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
 		const tuple<double, double, double, double>& tup = sets[m];
 		x[m] = get<0>(tup);
 		y[m] = get<1>(tup);
@@ -189,14 +197,18 @@ tuple<double, double, double> calculate_xyz_from_origin(
 		t[m] = get<3>(tup);
 	}
 
-	vector<double> A(5), B(5), C(5), D(5);
+	vector<double> A(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> B(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> C(PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<double> D(PopMultilateration::MIN_NUM_BASESTATIONS);
+
 	for (int m = 0; m < 2; ++m) {
 		A[m] = nan("NaN");
 		B[m] = nan("NaN");
 		C[m] = nan("NaN");
 		D[m] = nan("NaN");
 	}
-	for (int m = 2; m < 5; ++m) {
+	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
 		A[m] = (2 * x[m]) / (v * t[m]) - (2 * x[1]) / (v * t[1]);
 		B[m] = (2 * y[m]) / (v * t[m]) - (2 * y[1]) / (v * t[1]);
 		C[m] = (2 * z[m]) / (v * t[m]) - (2 * z[1]) / (v * t[1]);
@@ -206,7 +218,7 @@ tuple<double, double, double> calculate_xyz_from_origin(
 	}
 
 	printf("\n");
-	for (int m = 2; m < 5; ++m) {
+	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
 		printf("A[%d] == %20.16f , B[%d] == %20.16f , C[%d] == %20.16f , "
 			   "D[%d] == %26.16f\n",
 			   m, A[m], m, B[m], m, C[m], m, D[m]);

@@ -32,8 +32,6 @@ using std::vector;
 namespace pop
 {
 
-const int PopSightingStore::MIN_NUM_BASESTATIONS = 5;
-
 PopSightingStore::PopSightingStore(
 	const PopMultilateration* multilateration,
 	PopTrackerLocationStore* tracker_location_store)
@@ -135,7 +133,8 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 	}
 
 	if (sightings.size() >=
-		static_cast<vector<PopSighting>::size_type>(MIN_NUM_BASESTATIONS)) {
+		static_cast<vector<PopSighting>::size_type>(
+			PopMultilateration::MIN_NUM_BASESTATIONS)) {
 		double lat = 0.0;
 		double lng = 0.0;
 		multilateration_->calculate_location(sightings, &lat, &lng);

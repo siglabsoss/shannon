@@ -27,6 +27,9 @@ namespace pop
 class PopMultilateration
 {
 public:
+	// Minimum number of base stations needed for multilateration.
+	static const int MIN_NUM_BASESTATIONS;
+
 	PopMultilateration();
 
 	void calculate_location(const std::vector<PopSighting>& sightings,

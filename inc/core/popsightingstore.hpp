@@ -37,9 +37,6 @@ public:
 	void add_sighting(const PopSighting& sighting);
 
 private:
-	// Minimum number of base stations needed for multilateration.
-	static const int MIN_NUM_BASESTATIONS;
-
 	struct MapKey
 	{
 		// Integer component of the timestamp when the tracker signal was
