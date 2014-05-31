@@ -32,7 +32,7 @@ using std::vector;
 namespace pop
 {
 
-const int PopSightingStore::MIN_NUM_BASESTATIONS = 3;
+const int PopSightingStore::MIN_NUM_BASESTATIONS = 5;
 
 PopSightingStore::PopSightingStore(
 	const PopMultilateration* multilateration,
