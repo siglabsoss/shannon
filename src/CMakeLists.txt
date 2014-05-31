@@ -39,7 +39,6 @@ set(all_SOURCES
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
 	core/geohelper.cpp
-	core/multilateration.cpp
 	core/popgravitinoparser.cpp
 	core/popmultilateration.cpp
 	core/popsightingstore.cpp
