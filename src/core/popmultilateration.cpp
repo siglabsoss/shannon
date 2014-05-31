@@ -33,6 +33,7 @@ const int PopMultilateration::MIN_NUM_BASESTATIONS = 5;
 namespace
 {
 
+// The speed of light in meters per second
 const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
 
 inline double sqr(double x)
