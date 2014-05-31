@@ -12,6 +12,8 @@
 
 #include <vector>
 
+#include <boost/tuple/tuple.hpp>
+
 #include "core/geohelper.hpp"
 #include "core/popsighting.hpp"
 
@@ -33,6 +35,22 @@ public:
 private:
 	const GeoHelper geo_helper_;
 };
+
+// The following functions are exposed so that they can be called from tests.
+
+// Given sets of base station coordinates (x, y, z, frac_secs), returns the
+// (x, y, z) coordinates of the tracker.
+//
+// Prerequisite: sets.size() == 5
+boost::tuple<double, double, double> calculate_xyz(
+	const std::vector<boost::tuple<double, double, double, double> >& sets);
+
+// This function is the same as calculate_xyz, except that all coordinates
+// (including the time value) must be translated so that sets[0] is
+// (0.0, 0.0, 0.0, 0.0). The returned coordinates will have to be translated
+// back to the original coordinate space to get a useful value.
+boost::tuple<double, double, double> calculate_xyz_from_origin(
+	const std::vector<boost::tuple<double, double, double, double> >& sets);
 
 }
 
