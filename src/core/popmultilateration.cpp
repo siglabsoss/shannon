@@ -46,12 +46,16 @@ inline double sqr(double x)
 
 // Given a distance measured along a great circle between two points on the
 // Earth's surface, returns the straight-line distance between the two points in
-// Euclidean space. This function assumes that the Earth is spherical. All
-// distances are in meters.
-double spherical_distance_to_linear(double d)
+// Euclidean space. This function assumes that the Earth is spherical.
+//
+// IMPORTANT: The input and output values are measured in light-seconds.
+double spherical_distance_to_linear(double dist_light_seconds)
 {
-	static const double EARTH_DIAMETER_M = EARTH_RADIUS_M * 2.0;
-	return EARTH_DIAMETER_M * sin(d / EARTH_DIAMETER_M);
+	static const double EARTH_DIAMETER_LIGHT_SECONDS =
+		EARTH_RADIUS_M * 2.0 / SPEED_OF_LIGHT_M_PER_S;
+
+	return sin(dist_light_seconds / EARTH_DIAMETER_LIGHT_SECONDS) *
+		EARTH_DIAMETER_LIGHT_SECONDS;
 }
 
 // This function is the same as calculate_xyz, except that all coordinates
