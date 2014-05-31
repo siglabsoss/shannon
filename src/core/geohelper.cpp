@@ -111,7 +111,6 @@ tuple<double, double, double> GeoHelper::get_abe_values(
 {
 	mutex::scoped_lock lock(abe_values_mtx_);
 
-	// FIXME: The following line causes a segmentation fault. Figure out why.
 	const map<string, tuple<double, double, double> >::const_iterator it =
 		abe_values_.find(coord_system);
 	assert(it != abe_values_.end());
