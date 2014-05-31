@@ -120,9 +120,8 @@ target_link_libraries(gravitino ${Boost_LIBRARIES})
 add_executable(geohelper_test ${all_SOURCES} app/geohelper_test.cpp)
 target_link_libraries(geohelper_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
-# TODO(snyderek): Modify this test to use the Boost unit test framework.
-add_executable(popmultilateration_test ${all_SOURCES} core/popmultilateration_test.cpp)
-target_link_libraries(popmultilateration_test ${Boost_LIBRARIES})
+add_executable(popmultilateration_test ${all_SOURCES} app/popmultilateration_test.cpp)
+target_link_libraries(popmultilateration_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
 
 

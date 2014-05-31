@@ -7,12 +7,19 @@
 *
 ******************************************************************************/
 
+// This define includes a main into our program for us
+#define BOOST_TEST_DYN_LINK
+
+// see http://www.alittlemadness.com/2009/03/31/c-unit-testing-with-boosttest/ for more info
+#define BOOST_TEST_MODULE GeoHelperTest
+
 #include <stdint.h>
-#include <stdio.h>
 #include <time.h>
 
 #include <vector>
 
+#include <boost/test/auto_unit_test.hpp>
+#include <boost/test/floating_point_comparison.hpp>
 #include <boost/tuple/tuple.hpp>
 
 #include "core/popmultilateration.hpp"
@@ -23,12 +30,9 @@ using boost::tie;
 using boost::tuple;
 using pop::PopMultilateration;
 using pop::PopSighting;
-using pop::calculate_xyz;
 using std::vector;
 
-namespace {
-
-void test2()
+BOOST_AUTO_TEST_CASE(calculate_location)
 {
 	static const uint64_t TRACKER_ID = 13579;
 	static const time_t FULL_SECS = 1400556041;
@@ -74,11 +78,12 @@ void test2()
 	double lat = 0.0, lng = 0.0;
 	multilateration.calculate_location(sightings, &lat, &lng);
 
-	// Should be lat == 38.6537065 , lng == -90.2477908 (St. Louis).
-	printf("lat == %f , lng == %f\n", lat, lng);
+	// St. Louis
+	BOOST_CHECK_CLOSE(lat,  38.6537065, 0.0001);
+	BOOST_CHECK_CLOSE(lng, -90.2477908, 0.0001);
 }
 
-void test3()
+BOOST_AUTO_TEST_CASE(calculate_xyz)
 {
 	vector<tuple<double, double, double, double> > sets(5);
 	sets[0] = make_tuple(-1258672.3196881897747517, -4745396.9325757101178169, 4057906.7128839851357043, 0.0042167957666482);
@@ -88,17 +93,10 @@ void test3()
 	sets[4] = make_tuple(-1640198.7441209338139743, -3671151.9755489402450621, 4934462.8230686001479626, 0.0076773345072259);
 
 	double x, y, z;
-	tie(x, y, z) = calculate_xyz(sets);
+	tie(x, y, z) = pop::calculate_xyz(sets);
 
 	// Should be x == -21569.0, y == -4987383.0, z == 3962368.0.
-	printf("x == %f, y == %f, z == %f\n", x, y, z);
-}
-
-}
-
-int main()
-{
-	test2();
-	test3();
-	return 0;
+	BOOST_CHECK_CLOSE(x ,  -21569.0, 0.000000001);
+	BOOST_CHECK_CLOSE(y, -4987383.0, 0.000000001);
+	BOOST_CHECK_CLOSE(z,  3962368.0, 0.000000001);
 }
