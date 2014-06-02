@@ -14,6 +14,7 @@
 #define BOOST_TEST_MODULE GeoHelperTest
 
 #include <stdint.h>
+#include <stdio.h>
 #include <time.h>
 
 #include <vector>
@@ -77,6 +78,8 @@ BOOST_AUTO_TEST_CASE(calculate_location)
 
 	double lat = 0.0, lng = 0.0;
 	multilateration.calculate_location(sightings, &lat, &lng);
+
+	printf("lat == %f, lng == %f\n\n", lat, lng);
 
 	// St. Louis
 	BOOST_CHECK_CLOSE(lat,  38.6537065, 0.001);
