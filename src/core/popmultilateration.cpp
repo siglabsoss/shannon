@@ -144,8 +144,7 @@ void PopMultilateration::calculate_location(
 	// Convert all the sightings from lat/long to (x,y,z) coordinates. For now,
 	// only use the first MIN_NUM_BASESTATIONS sightings in the computation.
 	// TODO(snyderek): Use any additional sightings to improve accuracy.
-	vector<tuple<double, double, double, double> > sets(
-		PopMultilateration::MIN_NUM_BASESTATIONS);
+	vector<tuple<double, double, double, double> > sets(MIN_NUM_BASESTATIONS);
 	assert(sightings.size() >= sets.size());
 
 	for (vector<PopSighting>::size_type i = 0; i < sets.size(); ++i) {
