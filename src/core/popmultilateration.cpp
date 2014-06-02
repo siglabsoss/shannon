@@ -32,7 +32,7 @@ using std::vector;
 namespace pop
 {
 
-const int PopMultilateration::MIN_NUM_BASESTATIONS = 5;
+const int PopMultilateration::MIN_NUM_BASESTATIONS = 4;
 
 namespace
 {
@@ -78,64 +78,50 @@ tuple<double, double, double> calculate_xyz_from_origin(
 			   get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
 	}
 
-	vector<double> x(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> y(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> z(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> t(PopMultilateration::MIN_NUM_BASESTATIONS);
+	// Ralph Bucher and D. Misra, “A Synthesizable VHDL Model of the Exact
+	// Solution for Three-dimensional Hyperbolic Positioning System,” VLSI
+	// Design, vol. 15, no. 2, pp. 507-520, 2002.
+	// doi:10.1080/1065514021000012129
 
-	for (int m = 0; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
-		const tuple<double, double, double, double>& tup = sets[m];
-		x[m] = get<0>(tup);
-		y[m] = get<1>(tup);
-		z[m] = get<2>(tup);
-		t[m] = get<3>(tup);
-	}
+	double ti=get<3>(sets[0]); double tk=get<3>(sets[2]); double tj=get<3>(sets[1]); double tl=get<3>(sets[3]);
+	double xi=get<0>(sets[0]); double xk=get<0>(sets[2]); double xj=get<0>(sets[1]); double xl=get<0>(sets[3]);
+	double yi=get<1>(sets[0]); double yk=get<1>(sets[2]); double yj=get<1>(sets[1]); double yl=get<1>(sets[3]);
+	double zi=get<2>(sets[0]); double zk=get<2>(sets[2]); double zj=get<2>(sets[1]); double zl=get<2>(sets[3]);
 
-	vector<double> A(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> B(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> C(PopMultilateration::MIN_NUM_BASESTATIONS);
-	vector<double> D(PopMultilateration::MIN_NUM_BASESTATIONS);
+	double xji=xj-xi; double xki=xk-xi; double xjk=xj-xk; double xlk=xl-xk;
+	double xik=xi-xk; double yji=yj-yi; double yki=yk-yi; double yjk=yj-yk;
+	double ylk=yl-yk; double yik=yi-yk; double zji=zj-zi; double zki=zk-zi;
+	double zik=zi-zk; double zjk=zj-zk; double zlk=zl-zk;
 
-	for (int m = 0; m < 2; ++m) {
-		A[m] = nan("NaN");
-		B[m] = nan("NaN");
-		C[m] = nan("NaN");
-		D[m] = nan("NaN");
-	}
-	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
-		A[m] = (2 * x[m]) / t[m] - (2 * x[1]) / t[1];
-		B[m] = (2 * y[m]) / t[m] - (2 * y[1]) / t[1];
-		C[m] = (2 * z[m]) / t[m] - (2 * z[1]) / t[1];
-		D[m] = t[m] - t[1]
-				   - (sqr(x[m]) + sqr(y[m]) + sqr(z[m])) / t[m]
-				   + (sqr(x[1]) + sqr(y[1]) + sqr(z[1])) / t[1];
-	}
+	double rij=fabs(ti-tj); double rik=fabs(ti-tk);
+	double rkj=fabs(tk-tj); double rkl=fabs(tk-tl);
 
-	printf("\n");
-	for (int m = 2; m < PopMultilateration::MIN_NUM_BASESTATIONS; ++m) {
-		printf("A[%d] == %20.16f , B[%d] == %20.16f , C[%d] == %20.16f , "
-			   "D[%d] == %20.16f\n",
-			   m, A[m], m, B[m], m, C[m], m, D[m]);
-	}
+	double s9 =rik*xji-rij*xki; double s10=rij*yki-rik*yji; double s11=rik*zji-rij*zki;
+	double s12=(rik*(rij*rij + xi*xi - xj*xj + yi*yi - yj*yj + zi*zi - zj*zj)
+	           -rij*(rik*rik + xi*xi - xk*xk + yi*yi - yk*yk + zi*zi - zk*zk))/2;
 
-	const double result_x =
-		-(B[2] * (C[4]*D[3] - C[3]*D[4]) + C[2] * (B[3]*D[4] - B[4]*D[3]) +
-				  (B[4]*C[3] - B[3]*C[4]) * D[2]) /
-		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
-				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
-	const double result_y =
-		(A[2] * (C[4]*D[3] - C[3]*D[4]) + C[2] * (A[3]*D[4] - A[4]*D[3]) +
-				 (A[4]*C[3] - A[3]*C[4]) * D[2]) /
-		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
-				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
-	const double result_z =
-		-(A[2] * (B[4]*D[3] - B[3]*D[4]) + B[2] * (A[3]*D[4] - A[4]*D[3]) +
-				  (A[4]*B[3] - A[3]*B[4]) * D[2]) /
-		(A[2] * (B[4]*C[3] - B[3]*C[4]) + B[2] * (A[3]*C[4] - A[4]*C[3]) +
-				 (A[4]*B[3] - A[3]*B[4]) * C[2]);
+	double s13=rkl*xjk-rkj*xlk; double s14=rkj*ylk-rkl*yjk; double s15=rkl*zjk-rkj*zlk;
+	double s16=(rkl*(rkj*rkj + xk*xk - xj*xj + yk*yk - yj*yj + zk*zk - zj*zj)
+	           -rkj*(rkl*rkl + xk*xk - xl*xl + yk*yk - yl*yl + zk*zk - zl*zl))/2;
 
-	const tuple<double, double, double> result =
-		make_tuple(result_x, result_y, result_z);
+	double a= s9/s10; double b=s11/s10; double c=s12/s10; double d=s13/s14;
+	double e=s15/s14; double f=s16/s14; double g=(e-b)/(a-d); double h=(f-c)/(a-d);
+	double i=(a*g)+b; double j=(a*h)+c;
+	double k=rik*rik+xi*xi-xk*xk+yi*yi-yk*yk+zi*zi-zk*zk+2*h*xki+2*j*yki;
+	double l=2*(g*xki+i*yki+zki);
+	double m=4*rik*rik*(g*g+i*i+1)-l*l;
+	double n=8*rik*rik*(g*(xi-h)+i*(yi-j)+zi)+2*l*k;
+	double o=4*rik*rik*((xi-h)*(xi-h)+(yi-j)*(yi-j)+zi*zi)-k*k;
+	double s28=n/(2*m);     double s29=(o/m);       double s30=(s28*s28)-s29;
+	double root=sqrt(s30);
+	double z1=s28+root;
+	double z2=s28-root;
+	double x1=g*z1+h;
+	double x2=g*z2+h;
+	double y1=a*x1+b*z1+c;
+	double y2=a*x2+b*z2+c;
+
+	const tuple<double, double, double> result = make_tuple(x2, y2, z2);
 
 	printf("\nOutput:\n( %19.16f , %19.16f , %19.16f )\n",
 		   get<0>(result), get<1>(result), get<2>(result));
@@ -156,7 +142,7 @@ void PopMultilateration::calculate_location(
 	assert(lng != NULL);
 
 	// Convert all the sightings from lat/long to (x,y,z) coordinates. For now,
-	// only use the first five sightings in the computation.
+	// only use the first MIN_NUM_BASESTATIONS sightings in the computation.
 	// TODO(snyderek): Use any additional sightings to improve accuracy.
 	vector<tuple<double, double, double, double> > sets(
 		PopMultilateration::MIN_NUM_BASESTATIONS);

@@ -109,9 +109,9 @@ bool PopSightingStore::MapKeyCompare::operator()(const MapKey& a,
 	return false;
 }
 
-// Builds a vector of all sightings for the given time and tracker. If there are
-// at least three sightings, performs multilateration and stores the computed
-// tracker location.
+// Builds a vector of all sightings for the given time and tracker. If the
+// number of sightings is at least PopMultilateration::MIN_NUM_BASESTATIONS,
+// performs multilateration and stores the computed tracker location.
 void PopSightingStore::aggregate_sightings(time_t full_secs,
 										   uint64_t tracker_id)
 {
