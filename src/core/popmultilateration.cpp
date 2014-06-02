@@ -42,11 +42,6 @@ const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
 // Approximate radius of the Earth in meters
 const double EARTH_RADIUS_M = 6371000.0;
 
-inline double sqr(double x)
-{
-	return x * x;
-}
-
 // Given a distance measured along a great circle between two points on the
 // Earth's surface, returns the straight-line distance between the two points in
 // Euclidean space. This function assumes that the Earth is spherical.
