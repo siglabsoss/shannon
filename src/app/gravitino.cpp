@@ -48,25 +48,25 @@ int main(int argc, char *argv[])
 
 
 
-//	PopArtemisRPC rpc(1);
-//
-//	PopSerial uart0("/dev/ttyUSB0");
-//
-//	uart0.rx.connect(rpc);
-//	rpc.tx.connect(uart0);
-//	uart0.rx.start_thread();
-//
-//	// Send a "set_role_base_station" RPC to the Artemis board to force it into
-//	// base station mode.
-//	rpc.set_role_base_station();
-//
-//	PopPacketHandler handler(1);
-//	rpc.handler = &handler;
-//	handler.rpc = &rpc;
+	PopArtemisRPC rpc(1);
+
+	PopSerial uart0("/dev/ttyUSB0", 1000000);
+
+	uart0.rx.connect(rpc);
+	rpc.tx.connect(uart0);
+	uart0.rx.start_thread();
+
+	// Send a "set_role_base_station" RPC to the Artemis board to force it into
+	// base station mode.
+	rpc.set_role_base_station();
+
+	PopPacketHandler handler(1);
+	rpc.handler = &handler;
+	handler.rpc = &rpc;
 
 
-//	PopParseGPS gps(1);
-//	PopSerial uart4("/dev/tty1", 4800);
+	PopParseGPS gps(1);
+//	PopSerial uart4("/dev/tty4", 4800);
 //	uart4.rx.connect(gps);
 //	uart4.rx.start_thread();
 
@@ -74,15 +74,22 @@ int main(int argc, char *argv[])
 
 	PopGpsDevice updates(1);
 
-//	rpc.packets.connect(updates);
+	rpc.packets.connect(updates);
 	updates.tx.connect(json);
-//	updates.gps = &gps;
+	updates.gps = &gps;
 	json.wakeup();
 	updates.tx.start_thread();
 
 
 
-	updates.mock();
+
+
+//	SimulateArtemis simArt(0);
+//	simArt.rx.connect(rpc);
+//	rpc.rx.connect(simArt);
+
+//	simArt.rx.start_thread();
+
 
 
 	char c;

@@ -17,9 +17,7 @@ namespace pop
 
 class PopSightingStore;
 
-// FIX THIS COMMENT
-// This class handles all RPC between the Artemis board and Gravitino instance of shannon on the BBB.  Character tx/rx are handled by the parent class PopJsonRPC.
-// The member function execute() is called by the parent class when valid json RPC is received.  It then generates binary objects on the "packet" PopSource
+// This class handles all RPC between the gravitino basestations and the s3p
 class PopGravitinoParser : public PopJsonRPC
 {
 public:
