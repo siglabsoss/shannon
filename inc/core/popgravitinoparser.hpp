@@ -1,41 +1,41 @@
+
+
+
 #ifndef __POP_GRAV_PARSER__
 #define __POP_GRAV_PARSER__
 
-/******************************************************************************
- * Copyright 2013 PopWi Technology Group, Inc. (PTG)
- *
- * This file is proprietary and exclusively owned by PTG or its associates.
- * This document is protected by international and domestic patents where
- * applicable. All rights reserved.
- *
- ******************************************************************************/
+#include <stdint.h>
 
+#include <boost/tuple/tuple.hpp>
 
-#include "core/popsink.hpp"
-#include "core/popsource.hpp"
-#include "core/objectstash.hpp"
-
-#define POP_GRAVITINO_SUPPORTED_TOKENS 50
+#include "core/popjsonrpc.hpp"
+#include "core/poppackethandler.hpp"
 
 
 namespace pop
 {
 
-class PopGravitinoParser : public PopSink<char>
+class PopSightingStore;
+
+// This class handles all RPC between the gravitino basestations and the s3p
+class PopGravitinoParser : public PopJsonRPC
 {
 public:
-	bool headValid;
-	std::vector<unsigned char> command;
-	ObjectStash radios;
-	PopSource<PopRadio> tx;
+	PopGravitinoParser(unsigned notused, PopSightingStore* sighting_store);
+	//PopSource<boost::tuple<char[20], PopTimestamp>> packets;
 
+	void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);
+	void packet_rx(std::string b64_serial, uint32_t offset, double clock_correction);
+	void packet_tx(char* data, uint32_t size, uint32_t txTime, uint64_t pitTxTime);
+	void set_role_base_station();
+	void mock(void);
 
-	PopGravitinoParser();
-	void init();
-	void process(const char* data, size_t data_size, const PopTimestamp* timestamp_data, size_t timestamp_size);
-	void parse();
+	//PopPacketHandler* handler;
+
+private:
+	PopSightingStore* const sighting_store_;
 };
 
-} // namespace pop
+}
 
 #endif

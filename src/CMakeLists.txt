@@ -38,7 +38,11 @@ set(all_SOURCES
 	core/basestationfreq.c
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
+	core/geohelper.cpp
 	core/popgravitinoparser.cpp
+	core/popmultilateration.cpp
+	core/popsightingstore.cpp
+	core/poptrackerlocationstore.cpp
 	net/popwebhook.cpp
 	dsp/prota/popsparsecorrelate.c
 )
@@ -112,10 +116,17 @@ target_link_libraries(gravitino ${Boost_LIBRARIES})
 	
 
 
+# MORE TESTS
+add_executable(geohelper_test ${all_SOURCES} app/geohelper_test.cpp)
+target_link_libraries(geohelper_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+
+add_executable(popmultilateration_test ${all_SOURCES} app/popmultilateration_test.cpp)
+target_link_libraries(popmultilateration_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+
 
 
 # list of the different files that contain main()
-set(executable_list shannon s3p gravitino)
+set(executable_list shannon s3p gravitino geohelper_test popmultilateration_test)
 
 # iterate and build each executuable, and add make runx shortcut
 foreach(executable ${executable_list}) 

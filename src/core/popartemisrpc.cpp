@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include <iostream>
 #include <string>
 #include <stdint.h>
@@ -228,19 +226,6 @@ void PopArtemisRPC::set_role_base_station()
 
 	// Subtract one from the string size to exclude the trailing '\0' character.
 	send_rpc(RPC_STRING, sizeof(RPC_STRING) - 1);
-}
-
-void PopArtemisRPC::send_rpc(const char *rpc_string, size_t length)
-{
-	// Leading null. Send this character as a precaution, in case the previous
-	// RPC was not terminated properly. It's safe to do this because if Artemis
-	// receives two null characters in a row, it will just ignore the empty RPC.
-	this->tx.process("\0", 1);
-
-	this->tx.process(rpc_string, length);
-
-	// Trailing null
-	this->tx.process("\0", 1);
 }
 
 }

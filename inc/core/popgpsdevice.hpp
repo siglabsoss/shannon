@@ -25,6 +25,7 @@ public:
 
 	unsigned int run_loop();
 	void init();
+	void mock();
 	void process(const boost::tuple<char[20], PopTimestamp>* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
 
 };

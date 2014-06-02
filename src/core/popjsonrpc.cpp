@@ -1,5 +1,7 @@
 #include "core/popjsonrpc.hpp"
 
+#include <stddef.h>
+
 #include <iostream>
 #include <string>
 
@@ -146,6 +148,20 @@ void PopJsonRPC::respond_int(int value, int methodId)
 	buff = tx.get_buffer(1);
 	buff[0] = '\0';
 	tx.process(1);
+}
+
+
+void PopJsonRPC::send_rpc(const char *rpc_string, size_t length)
+{
+	// Leading null. Send this character as a precaution, in case the previous
+	// RPC was not terminated properly. It's safe to do this because if Artemis
+	// receives two null characters in a row, it will just ignore the empty RPC.
+	this->tx.process("\0", 1);
+
+	this->tx.process(rpc_string, length);
+
+	// Trailing null
+	this->tx.process("\0", 1);
 }
 
 

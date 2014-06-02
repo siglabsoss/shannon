@@ -1,7 +1,7 @@
 #ifndef __POP_GRAV_RPC_HPP_
 #define __POP_GRAV_RPC_HPP_
 
-#include <stddef.h>
+#include <stdint.h>
 
 #include <boost/tuple/tuple.hpp>
 
@@ -28,9 +28,6 @@ public:
 	void mock(void);
 
 	PopPacketHandler* handler;
-
-private:
-	void send_rpc(const char *rpc_string, size_t length);
 };
 
 }
