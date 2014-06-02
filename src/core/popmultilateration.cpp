@@ -59,11 +59,58 @@ double spherical_distance_to_linear(double dist_light_seconds)
 		EARTH_DIAMETER_LIGHT_SECONDS;
 }
 
-// This function is the same as calculate_xyz, except that all coordinates
-// (including the time value) must be translated so that sets[0] is
-// (0.0, 0.0, 0.0, 0.0). The returned coordinates will have to be translated
-// back to the original coordinate space to get a useful value.
-tuple<double, double, double> calculate_xyz_from_origin(
+}  // namespace
+
+PopMultilateration::PopMultilateration()
+{
+}
+
+void PopMultilateration::calculate_location(
+	const vector<PopSighting>& sightings, double* lat, double* lng) const
+{
+	assert(lat != NULL);
+	assert(lng != NULL);
+
+	// Convert all the sightings from lat/long to (x,y,z) coordinates. For now,
+	// only use the first MIN_NUM_BASESTATIONS sightings in the computation.
+	// TODO(snyderek): Use any additional sightings to improve accuracy.
+	vector<tuple<double, double, double, double> > sets(MIN_NUM_BASESTATIONS);
+	assert(sightings.size() >= sets.size());
+
+	for (vector<PopSighting>::size_type i = 0; i < sets.size(); ++i) {
+		const PopSighting& sighting = sightings[i];
+
+		// For now, assume that all base stations are at altitude 0.
+		// TODO(snyderek): Should the base stations report their altitudes in
+		// addition to lat/long?
+		double x, y, z;
+		tie(x, y, z) = geo_helper_.turn_llh_into_xyz(sighting.lat, sighting.lng,
+													 0.0, "wgs84");
+
+		const double t = spherical_distance_to_linear(sighting.frac_secs);
+
+		sets[i] = make_tuple(x / SPEED_OF_LIGHT_M_PER_S,
+							 y / SPEED_OF_LIGHT_M_PER_S,
+							 z / SPEED_OF_LIGHT_M_PER_S,
+							 t);
+	}
+
+	// Do the multilateration.
+	double tracker_x, tracker_y, tracker_z;
+	tie(tracker_x, tracker_y, tracker_z) = calculate_xyz(sets);
+
+	double temp_lat, temp_lng, temp_alt;
+	tie(temp_lat, temp_lng, temp_alt) = geo_helper_.turn_xyz_into_llh(
+		tracker_x * SPEED_OF_LIGHT_M_PER_S,
+		tracker_y * SPEED_OF_LIGHT_M_PER_S,
+		tracker_z * SPEED_OF_LIGHT_M_PER_S,
+		"wgs84");
+
+	*lat = temp_lat;
+	*lng = temp_lng;
+}
+
+tuple<double, double, double> calculate_xyz(
 	const vector<tuple<double, double, double, double> >& sets)
 {
 	assert(static_cast<int>(sets.size()) ==
@@ -124,99 +171,6 @@ tuple<double, double, double> calculate_xyz_from_origin(
 	const tuple<double, double, double> result = make_tuple(x2, y2, z2);
 
 	printf("\nOutput:\n( %19.16f , %19.16f , %19.16f )\n",
-		   get<0>(result), get<1>(result), get<2>(result));
-
-	return result;
-}
-
-}  // namespace
-
-PopMultilateration::PopMultilateration()
-{
-}
-
-void PopMultilateration::calculate_location(
-	const vector<PopSighting>& sightings, double* lat, double* lng) const
-{
-	assert(lat != NULL);
-	assert(lng != NULL);
-
-	// Convert all the sightings from lat/long to (x,y,z) coordinates. For now,
-	// only use the first MIN_NUM_BASESTATIONS sightings in the computation.
-	// TODO(snyderek): Use any additional sightings to improve accuracy.
-	vector<tuple<double, double, double, double> > sets(MIN_NUM_BASESTATIONS);
-	assert(sightings.size() >= sets.size());
-
-	for (vector<PopSighting>::size_type i = 0; i < sets.size(); ++i) {
-		const PopSighting& sighting = sightings[i];
-
-		// For now, assume that all base stations are at altitude 0.
-		// TODO(snyderek): Should the base stations report their altitudes in
-		// addition to lat/long?
-		double x, y, z;
-		tie(x, y, z) = geo_helper_.turn_llh_into_xyz(sighting.lat, sighting.lng,
-													 0.0, "wgs84");
-
-		const double t = spherical_distance_to_linear(sighting.frac_secs);
-
-		sets[i] = make_tuple(x / SPEED_OF_LIGHT_M_PER_S,
-							 y / SPEED_OF_LIGHT_M_PER_S,
-							 z / SPEED_OF_LIGHT_M_PER_S,
-							 t);
-	}
-
-	// Do the multilateration.
-	double tracker_x, tracker_y, tracker_z;
-	tie(tracker_x, tracker_y, tracker_z) = calculate_xyz(sets);
-
-	double temp_lat, temp_lng, temp_alt;
-	tie(temp_lat, temp_lng, temp_alt) = geo_helper_.turn_xyz_into_llh(
-		tracker_x * SPEED_OF_LIGHT_M_PER_S,
-		tracker_y * SPEED_OF_LIGHT_M_PER_S,
-		tracker_z * SPEED_OF_LIGHT_M_PER_S,
-		"wgs84");
-
-	*lat = temp_lat;
-	*lng = temp_lng;
-}
-
-tuple<double, double, double> calculate_xyz(
-	const vector<tuple<double, double, double, double> >& sets)
-{
-	assert(!sets.empty());
-
-	printf("\n================================================================="
-	       "===============\n\nInput:\n");
-	for (vector<tuple<double, double, double, double> >::const_iterator it =
-			 sets.begin();
-		 it != sets.end(); ++it) {
-		const tuple<double, double, double, double>& tup = *it;
-		printf("( %19.16f , %19.16f , %19.16f , %19.16f )\n",
-			   get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
-	}
-
-	double ox, oy, oz, ot;
-	tie(ox, oy, oz, ot) = sets[0];
-
-	vector<tuple<double, double, double, double> > sets_transposed(sets.size());
-
-	for (vector<tuple<double, double, double, double> >::size_type i = 0u;
-		 i < sets.size(); ++i) {
-		double x, y, z, t;
-		tie(x, y, z, t) = sets[i];
-		sets_transposed[i] = make_tuple(x - ox, y - oy, z - oz, t - ot);
-	}
-
-	// Do the multilateration.
-	double tracker_x, tracker_y, tracker_z;
-	tie(tracker_x, tracker_y, tracker_z) = calculate_xyz_from_origin(
-		sets_transposed);
-
-	const tuple<double, double, double> result =
-		make_tuple(tracker_x + ox, tracker_y + oy, tracker_z + oz);
-
-	printf("\nOutput:\n( %19.16f , %19.16f , %19.16f )\n\n====================="
-	       "===========================================================\n\n",
 		   get<0>(result), get<1>(result), get<2>(result));
 
 	return result;
