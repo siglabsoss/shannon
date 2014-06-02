@@ -8,7 +8,8 @@
 ******************************************************************************/
 
 // IMPORTANT: In this source file, all distances are measured in light-seconds
-// unless otherwise noted.
+// and all times are measured in seconds, unless otherwise noted. This makes the
+// math easier, because the speed of light in these units is 1.
 
 #include <assert.h>
 #include <math.h>
