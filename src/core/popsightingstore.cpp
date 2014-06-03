@@ -103,8 +103,11 @@ bool PopSightingStore::MapKeyCompare::operator()(const MapKey& a,
 		return a.full_secs < b.full_secs;
 	if (a.tracker_id != b.tracker_id)
 		return a.tracker_id < b.tracker_id;
-	if (a.base_station != b.base_station)
-		return a.base_station->hostname() < b.base_station->hostname();
+	if (a.base_station != b.base_station) {
+		return b.base_station != NULL &&
+			   (a.base_station == NULL ||
+			    a.base_station->hostname() < b.base_station->hostname());
+	}
 
 	return false;
 }
@@ -176,6 +179,7 @@ PopSightingStore::get_sighting_range(time_t full_secs,
 	MapKey key;
 	key.full_secs = full_secs;
 	key.tracker_id = tracker_id;
+	key.base_station = NULL;
 
 	range.first = the_map_.lower_bound(key);
 
@@ -196,6 +200,8 @@ PopSightingStore::get_sighting_range(time_t full_secs,
 // Returns a unique base station pointer for the given hostname.
 const PopBaseStation* PopSightingStore::GetBaseStation(const string& hostname)
 {
+	assert(!hostname.empty());
+
 	mutex::scoped_lock lock(mtx_);
 
 	const pair<unordered_map<string, PopBaseStation*>::iterator, bool>
