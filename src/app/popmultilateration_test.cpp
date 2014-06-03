@@ -11,7 +11,7 @@
 #define BOOST_TEST_DYN_LINK
 
 // see http://www.alittlemadness.com/2009/03/31/c-unit-testing-with-boosttest/ for more info
-#define BOOST_TEST_MODULE GeoHelperTest
+#define BOOST_TEST_MODULE PopMultilaterationTest
 
 #include <stdint.h>
 #include <stdio.h>
