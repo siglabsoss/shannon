@@ -16,15 +16,7 @@ using std::endl;
 
 main()
 {
-// originals
-//double ti=86320708;  double tk=67335895; double tj=75293013; double tl=78283279;
-//double xi=-15102069; double xk=15338349; double xj=0;        double xl=26566800;
-//double yi=21482069;  double yk=15338349; double yj=6380000;  double yl=0;
-//double zi=3683495;   double zk=15338349; double zj=25789348; double zl=0;
-
-// mobile 3683495, 3683495, 3683495
-
-double ti=86320708;  double tk=67335914; double tj=75293013; double tl=78283279;
+double ti=86320708;  double tk=67335895; double tj=75293013; double tl=78283279;
 double xi=-15102069; double xk=15338349; double xj=0;        double xl=26566800;
 double yi=21482069;  double yk=15338349; double yj=6380000;  double yl=0;
 double zi=3683495;   double zk=15338349; double zj=25789348; double zl=0;
@@ -41,8 +33,8 @@ double xik=xi-xk; double yji=yj-yi; double yki=yk-yi; double yjk=yj-yk;
 double ylk=yl-yk; double yik=yi-yk; double zji=zj-zi; double zki=zk-zi;
 double zik=zi-zk; double zjk=zj-zk; double zlk=zl-zk;
 
-double rij=abs((100000*(ti-tj))/333564.095); double rik=abs((100000*(ti-tk))/333564.095);
-double rkj=abs((100000*(tk-tj))/333564.095); double rkl=abs((100000*(tk-tl))/333564.095);
+double rij=abs((100000*(ti-tj))/333564); double rik=abs((100000*(ti-tk))/333564);
+double rkj=abs((100000*(tk-tj))/333564); double rkl=abs((100000*(tk-tl))/333564);
 
 double s9 =rik*xji-rij*xki; double s10=rij*yki-rik*yji; double s11=rik*zji-rij*zki;
 double s12=(rik*(rij*rij + xi*xi - xj*xj + yi*yi - yj*yj + zi*zi - zj*zj)
