@@ -106,8 +106,8 @@ void PopMultilateration::calculate_location(
 	*lng = temp_lng;
 }
 
-tuple<double, double, double> calculate_xyz(
-	const vector<tuple<double, double, double, double> >& sets)
+tuple<double, double, double> PopMultilateration::calculate_xyz(
+	const vector<tuple<double, double, double, double> >& sets) const
 {
 	assert(static_cast<int>(sets.size()) ==
 		   PopMultilateration::MIN_NUM_BASESTATIONS);
@@ -164,12 +164,31 @@ tuple<double, double, double> calculate_xyz(
 	double y1=a*x1+b*z1+c;
 	double y2=a*x2+b*z2+c;
 
-	const tuple<double, double, double> result = make_tuple(x2, y2, z2);
+	// There are two possible solutions to the multilateration equations. Choose
+	// the one that's closer to the Earth's surface.
+	tuple<double, double, double> result;
+	if (distance_from_earth_surface(x1, y1, z1) <
+		distance_from_earth_surface(x2, y2, z2)) {
+		result = make_tuple(x1, y1, z1);
+	} else {
+		result = make_tuple(x2, y2, z2);
+	}
 
 	printf("\nOutput:\n( %19.16f , %19.16f , %19.16f )\n",
 		   get<0>(result), get<1>(result), get<2>(result));
 
 	return result;
+}
+
+double PopMultilateration::distance_from_earth_surface(double x, double y,
+													   double z) const
+{
+	double lat, lng, alt;
+	tie(lat, lng, alt) = geo_helper_.turn_xyz_into_llh(
+		x * SPEED_OF_LIGHT_M_PER_S, y * SPEED_OF_LIGHT_M_PER_S,
+		z * SPEED_OF_LIGHT_M_PER_S, "wgs84");
+
+	return fabs(alt / SPEED_OF_LIGHT_M_PER_S);
 }
 
 }

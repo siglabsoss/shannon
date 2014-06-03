@@ -35,19 +35,22 @@ public:
 	void calculate_location(const std::vector<PopSighting>& sightings,
 							double* lat, double* lng) const;
 
+	// The following method is public so that it can be called from tests.
+	//
+	// Given sets of base station coordinates (x, y, z, frac_secs), returns the
+	// (x, y, z) coordinates of the tracker.  All distances are measured in
+	// light-seconds.
+	//
+	// Prerequisite: sets.size() == MIN_NUM_BASESTATIONS
+	boost::tuple<double, double, double> calculate_xyz(
+		const std::vector<boost::tuple<double, double, double, double> >& sets)
+		const;
+
 private:
+	double distance_from_earth_surface(double x, double y, double z) const;
+
 	const GeoHelper geo_helper_;
 };
-
-// The following function is exposed so that it can be called from tests.
-
-// Given sets of base station coordinates (x, y, z, frac_secs), returns the
-// (x, y, z) coordinates of the tracker.  All distances are measured in
-// light-seconds.
-//
-// Prerequisite: sets.size() == 5
-boost::tuple<double, double, double> calculate_xyz(
-	const std::vector<boost::tuple<double, double, double, double> >& sets);
 
 }
 
