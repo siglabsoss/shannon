@@ -189,6 +189,10 @@ tuple<double, double, double> PopMultilateration::calculate_xyz(
 		   a, b, c, d, e, f, g, h, i, j, k, l, m, n, o);
 */
 
+	printf("\nPossible Solutions:\n( %19.16f , %19.16f , %19.16f )\n"
+		   "( %19.16f , %19.16f , %19.16f )\n",
+		   x1, y1, z1, x2, y2, z2);
+
 	// There are two possible solutions to the multilateration equations. Choose
 	// the one that's closer to the Earth's surface.
 	tuple<double, double, double> result;
