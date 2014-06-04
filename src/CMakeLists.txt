@@ -24,6 +24,7 @@ set(shared_SOURCES
 	core/popsource.cpp
 	core/objectstash.cpp
 	core/config.cpp
+	core/utilities.cpp
 	net/popnetwork.cpp
 	../3rd/frozen/frozen.c
 	../3rd/b64/b64.c
