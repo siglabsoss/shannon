@@ -136,8 +136,10 @@ tuple<double, double, double> PopMultilateration::calculate_xyz(
 	double ylk=yl-yk; double yik=yi-yk; double zji=zj-zi; double zki=zk-zi;
 	double zik=zi-zk; double zjk=zj-zk; double zlk=zl-zk;
 
-	double rij=fabs(ti-tj); double rik=fabs(ti-tk);
-	double rkj=fabs(tk-tj); double rkl=fabs(tk-tl);
+	// Don't take the absolute value of these deltas. (The Bucher and Misra
+	// paper is wrong.)
+	double rij=ti-tj; double rik=ti-tk;
+	double rkj=tk-tj; double rkl=tk-tl;
 
 	double s9 =rik*xji-rij*xki; double s10=rij*yki-rik*yji; double s11=rik*zji-rij*zki;
 	double s12=(rik*(rij*rij + xi*xi - xj*xj + yi*yi - yj*yj + zi*zi - zj*zj)
@@ -163,6 +165,29 @@ tuple<double, double, double> PopMultilateration::calculate_xyz(
 	double x2=g*z2+h;
 	double y1=a*x1+b*z1+c;
 	double y2=a*x2+b*z2+c;
+
+/*
+	printf("\nxi == %.16f\nyi == %.16f\nzi == %.16f\nti == %.16f\n"
+		   "xj == %.16f\nyj == %.16f\nzj == %.16f\ntj == %.16f\n"
+		   "xk == %.16f\nyk == %.16f\nzk == %.16f\ntk == %.16f\n"
+		   "xl == %.16f\nyl == %.16f\nzl == %.16f\ntl == %.16f\n",
+		   xi, yi, zi, ti, xj, yj, zj, tj, xk, yk, zk, tk, xl, yl, zl, tl);
+
+	printf("\nxji == %.16f\nxki == %.16f\nxjk == %.16f\nxlk == %.16f\n"
+		   "xik == %.16f\nyji == %.16f\nyki == %.16f\nyjk == %.16f\n"
+		   "ylk == %.16f\nyik == %.16f\nzji == %.16f\nzki == %.16f\n"
+		   "zik == %.16f\nzjk == %.16f\nzlk == %.16f\n",
+		   xji, xki, xjk, xlk, xik, yji, yki, yjk, ylk, yik, zji, zki, zik, zjk,
+		   zlk);
+
+	printf("\nrij == %.16f\nrik == %.16f\nrkj == %.16f\nrkl == %.16f\n",
+		   rij, rik, rkj, rkl);
+
+	printf("\na == %.16f\nb == %.16f\nc == %.16f\nd == %.16f\ne == %.16f\n"
+		   "f == %.16f\ng == %.16f\nh == %.16f\ni == %.16f\nj == %.16f\n"
+		   "k == %.16f\nl == %.16f\nm == %.16f\nn == %.16f\no == %.16f\n",
+		   a, b, c, d, e, f, g, h, i, j, k, l, m, n, o);
+*/
 
 	// There are two possible solutions to the multilateration equations. Choose
 	// the one that's closer to the Earth's surface.

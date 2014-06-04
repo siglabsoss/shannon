@@ -103,3 +103,22 @@ BOOST_AUTO_TEST_CASE(calculate_xyz)
 	BOOST_CHECK_CLOSE(y, -0.0166361189780165, 0.000000001);
 	BOOST_CHECK_CLOSE(z,  0.0132170369676211, 0.000000001);
 }
+
+// Same as the previous test, but swap the order of the last two base stations.
+BOOST_AUTO_TEST_CASE(swap_base_stations_2_and_3)
+{
+	PopMultilateration multilateration;
+
+	vector<tuple<double, double, double, double> > sets(4);
+	sets[0] = make_tuple(-0.0041984789346775, -0.0158289403417070, 0.0135357198108165, 0.0042167957666482);
+	sets[1] = make_tuple(-0.0083989773737108, -0.0155259839007040, 0.0118359595092561, 0.0085134727938702);
+	sets[2] = make_tuple( 0.0032525731902556, -0.0188914824983019, 0.0091975863743956, 0.0056828758960522);
+	sets[3] = make_tuple(-0.0017111922827391, -0.0136369181952944, 0.0161856041543917, 0.0045271098298357);
+
+	double x, y, z;
+	tie(x, y, z) = multilateration.calculate_xyz(sets);
+
+	BOOST_CHECK_CLOSE(x, -0.0000719464396933, 0.000000001);
+	BOOST_CHECK_CLOSE(y, -0.0166361189780165, 0.000000001);
+	BOOST_CHECK_CLOSE(z,  0.0132170369676211, 0.000000001);
+}
