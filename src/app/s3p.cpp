@@ -129,8 +129,11 @@ int main(int argc, char *argv[])
 
 	PopTokenizer tokenizer;
 
+	PopWebhook hook(0);
+	hook.init();
+
 	PopMultilateration multilateration;
-	PopTrackerLocationStore tracker_location_store;
+	PopTrackerLocationStore tracker_location_store(&hook);
 	PopSightingStore sighting_store(&multilateration, &tracker_location_store);
 
 	PopGravitinoParser gravitinoParser(0, &sighting_store);
@@ -139,10 +142,6 @@ int main(int argc, char *argv[])
 
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();
-
-	//PopWebhook hook(0);
-
-	//gravitinoParser.tx.connect(hook);
 
 //	file.connect(tokenizer);
 

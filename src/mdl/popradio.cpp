@@ -22,11 +22,7 @@ std::string PopRadio::seralize() const
 	json::object o;
 	o.insert("lat", lat)
             		 .insert("lng", lng)
-            		 .insert("bat_current", bat_current)
-            		 .insert("bat_voltage", bat_voltage)
-            		 .insert("serial", serial)
-            		 .insert("temp", temp)
-            		 .insert("status", status);
+            		 .insert("serial", serial);
 
 	//
 //	std::cout << json::pretty_print(o) << std::endl;

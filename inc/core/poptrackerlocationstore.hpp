@@ -16,18 +16,24 @@
 namespace pop
 {
 
+class PopWebhook;
+
 // In-memory store of tracker locations that have been computed by
 // multilateration. The actual computation is performed in the
 // PopMultilateration class.
+//
+// TODO(snyderek): Is this class necessary? Currently, all it does is forward
+// the tracker location to the web hook.
 class PopTrackerLocationStore
 {
 public:
-	PopTrackerLocationStore();
+	explicit PopTrackerLocationStore(PopWebhook* webhook);
 
 	void report_tracker_location(uint64_t tracker_id, time_t full_secs,
 								 double lat, double lng);
 
 private:
+	PopWebhook* const webhook_;
 };
 
 }
