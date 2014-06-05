@@ -122,6 +122,11 @@ void PopJsonRPC::parse()
 	}
 
 	// "id" key is optional.  It's absence means the message will not get a response
+	idTok = find_json_token(arr, "id");
+	if( !(idTok && idTok->type == JSON_TYPE_NUMBER) )
+	{
+		idTok = 0;
+	}
 
 	execute(methodTok, paramsTok, idTok, arr, str);
 }
