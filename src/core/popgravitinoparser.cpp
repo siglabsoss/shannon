@@ -10,6 +10,7 @@
 #include "core/popsighting.hpp"
 #include "core/popsightingstore.hpp"
 #include "core/basestationfreq.h"
+#include "core/utilities.hpp"
 #include "b64/b64.h"
 #include "core/util.h"
 
@@ -17,20 +18,6 @@
 
 using namespace std;
 
-namespace
-{
-
-template<typename T>
-T parseNumber(const string& in)
-{
-	T result;
-	stringstream ss;
-	ss << in;
-	ss >> result;
-	return result;
-}
-
-}
 
 namespace pop
 {
