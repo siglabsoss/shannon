@@ -80,6 +80,7 @@ int main(int argc, char *argv[])
 	json.wakeup();
 	updates.tx.start_thread();
 
+//	rpc.mock();
 
 
 
