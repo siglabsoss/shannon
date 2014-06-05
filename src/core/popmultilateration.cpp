@@ -217,6 +217,8 @@ double PopMultilateration::distance_from_earth_surface(double x, double y,
 		x * SPEED_OF_LIGHT_M_PER_S, y * SPEED_OF_LIGHT_M_PER_S,
 		z * SPEED_OF_LIGHT_M_PER_S, "wgs84");
 
+	printf("lat == %.16f, lng == %.16f, alt == %.16f\n", lat, lng, alt);
+	
 	return fabs(alt / SPEED_OF_LIGHT_M_PER_S);
 }
 
