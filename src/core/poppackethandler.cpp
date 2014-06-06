@@ -34,43 +34,35 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 		}
 	}
 
-//	if( method.compare("utc_rq") == 0 )
-//	{
-//		p0 = find_json_token(arr, "params[0]");
-//		if( p0 && p0->type == JSON_TYPE_STRING )
-//		{
-//			cout << "Serial: " << FROZEN_GET_STRING(p0) << endl;
-//
-//
-//			if( rpc )
-//			{
-//
-//				ota_packet_t packet;
-//				ota_packet_zero_fill(&packet);
-//				//strcpy(packet.data, "{\"method\":\"xtal_set_pwm_counts\",\"params\":[8448]}");
-//
-//				PopTimestamp now = get_microsec_system_time();
-//
-//				uint64_t full = now.get_full_secs();
-//				uint64_t fracns = now.get_frac_secs()*1000000000;
-//
-//
-//				snprintf(packet.data, (sizeof(packet.data)-1), "{\"result\":[%lu, %lu]}", full, fracns);
-//
-//				ota_packet_prepare_tx(&packet);
-//				//				printf("Checksum ok? %d\r\n", ota_packet_checksum_good(&packet)); // this should always be 1
-//
-//				// the null terminated character is not transmitted
-//
-//				rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
-//			}
-//
-//
-//
-//
-////			respond_int(0, methodId);
-//		}
-//	}
+	if( method.compare("utc_rq") == 0 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+			cout << "Serial: " << FROZEN_GET_STRING(p0) << endl;
+
+
+			// Traditionally all ota packets are replied with a "tx" rpc here.
+			// but in this case we want the basestation to behave smart, so we actually send an rpc
+
+			int32_t original_id = -1;
+
+			if( idTok )
+			{
+				original_id = parseNumber<int32_t>(FROZEN_GET_STRING(idTok));
+			}
+
+			char buf[128];
+
+			// we encapsulate the original rpc id so that the basestation can correctly reply
+			snprintf(buf, 128, "{\"method\":\"bs_send_utc_reply\",\"params\":[%d, %d, %ld]}", original_id, txTime, pitTxTime);
+
+			printf("\r\n");
+			puts(buf);
+
+			rpc->send_rpc(buf, strlen(buf));
+		}
+	}
 
 
 //	if( method.compare("rx") == 0 )
@@ -170,6 +162,11 @@ void PopPacketHandler::process_ota_packet(ota_packet_t* p, uint32_t txTime, uint
 	}
 
 	// "id" key is optional.  It's absence means the message will not get a response
+	idTok = find_json_token(arr, "id");
+	if( !(idTok && idTok->type == JSON_TYPE_NUMBER) )
+	{
+		idTok = 0;
+	}
 
 	execute(methodTok, paramsTok, idTok, arr, p->data, txTime, pitTxTime);
 }
