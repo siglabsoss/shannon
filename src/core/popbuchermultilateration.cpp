@@ -39,8 +39,6 @@ namespace
 
 // The speed of light in meters per second
 const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
-// Approximate radius of the Earth in meters
-const double EARTH_RADIUS_M = 6371000.0;
 
 }  // namespace
 
