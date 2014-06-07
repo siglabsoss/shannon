@@ -31,18 +31,13 @@ namespace pop
 namespace
 {
 
-// The speed of light in meters per second
-const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
-// Approximate radius of the Earth in meters
-const double EARTH_RADIUS_M = 6371000.0;
-
 // Given a distance measured along a great circle between two points on the
 // Earth's surface, returns the straight-line distance between the two points in
 // Euclidean space. This function assumes that the Earth is spherical.
 double spherical_distance_to_linear(double dist_light_seconds)
 {
 	static const double EARTH_DIAMETER_LIGHT_SECONDS =
-		EARTH_RADIUS_M * 2.0 / SPEED_OF_LIGHT_M_PER_S;
+		GeoHelper::EARTH_RADIUS_M * 2.0 / GeoHelper::SPEED_OF_LIGHT_M_PER_S;
 
 	return sin(dist_light_seconds / EARTH_DIAMETER_LIGHT_SECONDS) *
 		EARTH_DIAMETER_LIGHT_SECONDS;
@@ -81,9 +76,9 @@ bool PopGeoLocation::calculate_location(const vector<PopSighting>& sightings,
 
 		const double t = spherical_distance_to_linear(sighting.frac_secs);
 
-		sets[i] = make_tuple(x / SPEED_OF_LIGHT_M_PER_S,
-							 y / SPEED_OF_LIGHT_M_PER_S,
-							 z / SPEED_OF_LIGHT_M_PER_S,
+		sets[i] = make_tuple(x / GeoHelper::SPEED_OF_LIGHT_M_PER_S,
+							 y / GeoHelper::SPEED_OF_LIGHT_M_PER_S,
+							 z / GeoHelper::SPEED_OF_LIGHT_M_PER_S,
 							 t);
 	}
 
@@ -97,9 +92,9 @@ bool PopGeoLocation::calculate_location(const vector<PopSighting>& sightings,
 
 	double temp_lat, temp_lng, temp_alt;
 	tie(temp_lat, temp_lng, temp_alt) = geo_helper_->turn_xyz_into_llh(
-		tracker_x * SPEED_OF_LIGHT_M_PER_S,
-		tracker_y * SPEED_OF_LIGHT_M_PER_S,
-		tracker_z * SPEED_OF_LIGHT_M_PER_S,
+		tracker_x * GeoHelper::SPEED_OF_LIGHT_M_PER_S,
+		tracker_y * GeoHelper::SPEED_OF_LIGHT_M_PER_S,
+		tracker_z * GeoHelper::SPEED_OF_LIGHT_M_PER_S,
 		"wgs84");
 
 	*lat = temp_lat;

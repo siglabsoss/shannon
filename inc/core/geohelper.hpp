@@ -13,6 +13,11 @@ namespace pop
 class GeoHelper
 {
 public:
+	// The speed of light in meters per second
+	static const double SPEED_OF_LIGHT_M_PER_S;
+	// Approximate radius of the Earth in meters
+	static const double EARTH_RADIUS_M;
+
 	GeoHelper();
 
 	boost::tuple<double, double, double> turn_llh_into_xyz(

@@ -38,6 +38,9 @@ using std::string;
 namespace pop
 {
 
+const double GeoHelper::SPEED_OF_LIGHT_M_PER_S = 299792458.0;
+const double GeoHelper::EARTH_RADIUS_M = 6371000.0;
+
 GeoHelper::GeoHelper()
 {
 	// For each co-ordinate system we do, what are the A, B and E2 values?

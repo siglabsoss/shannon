@@ -34,14 +34,6 @@ namespace pop
 
 const int PopBucherMultilateration::MIN_NUM_BASESTATIONS = 4;
 
-namespace
-{
-
-// The speed of light in meters per second
-const double SPEED_OF_LIGHT_M_PER_S = 299792458.0;
-
-}  // namespace
-
 PopBucherMultilateration::PopBucherMultilateration(const GeoHelper* geo_helper)
 	: geo_helper_(geo_helper)
 {
@@ -158,12 +150,14 @@ double PopBucherMultilateration::distance_from_earth_surface(double x, double y,
 {
 	double lat, lng, alt;
 	tie(lat, lng, alt) = geo_helper_->turn_xyz_into_llh(
-		x * SPEED_OF_LIGHT_M_PER_S, y * SPEED_OF_LIGHT_M_PER_S,
-		z * SPEED_OF_LIGHT_M_PER_S, "wgs84");
+		x * GeoHelper::SPEED_OF_LIGHT_M_PER_S,
+		y * GeoHelper::SPEED_OF_LIGHT_M_PER_S,
+		z * GeoHelper::SPEED_OF_LIGHT_M_PER_S,
+		"wgs84");
 
 	printf("lat == %.16f, lng == %.16f, alt == %.16f\n", lat, lng, alt);
 
-	return fabs(alt / SPEED_OF_LIGHT_M_PER_S);
+	return fabs(alt / GeoHelper::SPEED_OF_LIGHT_M_PER_S);
 }
 
 }
