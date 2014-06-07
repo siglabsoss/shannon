@@ -24,8 +24,10 @@
 #include "net/popnetwork.hpp"
 #include "net/popwebhook.hpp"
 #include "mdl/poppeak.hpp"
+#include "core/geohelper.hpp"
+#include "core/popbuchermultilateration.hpp"
+#include "core/popgeolocation.hpp"
 #include "core/popgravitinoparser.hpp"
-#include "core/popmultilateration.hpp"
 #include "core/popsightingstore.hpp"
 #include "core/poptrackerlocationstore.hpp"
 
@@ -132,9 +134,11 @@ int main(int argc, char *argv[])
 	PopWebhook hook(0);
 	hook.init();
 
-	PopMultilateration multilateration;
+	GeoHelper geo_helper;
+	PopBucherMultilateration multilateration(&geo_helper);
+	PopGeoLocation geo_location(&geo_helper, &multilateration);
 	PopTrackerLocationStore tracker_location_store(&hook);
-	PopSightingStore sighting_store(&multilateration, &tracker_location_store);
+	PopSightingStore sighting_store(&geo_location, &tracker_location_store);
 
 	PopGravitinoParser gravitinoParser(0, &sighting_store);
 

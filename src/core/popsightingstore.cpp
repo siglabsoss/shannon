@@ -21,7 +21,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include "core/popbasestation.hpp"
-#include "core/popmultilateration.hpp"
+#include "core/popgeolocation.hpp"
 #include "core/popsighting.hpp"
 #include "core/popsightingstore.hpp"
 #include "core/poptrackerlocationstore.hpp"
@@ -37,12 +37,12 @@ namespace pop
 {
 
 PopSightingStore::PopSightingStore(
-	const PopMultilateration* multilateration,
+	const PopGeoLocation* geo_location,
 	PopTrackerLocationStore* tracker_location_store)
-	: multilateration_(multilateration),
+	: geo_location_(geo_location),
 	  tracker_location_store_(tracker_location_store)
 {
-	assert(multilateration != NULL);
+	assert(geo_location != NULL);
 	assert(tracker_location_store != NULL);
 }
 
@@ -112,9 +112,8 @@ bool PopSightingStore::MapKeyCompare::operator()(const MapKey& a,
 	return false;
 }
 
-// Builds a vector of all sightings for the given time and tracker. If the
-// number of sightings is at least PopMultilateration::MIN_NUM_BASESTATIONS,
-// performs multilateration and stores the computed tracker location.
+// Builds a vector of all sightings for the given time and tracker, performs
+// multilateration, and stores the computed tracker location.
 void PopSightingStore::aggregate_sightings(time_t full_secs,
 										   uint64_t tracker_id)
 {
@@ -146,13 +145,9 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 		}
 	}
 
-	if (sightings.size() >=
-		static_cast<vector<PopSighting>::size_type>(
-			PopMultilateration::MIN_NUM_BASESTATIONS)) {
-		double lat = 0.0;
-		double lng = 0.0;
-		multilateration_->calculate_location(sightings, &lat, &lng);
-
+	double lat = 0.0;
+	double lng = 0.0;
+	if (geo_location_->calculate_location(sightings, &lat, &lng)) {
 		tracker_location_store_->report_tracker_location(tracker_id, full_secs,
 														 lat, lng);
 	}

@@ -40,8 +40,9 @@ set(all_SOURCES
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
 	core/geohelper.cpp
+	core/popbuchermultilateration.cpp
+	core/popgeolocation.cpp
 	core/popgravitinoparser.cpp
-	core/popmultilateration.cpp
 	core/popsightingstore.cpp
 	core/poptrackerlocationstore.cpp
 	net/popwebhook.cpp
@@ -121,13 +122,16 @@ target_link_libraries(gravitino ${Boost_LIBRARIES})
 add_executable(geohelper_test ${all_SOURCES} app/geohelper_test.cpp)
 target_link_libraries(geohelper_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
-add_executable(popmultilateration_test ${all_SOURCES} app/popmultilateration_test.cpp)
-target_link_libraries(popmultilateration_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+add_executable(popbuchermultilateration_test ${all_SOURCES} app/popbuchermultilateration_test.cpp)
+target_link_libraries(popbuchermultilateration_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+
+add_executable(popgeolocation_test ${all_SOURCES} app/popgeolocation_test.cpp)
+target_link_libraries(popgeolocation_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
 
 
 # list of the different files that contain main()
-set(executable_list shannon s3p gravitino geohelper_test popmultilateration_test)
+set(executable_list shannon s3p gravitino geohelper_test popbuchermultilateration_test popgeolocation_test)
 
 # iterate and build each executuable, and add make runx shortcut
 foreach(executable ${executable_list}) 

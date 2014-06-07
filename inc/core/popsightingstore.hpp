@@ -24,7 +24,7 @@ namespace pop
 {
 
 class PopBaseStation;
-class PopMultilateration;
+class PopGeoLocation;
 class PopTrackerLocationStore;
 struct PopSighting;
 
@@ -32,7 +32,7 @@ struct PopSighting;
 class PopSightingStore
 {
 public:
-	PopSightingStore(const PopMultilateration* multilateration,
+	PopSightingStore(const PopGeoLocation* geo_location,
 					 PopTrackerLocationStore* tracker_location_store);
 	~PopSightingStore();
 
@@ -78,7 +78,7 @@ private:
 
 	const PopBaseStation* GetBaseStation(const std::string& hostname);
 
-	const PopMultilateration* const multilateration_;
+	const PopGeoLocation* const geo_location_;
 	PopTrackerLocationStore* const tracker_location_store_;
 
 	MapType the_map_;
