@@ -41,6 +41,7 @@ set(all_SOURCES
 	net/popnetworkjson.cpp
 	core/geohelper.cpp
 	core/popbuchermultilateration.cpp
+	core/popfangmultilateration.cpp
 	core/popgeolocation.cpp
 	core/popgravitinoparser.cpp
 	core/popsightingstore.cpp
