@@ -24,6 +24,14 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 	std::string method = FROZEN_GET_STRING(methodTok);
 	const struct json_token *params, *p0, *p1, *p2;
 
+	int32_t original_id = -1;
+
+	if( idTok )
+	{
+		original_id = parseNumber<int32_t>(FROZEN_GET_STRING(idTok));
+	}
+
+
 	if( method.compare("log") == 0 )
 	{
 		p0 = find_json_token(arr, "params[0]");
@@ -63,6 +71,35 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			rpc->send_rpc(buf, strlen(buf));
 		}
 	}
+
+	if( method.compare("slot_rq") == 0  && original_id != -1 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+			ota_packet_t packet;
+			ota_packet_zero_fill(&packet);
+			snprintf(packet.data, sizeof(packet.data), "{\"result\":[%d],\"id\":%d}", 1, original_id);
+			ota_packet_prepare_tx(&packet);
+
+			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+		}
+	}
+
+	if( method.compare("poll") == 0 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+			ota_packet_t packet;
+			ota_packet_zero_fill(&packet);
+			snprintf(packet.data, sizeof(packet.data), "{}");
+			ota_packet_prepare_tx(&packet);
+
+			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+		}
+	}
+
 
 
 //	if( method.compare("rx") == 0 )
