@@ -39,6 +39,7 @@ public:
 
 	void respond_int(int value, int methodId);
 	void send_rpc(const char *rpc_string, size_t length);
+	uint16_t rpc_get_autoinc(void);
 };
 
 }

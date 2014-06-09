@@ -1,5 +1,5 @@
-#ifndef __POP_GRAV_RPC_HPP_
-#define __POP_GRAV_RPC_HPP_
+#ifndef __POP_ARTEMIS_RPC_HPP_
+#define __POP_ARTEMIS_RPC_HPP_
 
 #include <stdint.h>
 

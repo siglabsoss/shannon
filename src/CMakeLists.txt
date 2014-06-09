@@ -26,6 +26,7 @@ set(shared_SOURCES
 	core/config.cpp
 	core/utilities.cpp
 	net/popnetwork.cpp
+	net/popnetworkwrapped.cpp
 	../3rd/frozen/frozen.c
 	../3rd/b64/b64.c
 	core/popjsonrpc.cpp
@@ -54,6 +55,7 @@ set(gravatino_SOURCES
 	core/popparsegps.cpp
 	core/popgpsdevice.cpp
 	core/popartemisrpc.cpp
+	core/pops3prpc.cpp
 	core/poppackethandler.cpp
 	dsp/prota/popsparsecorrelate.c
 )

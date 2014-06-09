@@ -74,16 +74,18 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 
 	if( method.compare("slot_rq") == 0  && original_id != -1 )
 	{
-		p0 = find_json_token(arr, "params[0]");
-		if( p0 && p0->type == JSON_TYPE_STRING )
-		{
-			ota_packet_t packet;
-			ota_packet_zero_fill(&packet);
-			snprintf(packet.data, sizeof(packet.data), "{\"result\":[%d],\"id\":%d}", 1, original_id);
-			ota_packet_prepare_tx(&packet);
+//		p0 = find_json_token(arr, "params[0]");
+//		if( p0 && p0->type == JSON_TYPE_STRING )
+//		{
+//			ota_packet_t packet;
+//			ota_packet_zero_fill(&packet);
+//			snprintf(packet.data, sizeof(packet.data), "{\"result\":[%d],\"id\":%d}", 1, original_id);
+//			ota_packet_prepare_tx(&packet);
+//
+//			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+//		}
 
-			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
-		}
+		s3p->forward_packet(str, strlen(str), txTime, pitTxTime);
 	}
 
 	if( method.compare("poll") == 0 )

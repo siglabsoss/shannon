@@ -26,6 +26,7 @@
 #include "core/popserial.hpp"
 #include "core/popgpsdevice.hpp"
 #include "core/popartemisrpc.hpp"
+#include "core/pops3prpc.hpp"
 #include "core/popparsegps.hpp"
 #include "core/poppackethandler.hpp"
 
@@ -72,15 +73,21 @@ int main(int argc, char *argv[])
 
 	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 0);
 
-	PopGpsDevice updates(1);
+	PopS3pRPC s3p(0);
+	handler.s3p = &s3p;
 
-	rpc.packets.connect(updates);
-	updates.tx.connect(json);
-	updates.gps = &gps;
+	s3p.tx.connect(json);
+
+//	PopGpsDevice updates(1);
+
+//	rpc.packets.connect(updates);
+//	updates.tx.connect(json);
+//	updates.gps = &gps;
 	json.wakeup();
-	updates.tx.start_thread();
+//	updates.tx.start_thread();
+//	handler.s3p = &updates;
 
-	updates.greet_s3p();
+	s3p.greet_s3p();
 
 //	rpc.mock();
 

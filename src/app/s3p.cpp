@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright 2013 PopWi Technology Group, Inc. (PTG)
+R* Copyright 2013 PopWi Technology Group, Inc. (PTG)
 *
 * This file is proprietary and exclusively owned by PTG or its associates.
 * This document is protected by international and domestic patents where
@@ -22,6 +22,7 @@
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "net/popnetwork.hpp"
+#include "net/popnetworkwrapped.hpp"
 #include "net/popwebhook.hpp"
 #include "mdl/poppeak.hpp"
 #include "core/popgravitinoparser.hpp"
@@ -125,7 +126,7 @@ int main(int argc, char *argv[])
 
 	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
-	PopNetwork<char> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
+	PopNetworkWrapped<char> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
 	PopTokenizer tokenizer;
 

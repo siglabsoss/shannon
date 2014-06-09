@@ -8,12 +8,14 @@
 #include "core/popsink.hpp"
 #include "dsp/prota/popsparsecorrelate.h"
 #include "popjsonrpc.hpp"
+#include "core/pops3prpc.hpp"
 
 
 namespace pop
 {
 
 class PopArtemisRPC;
+class PopS3pRPC;
 
 class PopPacketHandler : public PopSink<uint64_t>
 {
@@ -24,6 +26,7 @@ public:
        void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], char *str, uint32_t txTime, uint64_t pitTxTime);
        void init() {}
        PopArtemisRPC* rpc;
+       PopS3pRPC* s3p;
 
 };
 
