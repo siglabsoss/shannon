@@ -58,7 +58,7 @@ bool PopFangMultilateration::calculate_xyz(
 			   get<0>(tup), get<1>(tup), get<2>(tup), get<3>(tup));
 	}
 
-	// TODO(snyderek): Implement this.
+	// TODO(snyderek): Implement the Fang multilateration algorithm.
 
 	tuple<double, double, double> result_temp = make_tuple(0.0, 0.0, 0.0);
 
