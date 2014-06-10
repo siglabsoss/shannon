@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
 	handler.s3p = &s3p;
 
 	s3p.tx.connect(json);
+	json.connect(s3p);
 
 //	PopGpsDevice updates(1);
 

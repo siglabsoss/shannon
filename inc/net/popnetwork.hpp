@@ -167,6 +167,11 @@ public:
 		if( bytes_transferred % sizeof(DATA_TYPE) != 0 )
 			cout << "received " << bytes_transferred << " bytes which is not evenly divisible by datatype size of " << sizeof(DATA_TYPE) << ".  Discarding the last partial object!" << endl;
 
+		std::string data(recv_buffer_, bytes_transferred);
+
+		cout << "got: " << endl;
+		cout << data << endl;
+
 		// send to our sinks with no timestamps (cuz this class drops them)
 		PopSource<DATA_TYPE>::process((DATA_TYPE*) recv_buffer_, objectCount, NULL, 0);
 

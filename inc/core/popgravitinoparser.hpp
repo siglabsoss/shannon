@@ -45,6 +45,7 @@ public:
 	void rcp_log(std::string log);
 	uint16_t rpc_get_autoinc(void);
 	unsigned get_stream_index(wrapped_net_header_t &header);
+	void send_network_rpc(const char* data, size_t size, unsigned stream_index);
 
 	//PopPacketHandler* handler;
 

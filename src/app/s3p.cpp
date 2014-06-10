@@ -137,6 +137,7 @@ int main(int argc, char *argv[])
 	PopGravitinoParser gravitinoParser(0, &sighting_store);
 
 	basestationConnection.connect(gravitinoParser);
+	gravitinoParser.tx.connect(basestationConnection);
 
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();

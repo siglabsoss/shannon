@@ -87,6 +87,8 @@ void PopGravitinoParser::execute(const struct json_token *methodTok, const struc
 		string message = os.str();
 
 		cout << message << endl;
+
+		send_network_rpc(message.c_str(), message.length(), stream_index);
 	}
 }
 
@@ -118,11 +120,6 @@ void PopGravitinoParser::process(const char* data, size_t size, const PopTimesta
 	unsigned index = get_stream_index(header);
 
 	std::vector<char>* stream = &streams[index];
-
-
-
-
-
 
 
 	const char* real_data = data + sizeof(wrapped_net_header_t);
@@ -214,6 +211,25 @@ uint16_t PopGravitinoParser::rpc_get_autoinc(void)
 {
 	static uint16_t val = 1;
 	return val++;
+}
+
+// add the correct header and send.  This should only be used when tx is connected to a PopNetworkWrapped class
+void PopGravitinoParser::send_network_rpc(const char* data, size_t size, unsigned stream_index)
+{
+	// data, header, and two nulls
+	size_t final_size = size+sizeof(wrapped_net_header_t)+2;
+
+	char copy[final_size];
+
+	wrapped_net_header_t header = remotes[stream_index];
+
+
+
+	memcpy(copy, &header, sizeof(wrapped_net_header_t));
+	memcpy(copy+1+sizeof(wrapped_net_header_t), data, size);
+	copy[final_size-1] = copy[sizeof(wrapped_net_header_t)] = '\0';
+
+	this->tx.process(copy, final_size);
 }
 
 
