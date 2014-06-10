@@ -69,7 +69,7 @@ void PopSightingStore::add_sighting(const PopSighting& sighting)
 	MapKey key;
 	key.full_secs = sighting.full_secs;
 	key.tracker_id = sighting.tracker_id;
-	key.base_station = GetBaseStation(sighting.hostname);
+	key.base_station = get_base_station(sighting.hostname);
 
 	MapValue* const value = new MapValue();
 	value->lat = sighting.lat;
@@ -195,7 +195,7 @@ PopSightingStore::get_sighting_range(time_t full_secs,
 }
 
 // Returns a unique base station pointer for the given hostname.
-const PopBaseStation* PopSightingStore::GetBaseStation(const string& hostname)
+const PopBaseStation* PopSightingStore::get_base_station(const string& hostname)
 {
 	assert(!hostname.empty());
 

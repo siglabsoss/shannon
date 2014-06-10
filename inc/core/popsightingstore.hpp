@@ -76,7 +76,7 @@ private:
 	std::pair<MapType::const_iterator, MapType::const_iterator>
 		get_sighting_range(time_t full_secs, uint64_t tracker_id) const;
 
-	const PopBaseStation* GetBaseStation(const std::string& hostname);
+	const PopBaseStation* get_base_station(const std::string& hostname);
 
 	const PopGeoLocation* const geo_location_;
 	PopTrackerLocationStore* const tracker_location_store_;
