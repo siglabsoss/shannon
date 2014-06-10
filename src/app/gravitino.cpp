@@ -9,7 +9,12 @@
 
 
 #include <iostream>
+#include <zmq.hpp>
+#include <string>
+#include <iostream>
+#include <unistd.h>
 //#include <complex>
+//#include "zhelpers.hpp"
 
 //#include <boost/bind.hpp>
 //#include <boost/program_options.hpp>
@@ -29,6 +34,7 @@
 #include "core/pops3prpc.hpp"
 #include "core/popparsegps.hpp"
 #include "core/poppackethandler.hpp"
+#include "core/popchannelmap.hpp"
 
 
 
@@ -39,6 +45,33 @@ int main(int argc, char *argv[])
 	using namespace pop;
 	using namespace std;
 	using namespace rbx;
+
+
+
+
+//	 //  Prepare our context and subscriber
+//	    zmq::context_t context(1);
+//	    zmq::socket_t subscriber (context, ZMQ_SUB);
+//	    subscriber.connect("tcp://localhost:5563");
+//	    subscriber.setsockopt( ZMQ_SUBSCRIBE, "B", 1);
+//
+//	    while (1) {
+//
+//	        //  Read envelope with address
+//	        std::string address = s_recv (subscriber);
+//	        //  Read message contents
+//	        std::string contents = s_recv (subscriber);
+//
+//	        std::cout << "[" << address << "] " << contents << std::endl;
+//	    }
+//	    return 0;
+//
+
+	cout << "grav awake" << endl;
+	zmq::context_t context(1); // only 1 per thread
+	PopChannelMap channel_map(false, context);
+	channel_map.poll();
+
 
 
 

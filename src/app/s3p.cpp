@@ -10,6 +10,13 @@ R* Copyright 2013 PopWi Technology Group, Inc. (PTG)
 
 #include <iostream>
 #include <complex>
+#include <zmq.hpp>
+#include <string>
+#include <iostream>
+#include <unistd.h>
+#include <sstream>
+
+//#include "zhelpers.hpp"
 
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
@@ -29,6 +36,7 @@ R* Copyright 2013 PopWi Technology Group, Inc. (PTG)
 #include "core/popmultilateration.hpp"
 #include "core/popsightingstore.hpp"
 #include "core/poptrackerlocationstore.hpp"
+#include "core/popchannelmap.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
@@ -36,6 +44,8 @@ using namespace boost;
 using namespace pop;
 using namespace std;
 using namespace rbx;
+
+
 
 namespace po = boost::program_options;
 
@@ -89,6 +99,46 @@ int main(int argc, char *argv[])
 		"    Command-line options override program defaults." << endl << endl;
 		return ~0;
 	}
+
+	zmq::context_t context(1); // only 1 per thread
+
+	PopChannelMap channel_map(true, context);
+
+	cout << "after sleep " << endl;
+	sleep(5);
+	cout << "after sleep " << endl;
+
+	channel_map.get_block(5);
+	channel_map.get_block(2);
+	channel_map.get_block(16);
+//	channel_map.get_block(1);
+//	channel_map.get_block(1);
+//	channel_map.get_block(1);
+//	channel_map.get_block(1);
+
+
+
+
+
+
+
+
+//	 //  Prepare our context and publisher
+//	    zmq::context_t context(1);
+//	    zmq::socket_t publisher(context, ZMQ_PUB);
+//	    publisher.bind("tcp://*:5563");
+//
+//	    while (1) {
+//	        //  Write two messages, each with an envelope and content
+//	        s_sendmore (publisher, "A");
+//	        s_send (publisher, "We don't want to see this B");
+//	        s_sendmore (publisher, "B");
+//	        s_send (publisher, "We would like to see this");
+//	        sleep (1);
+//	    }
+//	    return 0;
+
+
 
 
 

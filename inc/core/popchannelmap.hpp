@@ -12,18 +12,22 @@
 
 #include <stdint.h>
 #include <time.h>
+#include <zmq.hpp>
+#include <iostream>
+#include <unistd.h>
+#include <sstream>
 
 #include <map>
 #include <string>
-//#include <tr1/unordered_map>
 #include <utility>
 
 #include <boost/thread/mutex.hpp>
 
+
+
 namespace pop
 {
 
-//class PopBaseStation;
 //class PopMultilateration;
 //class PopTrackerLocationStore;
 //struct PopSighting;
@@ -32,13 +36,15 @@ namespace pop
 class PopChannelMap
 {
 public:
-	PopChannelMap();
+	PopChannelMap(bool, zmq::context_t&);
 	~PopChannelMap();
 
 //	void add_sighting(const PopSighting& sighting);
 
 	bool map_full();
 	bool get_block(unsigned count);
+	void poll();
+
 
 
 private:
@@ -54,6 +60,8 @@ private:
 		uint32_t basestation;
 	};
 
+	void set(MapKey key, MapValue val);
+
 	// Custom less-than comparison function for the map keys.
 	struct MapKeyCompare
 	{
@@ -67,6 +75,9 @@ private:
 //		get_sighting_range(time_t full_secs, uint64_t tracker_id) const;
 
 
+	bool master; // this instance is the source of truth?
+	zmq::socket_t* publisher;
+	zmq::socket_t* subscriber;
 
 	MapType the_map_;
 //	std::tr1::unordered_map<std::string, PopBaseStation*> base_stations_;

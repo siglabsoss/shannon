@@ -17,11 +17,16 @@
 //#include <tr1/unordered_map>
 #include <utility>
 #include <vector>
+#include <zmq.hpp>
+#include <iostream>
+#include <unistd.h>
+#include <sstream>
 
 #include <boost/thread/mutex.hpp>
 
 #include "dsp/prota/popsparsecorrelate.h"
 #include "core/popchannelmap.hpp"
+#include "zmq/zhelpers.hpp"
 
 using boost::mutex;
 using std::make_pair;
@@ -32,15 +37,31 @@ using std::vector;
 namespace pop
 {
 
-PopChannelMap::PopChannelMap()
+PopChannelMap::PopChannelMap(bool m, zmq::context_t& context) : master(m), publisher(0), subscriber(0)
 {
-//	assert(multilateration != NULL);
-//	assert(tracker_location_store != NULL);
+	if( master )
+	{
+		publisher = new zmq::socket_t(context, ZMQ_PUB);
+		publisher->bind("tcp://*:11526");
+
+	}
+	else
+	{
+		subscriber = new zmq::socket_t(context, ZMQ_SUB);
+		subscriber->connect("tcp://localhost:11526");
+		subscriber->setsockopt( ZMQ_SUBSCRIBE, "CHANNEL_MAP", 11);
+	}
+
 }
 
 PopChannelMap::~PopChannelMap()
 {
 	mutex::scoped_lock lock(mtx_);
+
+	if( publisher )
+	{
+		delete publisher;
+	}
 
 	// Clean up the memory used by the map values.
 //	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end();
@@ -50,9 +71,30 @@ PopChannelMap::~PopChannelMap()
 
 }
 
+void PopChannelMap::poll()
+{
+	while (1) {
+
+		//  Read envelope with address
+		std::string address = s_recv (*subscriber);
+		//  Read message contents
+		std::string contents = s_recv (*subscriber);
+
+		std::cout << "[" << address << "] " << contents << std::endl;
+	}
+}
+
 bool PopChannelMap::map_full()
 {
 	return the_map_.size() >= POP_SLOT_COUNT;
+}
+
+void PopChannelMap::set(MapKey key, MapValue val)
+{
+	s_sendmore (*publisher, "CHANNEL_MAP");
+	s_send (*publisher, "{\"slot\":0\",\"tracker\":32,\"basestation\":40}");
+
+	the_map_[key] = val;
 }
 
 // returns success
@@ -88,7 +130,7 @@ bool PopChannelMap::get_block(unsigned count)
 		if( the_map_.count(key) == 0 ) //if( the_map_.find(key) == the_map_.end() )
 		{
 			given++;
-			the_map_[key] = val;
+			set(key, val);
 			std::cout << "giving out key " << i << std::endl;
 			i = (i + walk)%POP_SLOT_COUNT;
 		}
