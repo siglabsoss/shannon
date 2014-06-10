@@ -7,6 +7,7 @@
 #include "core/popsink.hpp"
 #include "core/popsource.hpp"
 #include "frozen/frozen.h"
+#include "core/utilities.hpp"
 
 // how many tokens do we support in messages
 #define POP_JSON_RPC_SUPPORTED_TOKENS (2000)
@@ -43,8 +44,5 @@ public:
 };
 
 }
-
-// This macro is sugar for the std string constructor
-#define FROZEN_GET_STRING(token) std::string(token->ptr, token->len)
 
 #endif
