@@ -30,6 +30,7 @@ set(shared_SOURCES
 	../3rd/frozen/frozen.c
 	../3rd/b64/b64.c
 	core/popjsonrpc.cpp
+	core/popchannelmap.cpp
 )
 
 # S3P and Shannon sources
