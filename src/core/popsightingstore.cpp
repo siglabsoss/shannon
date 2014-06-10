@@ -171,6 +171,8 @@ PopSightingStore::get_sighting_range(time_t full_secs,
 {
 	pair<MapType::const_iterator, MapType::const_iterator> range;
 
+	// TODO(snyderek): We should aggregate multiple sightings even if they fall
+	// on either side of a second boundary.
 	MapKey key;
 	key.full_secs = full_secs;
 	key.tracker_id = tracker_id;
