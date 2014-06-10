@@ -44,6 +44,7 @@ public:
 	bool map_full();
 	bool get_block(unsigned count);
 	void poll();
+	void clear_map();
 
 
 
@@ -61,6 +62,8 @@ private:
 	};
 
 	void set(MapKey key, MapValue val);
+	void master_poll();
+	void slave_poll();
 
 	// Custom less-than comparison function for the map keys.
 	struct MapKeyCompare
@@ -78,6 +81,7 @@ private:
 	bool master; // this instance is the source of truth?
 	zmq::socket_t* publisher;
 	zmq::socket_t* subscriber;
+	zmq::socket_t* collector;
 
 	MapType the_map_;
 //	std::tr1::unordered_map<std::string, PopBaseStation*> base_stations_;

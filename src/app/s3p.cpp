@@ -104,13 +104,18 @@ int main(int argc, char *argv[])
 
 	PopChannelMap channel_map(true, context);
 
-	cout << "after sleep " << endl;
-	sleep(5);
-	cout << "after sleep " << endl;
+//	cout << "after sleep " << endl;
+//	sleep(5);
+//	cout << "after sleep " << endl;
 
-	channel_map.get_block(5);
-	channel_map.get_block(2);
-	channel_map.get_block(16);
+	while(1)
+	{
+		channel_map.get_block(5);
+		channel_map.get_block(2);
+		channel_map.get_block(16);
+		channel_map.clear_map();
+		sleep(3);
+	}
 //	channel_map.get_block(1);
 //	channel_map.get_block(1);
 //	channel_map.get_block(1);

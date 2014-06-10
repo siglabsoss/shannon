@@ -21,6 +21,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <sstream>
+#include <sstream>
 
 #include <boost/thread/mutex.hpp>
 
@@ -33,9 +34,13 @@ using std::make_pair;
 using std::pair;
 using std::string;
 using std::vector;
+using namespace zmq;
+using namespace std;
 
 namespace pop
 {
+
+// FIXME: copy the logic of http://zguide.zeromq.org/php:chapter5#Reliable-Pub-Sub-Clone-Pattern
 
 PopChannelMap::PopChannelMap(bool m, zmq::context_t& context) : master(m), publisher(0), subscriber(0)
 {
@@ -43,6 +48,8 @@ PopChannelMap::PopChannelMap(bool m, zmq::context_t& context) : master(m), publi
 	{
 		publisher = new zmq::socket_t(context, ZMQ_PUB);
 		publisher->bind("tcp://*:11526");
+		collector = new zmq::socket_t(context, ZMQ_PULL);
+		collector->bind("tcp://*:11527");
 
 	}
 	else
@@ -71,17 +78,72 @@ PopChannelMap::~PopChannelMap()
 
 }
 
+void PopChannelMap::master_poll()
+{
+//	zmq::pollitem_t items [] = {
+//				{ *collector, 0, ZMQ_POLLIN, 0 },
+//				{ *subscriber, 0, ZMQ_POLLIN, 0 }
+//		};
+//
+//		zmq::message_t message;
+//
+//		do {
+//
+//			// items, number of items in array, timeout (-1 is block forever)
+//			zmq::poll (items, 2, 0);
+//
+//			if (items[1].revents & ZMQ_POLLIN) {
+//				//  Read envelope with address
+//				std::string address = s_recv(*subscriber);
+//				//  Read message contents
+//				std::string contents = s_recv(*subscriber);
+//
+//				std::cout << "[" << address << "] " << contents << std::endl;
+//				//  Process weather update
+//			}
+//		} while(items[0].revents & ZMQ_POLLIN);
+}
+
+void PopChannelMap::slave_poll()
+{
+	zmq::pollitem_t items [] = {
+				{ *subscriber, 0, ZMQ_POLLIN, 0 }
+		};
+
+		zmq::message_t message;
+
+		do {
+
+			// items, number of items in array, timeout (-1 is block forever)
+			zmq::poll (items, 1, 0);
+
+			if (items[0].revents & ZMQ_POLLIN) {
+				//  Read envelope with address
+				std::string address = s_recv(*subscriber);
+				//  Read message contents
+				std::string contents = s_recv(*subscriber);
+
+				std::cout << "[" << address << "] " << contents << std::endl;
+				//  Process weather update
+			}
+		} while(items[0].revents & ZMQ_POLLIN);
+}
+
 void PopChannelMap::poll()
 {
-	while (1) {
-
-		//  Read envelope with address
-		std::string address = s_recv (*subscriber);
-		//  Read message contents
-		std::string contents = s_recv (*subscriber);
-
-		std::cout << "[" << address << "] " << contents << std::endl;
+	if( master )
+	{
+		master_poll();
 	}
+	else
+	{
+		slave_poll();
+	}
+}
+
+void PopChannelMap::clear_map()
+{
+	the_map_.clear();
 }
 
 bool PopChannelMap::map_full()
@@ -91,8 +153,13 @@ bool PopChannelMap::map_full()
 
 void PopChannelMap::set(MapKey key, MapValue val)
 {
+	ostringstream os;
+	os << "{\"slot\":" << key.slot << "\",\"tracker\":" << val.tracker << ",\"basestation\":" << val.basestation << "}";
+	string message = os.str();
+
+
 	s_sendmore (*publisher, "CHANNEL_MAP");
-	s_send (*publisher, "{\"slot\":0\",\"tracker\":32,\"basestation\":40}");
+	s_send (*publisher, message);
 
 	the_map_[key] = val;
 }

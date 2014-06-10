@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	cout << "grav awake" << endl;
 	zmq::context_t context(1); // only 1 per thread
 	PopChannelMap channel_map(false, context);
-	channel_map.poll();
+
 
 
 
@@ -148,8 +148,12 @@ int main(int argc, char *argv[])
 		if( c == '+' ) h_start_chan++;*/
 
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
-		boost::posix_time::milliseconds workTime(1000);
+		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);
+
+		channel_map.poll();
+
+		cout << "poll" << endl;
 
 //		if( i % 1000 == 0)
 //			file.read(1);
