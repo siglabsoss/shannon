@@ -15,6 +15,8 @@
 
 #include <math.h>
 
+#include <vector>
+
 #include <boost/test/auto_unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -26,6 +28,7 @@ using boost::make_tuple;
 using boost::tie;
 using boost::tuple;
 using pop::PopCoordinateTransform;
+using std::vector;
 
 namespace
 {
@@ -49,18 +52,20 @@ BOOST_AUTO_TEST_CASE(base_stations)
 {
 	static const double kTolerance = 0.0001;
 
-	const tuple<double, double, double> base_station1(
-		-0.0041984789346775, -0.0158289403417070, 0.0135357198108165);
-	const tuple<double, double, double> base_station2(
-		-0.0083989773737108, -0.0155259839007040, 0.0118359595092561);
+	vector<tuple<double, double, double> > base_stations;
+	base_stations.push_back(make_tuple(
+		-0.0041984789346775, -0.0158289403417070, 0.0135357198108165));
+	base_stations.push_back(make_tuple(
+		-0.0083989773737108, -0.0155259839007040, 0.0118359595092561));
+	base_stations.push_back(make_tuple(
+		-0.0017111922827391, -0.0136369181952944, 0.0161856041543917));
 
-	const double dist = distance(base_station1, base_station2);
+	const double dist = distance(base_stations[0], base_stations[1]);
 
-	const PopCoordinateTransform coordinate_transform(base_station1,
-													  base_station2);
+	const PopCoordinateTransform coordinate_transform(base_stations);
 
 	double x, y, z;
-	tie(x, y, z) = coordinate_transform.transform(base_station1);
+	tie(x, y, z) = coordinate_transform.transform(base_stations[0]);
 	// BOOST_CHECK_CLOSE doesn't work well for comparing floating-point values
 	// against zero, because the tolerance parameter is interpreted as a
 	// percentage of the values being compared, and any percentage multiplied by
@@ -69,18 +74,18 @@ BOOST_AUTO_TEST_CASE(base_stations)
 	BOOST_CHECK_SMALL(y, kTolerance);
 	BOOST_CHECK_SMALL(z, kTolerance);
 
-	tie(x, y, z) = coordinate_transform.transform(base_station2);
+	tie(x, y, z) = coordinate_transform.transform(base_stations[1]);
 	BOOST_CHECK_CLOSE(x, dist, kTolerance);
 	BOOST_CHECK_SMALL(y, kTolerance);
 	BOOST_CHECK_SMALL(z, kTolerance);
 
 	tie(x, y, z) = coordinate_transform.untransform(make_tuple(0.0, 0.0, 0.0));
-	BOOST_CHECK_CLOSE(x, get<0>(base_station1), kTolerance);
-	BOOST_CHECK_CLOSE(y, get<1>(base_station1), kTolerance);
-	BOOST_CHECK_CLOSE(z, get<2>(base_station1), kTolerance);
+	BOOST_CHECK_CLOSE(x, get<0>(base_stations[0]), kTolerance);
+	BOOST_CHECK_CLOSE(y, get<1>(base_stations[0]), kTolerance);
+	BOOST_CHECK_CLOSE(z, get<2>(base_stations[0]), kTolerance);
 
 	tie(x, y, z) = coordinate_transform.untransform(make_tuple(dist, 0.0, 0.0));
-	BOOST_CHECK_CLOSE(x, get<0>(base_station2), kTolerance);
-	BOOST_CHECK_CLOSE(y, get<1>(base_station2), kTolerance);
-	BOOST_CHECK_CLOSE(z, get<2>(base_station2), kTolerance);
+	BOOST_CHECK_CLOSE(x, get<0>(base_stations[1]), kTolerance);
+	BOOST_CHECK_CLOSE(y, get<1>(base_stations[1]), kTolerance);
+	BOOST_CHECK_CLOSE(z, get<2>(base_stations[1]), kTolerance);
 }
