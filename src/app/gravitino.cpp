@@ -35,6 +35,7 @@
 #include "core/popparsegps.hpp"
 #include "core/poppackethandler.hpp"
 #include "core/popchannelmap.hpp"
+#include "core/utilities.hpp"
 
 
 

@@ -19,6 +19,7 @@ namespace pop
 {
 
 PopTimestamp get_microsec_system_time(void);
+int getch(void);
 
 
 
