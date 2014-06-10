@@ -127,13 +127,16 @@ target_link_libraries(geohelper_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEW
 add_executable(popbuchermultilateration_test ${all_SOURCES} app/popbuchermultilateration_test.cpp)
 target_link_libraries(popbuchermultilateration_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
+add_executable(popcoordinatetransform_test ${all_SOURCES} app/popcoordinatetransform_test.cpp)
+target_link_libraries(popcoordinatetransform_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+
 add_executable(popgeolocation_test ${all_SOURCES} app/popgeolocation_test.cpp)
 target_link_libraries(popgeolocation_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
 
 
 # list of the different files that contain main()
-set(executable_list shannon s3p gravitino geohelper_test popbuchermultilateration_test popgeolocation_test)
+set(executable_list shannon s3p gravitino geohelper_test popbuchermultilateration_test popcoordinatetransform_test popgeolocation_test)
 
 # iterate and build each executuable, and add make runx shortcut
 foreach(executable ${executable_list}) 
