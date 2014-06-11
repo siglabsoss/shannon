@@ -134,33 +134,45 @@ int main(int argc, char *argv[])
 //	rpc.rx.connect(simArt);
 
 //	simArt.rx.start_thread();
+	//channel_map.set(i%POP_SLOT_COUNT, 54, 0);
 
+	sleep(1);
+	channel_map.poll();
+	channel_map.checksum_dump();
 
 
 	char c;
 
-	int i = 0;
+	int i = 0, dump = -1, updates = 0;
 
 	// Run Control Loop
 	while(1)
 	{
-		/*c = getch();
-		if( c == '-' ) h_start_chan--;
-		if( c == '+' ) h_start_chan++;*/
+		if(kbhit())
+		{
+			c = getch();
+			if( c == '\n' )
+			{
+				channel_map.set(i%POP_SLOT_COUNT, 54, 0);
+				dump = i + 3;
+			}
+		}
+		updates = channel_map.poll();
 
-		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
+		if( i == dump || updates != 0 )
+		{
+			channel_map.checksum_dump();
+			updates = 0;
+		}
+		//		cout << "poll" << endl;
+
+
 		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);
 
-		channel_map.poll();
-
-		cout << "poll" << endl;
-
-//		if( i % 1000 == 0)
-//			file.read(1);
 
 		i++;
 	}
 
-    return 0;
+	return 0;
 }

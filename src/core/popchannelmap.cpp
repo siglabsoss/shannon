@@ -28,6 +28,8 @@
 #include "dsp/prota/popsparsecorrelate.h"
 #include "core/popchannelmap.hpp"
 #include "zmq/zhelpers.hpp"
+#include "frozen/frozen.h"
+#include "core/utilities.hpp"
 
 using boost::mutex;
 using std::make_pair;
@@ -36,6 +38,8 @@ using std::string;
 using std::vector;
 using namespace zmq;
 using namespace std;
+
+#define POP_CHANNEL_MAP_TOKENS (12)
 
 namespace pop
 {
@@ -50,13 +54,16 @@ PopChannelMap::PopChannelMap(bool m, zmq::context_t& context) : master(m), publi
 		publisher->bind("tcp://*:11526");
 		collector = new zmq::socket_t(context, ZMQ_PULL);
 		collector->bind("tcp://*:11527");
-
 	}
 	else
 	{
 		subscriber = new zmq::socket_t(context, ZMQ_SUB);
 		subscriber->connect("tcp://localhost:11526");
 		subscriber->setsockopt( ZMQ_SUBSCRIBE, "CHANNEL_MAP", 11);
+		pusher = new zmq::socket_t(context, ZMQ_PUSH);
+		pusher->connect("tcp://localhost:11527");
+
+		request_sync();
 	}
 
 }
@@ -78,66 +85,82 @@ PopChannelMap::~PopChannelMap()
 
 }
 
-void PopChannelMap::master_poll()
+unsigned PopChannelMap::master_poll()
 {
-//	zmq::pollitem_t items [] = {
-//				{ *collector, 0, ZMQ_POLLIN, 0 },
-//				{ *subscriber, 0, ZMQ_POLLIN, 0 }
-//		};
-//
-//		zmq::message_t message;
-//
-//		do {
-//
-//			// items, number of items in array, timeout (-1 is block forever)
-//			zmq::poll (items, 2, 0);
-//
-//			if (items[1].revents & ZMQ_POLLIN) {
-//				//  Read envelope with address
-//				std::string address = s_recv(*subscriber);
-//				//  Read message contents
-//				std::string contents = s_recv(*subscriber);
-//
-//				std::cout << "[" << address << "] " << contents << std::endl;
-//				//  Process weather update
-//			}
-//		} while(items[0].revents & ZMQ_POLLIN);
-}
+	unsigned updates = 0;
 
-void PopChannelMap::slave_poll()
-{
 	zmq::pollitem_t items [] = {
-				{ *subscriber, 0, ZMQ_POLLIN, 0 }
-		};
+			{ *collector, 0, ZMQ_POLLIN, 0 }
+	};
 
-		zmq::message_t message;
+	zmq::message_t message;
 
-		do {
+	do {
 
-			// items, number of items in array, timeout (-1 is block forever)
-			zmq::poll (items, 1, 0);
+		// items, number of items in array, timeout (-1 is block forever)
+		zmq::poll (items, 1, 0);
 
-			if (items[0].revents & ZMQ_POLLIN) {
-				//  Read envelope with address
-				std::string address = s_recv(*subscriber);
-				//  Read message contents
-				std::string contents = s_recv(*subscriber);
+		if (items[0].revents & ZMQ_POLLIN) {
+			//  Read message filter
+			std::string filter = s_recv(*collector);
 
-				std::cout << "[" << address << "] " << contents << std::endl;
-				//  Process weather update
-			}
-		} while(items[0].revents & ZMQ_POLLIN);
+			//  Read message contents
+			std::string contents = s_recv(*collector);
+
+			std::cout << "[" << filter << "] " << contents << std::endl;
+
+			patch_datastore(contents);
+
+			updates++;
+		}
+	} while(items[0].revents & ZMQ_POLLIN);
+
+	return updates;
 }
 
-void PopChannelMap::poll()
+unsigned PopChannelMap::slave_poll()
+{
+	unsigned updates = 0;
+
+	zmq::pollitem_t items [] = {
+			{ *subscriber, 0, ZMQ_POLLIN, 0 }
+	};
+
+	zmq::message_t message;
+
+	do {
+
+		// items, number of items in array, timeout (-1 is block forever)
+		zmq::poll (items, 1, 0);
+
+		if (items[0].revents & ZMQ_POLLIN) {
+			//  Read message filter
+			std::string filter = s_recv(*subscriber);
+
+			//  Read message contents
+			std::string contents = s_recv(*subscriber);
+
+			std::cout << "[" << filter << "] " << contents << std::endl;
+
+			patch_datastore(contents);
+
+			updates++;
+		}
+	} while(items[0].revents & ZMQ_POLLIN);
+
+	return updates;
+}
+
+// returns number of (valid or invalid) updates / messages received during poll
+unsigned PopChannelMap::poll()
 {
 	if( master )
 	{
-		master_poll();
+		return master_poll();
 	}
 	else
 	{
-		slave_poll();
+		return slave_poll();
 	}
 }
 
@@ -151,18 +174,151 @@ bool PopChannelMap::map_full()
 	return the_map_.size() >= POP_SLOT_COUNT;
 }
 
+uint8_t PopChannelMap::get_update_autoinc()
+{
+	static uint8_t update = 0;
+	return update++;
+}
+
+void PopChannelMap::request_sync(void)
+{
+	if( master )
+	{
+		sync_table();
+	}
+	else
+	{
+		std::string message = "{\"command\":\"sync\"}";
+		s_sendmore (*pusher, "CHANNEL_MAP_SLAVE");
+		s_send (*pusher, message);
+	}
+}
+
+void PopChannelMap::sync_table(void)
+{
+	// this is a master only function
+	if( master )
+	{
+		for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end(); ++it)
+		{
+			const MapKey& key = it->first;
+			const MapValue& val = it->second;
+			set(key, val);
+		}
+	}
+}
+
+
+void PopChannelMap::set(uint16_t slot, uint64_t tracker, uint32_t basestation)
+{
+	MapKey key;
+	key.slot = slot;
+
+	MapValue val;
+	val.tracker = tracker;
+	val.basestation = basestation;
+
+	set(key, val);
+}
+
 void PopChannelMap::set(MapKey key, MapValue val)
 {
 	ostringstream os;
-	os << "{\"slot\":" << key.slot << "\",\"tracker\":" << val.tracker << ",\"basestation\":" << val.basestation << "}";
-	string message = os.str();
+	os << "{\"slot\":" << key.slot << ",\"tracker\":" << val.tracker << ",\"basestation\":" << val.basestation; // json message is missing ending '}'
+	string message;
 
-
-	s_sendmore (*publisher, "CHANNEL_MAP");
-	s_send (*publisher, message);
-
-	the_map_[key] = val;
+	if( master )
+	{
+		os << ",\"id\":" << (int)get_update_autoinc() << "}";
+		message = os.str();
+		s_sendmore (*publisher, "CHANNEL_MAP");
+		s_send (*publisher, message);
+		the_map_[key] = val;
+	}
+	else
+	{
+		os << "}";
+		message = os.str();
+		s_sendmore (*pusher, "CHANNEL_MAP_SLAVE");
+		s_send (*pusher, message);
+	}
 }
+
+void PopChannelMap::patch_datastore(std::string str)
+{
+	const char *json = str.c_str();
+
+	struct json_token arr[POP_CHANNEL_MAP_TOKENS];
+	const struct json_token *slotTok = 0, *trackerTok = 0, *idTok = 0, *basestationTok = 0, *commandTok;
+
+	// Tokenize json string, fill in tokens array
+	int returnValue = parse_json(json, strlen(json), arr, POP_CHANNEL_MAP_TOKENS);
+
+	if( returnValue == JSON_STRING_INVALID || returnValue == JSON_STRING_INCOMPLETE )
+	{
+		// skip printing this message for simple newline messages.  if one string matches, it returns 0 which we then multiply
+		if( ( str.compare("\r\n\r\n") * str.compare("\r\n") * str.compare("\n") * str.compare("\r") ) != 0)
+		{
+			cout << "problem with json string (" <<  str << ")" << endl;
+		}
+		return;
+	}
+
+	if( returnValue == JSON_TOKEN_ARRAY_TOO_SMALL )
+	{
+		cout << "problem with json string (too many things for us to parse)" << endl;
+		return;
+	}
+
+	commandTok = find_json_token(arr, "command");
+	if( commandTok && commandTok->type == JSON_TYPE_STRING )
+	{
+		if( FROZEN_GET_STRING(commandTok).compare("sync") == 0 )
+		{
+			sync_table();
+			return;
+		}
+	}
+
+
+	slotTok = find_json_token(arr, "slot");
+	if( !(slotTok && slotTok->type == JSON_TYPE_NUMBER) )
+	{
+		return;
+	}
+
+	trackerTok = find_json_token(arr, "tracker");
+	if( !(trackerTok && trackerTok->type == JSON_TYPE_NUMBER) )
+	{
+		return;
+	}
+
+	basestationTok = find_json_token(arr, "basestation");
+	if( !(basestationTok && basestationTok->type == JSON_TYPE_NUMBER) )
+	{
+		return;
+	}
+
+	// apply the actual patch
+	MapKey key;
+	key.slot = parseNumber<uint16_t>(FROZEN_GET_STRING(slotTok));
+
+	MapValue val;
+	val.tracker = parseNumber<uint64_t>(FROZEN_GET_STRING(trackerTok));
+	val.basestation = parseNumber<uint64_t>(FROZEN_GET_STRING(basestationTok));
+
+	if( master )
+	{
+		 // set the val, and also tell all slaves
+		set(key, val);
+	}
+	else
+	{
+		// set the val
+		the_map_[key] = val;
+	}
+}
+
 
 // returns success
 bool PopChannelMap::get_block(unsigned count)
@@ -207,14 +363,7 @@ bool PopChannelMap::get_block(unsigned count)
 		}
 	}
 
-//	MapKey key;
-//	key.slot = 0;
-
-//	the_map_.find(key);
-
-
 	return true;
-
 }
 
 //void PopChannelMap::add_sighting(const PopSighting& sighting)
@@ -260,6 +409,28 @@ bool PopChannelMap::MapKeyCompare::operator()(const MapKey& a,
 //		return a.base_station->hostname() < b.base_station->hostname();
 
 	return a.slot < b.slot;
+}
+
+void PopChannelMap::checksum_dump(void)
+{
+	cout << endl;
+	ostringstream os;
+	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end(); ++it)
+	{
+		const MapKey& key = it->first;
+		const MapValue& value = it->second;
+		os << key.slot << ", " << value.tracker << ", " << value.basestation << endl;
+	}
+
+	cout << os.str();
+
+	uint16_t checksum;
+
+	checksum = crcSlow((uint8_t*)os.str().c_str(), os.str().length());
+
+	cout << endl << "Table Checksum: " << checksum << endl;
+
+	cout << endl;
 }
 
 // Builds a vector of all sightings for the given time and tracker. If there are

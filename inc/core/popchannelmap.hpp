@@ -28,24 +28,22 @@
 namespace pop
 {
 
-//class PopMultilateration;
-//class PopTrackerLocationStore;
-//struct PopSighting;
-
-// In-memory store of tracker sightings reported by base stations.
+// Distributed In-memory store of basestation channel map
 class PopChannelMap
 {
 public:
 	PopChannelMap(bool, zmq::context_t&);
 	~PopChannelMap();
 
-//	void add_sighting(const PopSighting& sighting);
 
 	bool map_full();
 	bool get_block(unsigned count);
-	void poll();
+	unsigned poll();
 	void clear_map();
-
+	void set(uint16_t slot, uint64_t tracker, uint32_t basestation);
+	void checksum_dump(void);
+	void request_sync(void);
+	void sync_table(void);
 
 
 private:
@@ -62,8 +60,11 @@ private:
 	};
 
 	void set(MapKey key, MapValue val);
-	void master_poll();
-	void slave_poll();
+	unsigned master_poll();
+	unsigned slave_poll();
+	uint8_t get_update_autoinc();
+	void patch_datastore(std::string s);
+
 
 	// Custom less-than comparison function for the map keys.
 	struct MapKeyCompare
@@ -73,18 +74,15 @@ private:
 
 	typedef std::map<MapKey, MapValue, MapKeyCompare> MapType;
 
-//	void aggregate_sightings(time_t full_secs, uint64_t tracker_id);
-//	std::pair<MapType::const_iterator, MapType::const_iterator>
-//		get_sighting_range(time_t full_secs, uint64_t tracker_id) const;
 
 
 	bool master; // this instance is the source of truth?
 	zmq::socket_t* publisher;
 	zmq::socket_t* subscriber;
 	zmq::socket_t* collector;
+	zmq::socket_t* pusher; // first time is free
 
 	MapType the_map_;
-//	std::tr1::unordered_map<std::string, PopBaseStation*> base_stations_;
 	mutable boost::mutex mtx_;
 };
 
