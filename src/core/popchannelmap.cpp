@@ -41,6 +41,8 @@ using namespace std;
 
 #define POP_CHANNEL_MAP_TOKENS (12)
 
+//#define CHANNEL_MAP_VERBOSE
+
 namespace pop
 {
 
@@ -65,7 +67,6 @@ PopChannelMap::PopChannelMap(bool m, zmq::context_t& context) : master(m), publi
 
 		request_sync();
 	}
-
 }
 
 PopChannelMap::~PopChannelMap()
@@ -75,6 +76,21 @@ PopChannelMap::~PopChannelMap()
 	if( publisher )
 	{
 		delete publisher;
+	}
+
+	if( collector )
+	{
+		delete collector;
+	}
+
+	if( subscriber )
+	{
+		delete subscriber;
+	}
+
+	if( pusher )
+	{
+		delete pusher;
 	}
 
 	// Clean up the memory used by the map values.
@@ -96,7 +112,6 @@ unsigned PopChannelMap::master_poll()
 	zmq::message_t message;
 
 	do {
-
 		// items, number of items in array, timeout (-1 is block forever)
 		zmq::poll (items, 1, 0);
 
@@ -107,7 +122,9 @@ unsigned PopChannelMap::master_poll()
 			//  Read message contents
 			std::string contents = s_recv(*collector);
 
+#ifdef CHANNEL_MAP_VERBOSE
 			std::cout << "[" << filter << "] " << contents << std::endl;
+#endif
 
 			patch_datastore(contents);
 
@@ -129,7 +146,6 @@ unsigned PopChannelMap::slave_poll()
 	zmq::message_t message;
 
 	do {
-
 		// items, number of items in array, timeout (-1 is block forever)
 		zmq::poll (items, 1, 0);
 
@@ -140,7 +156,9 @@ unsigned PopChannelMap::slave_poll()
 			//  Read message contents
 			std::string contents = s_recv(*subscriber);
 
+#ifdef CHANNEL_MAP_VERBOSE
 			std::cout << "[" << filter << "] " << contents << std::endl;
+#endif
 
 			patch_datastore(contents);
 
@@ -164,11 +182,7 @@ unsigned PopChannelMap::poll()
 	}
 }
 
-void PopChannelMap::clear_map()
-{
-	the_map_.clear();
-}
-
+// You must hold mutext to call this function
 bool PopChannelMap::map_full()
 {
 	return the_map_.size() >= POP_SLOT_COUNT;
@@ -196,6 +210,8 @@ void PopChannelMap::request_sync(void)
 
 void PopChannelMap::sync_table(void)
 {
+	mutex::scoped_lock lock(mtx_);
+
 	// this is a master only function
 	if( master )
 	{
@@ -211,6 +227,8 @@ void PopChannelMap::sync_table(void)
 
 void PopChannelMap::set(uint16_t slot, uint64_t tracker, uint32_t basestation)
 {
+	mutex::scoped_lock lock(mtx_);
+
 	MapKey key;
 	key.slot = slot;
 
@@ -221,6 +239,7 @@ void PopChannelMap::set(uint16_t slot, uint64_t tracker, uint32_t basestation)
 	set(key, val);
 }
 
+// you must hold mutex to call this function
 void PopChannelMap::set(MapKey key, MapValue val)
 {
 	ostringstream os;
@@ -307,6 +326,9 @@ void PopChannelMap::patch_datastore(std::string str)
 	val.tracker = parseNumber<uint64_t>(FROZEN_GET_STRING(trackerTok));
 	val.basestation = parseNumber<uint64_t>(FROZEN_GET_STRING(basestationTok));
 
+	// only need the mutex from here on out
+	mutex::scoped_lock lock(mtx_);
+
 	if( master )
 	{
 		 // set the val, and also tell all slaves
@@ -323,6 +345,8 @@ void PopChannelMap::patch_datastore(std::string str)
 // returns success
 bool PopChannelMap::get_block(unsigned count)
 {
+	mutex::scoped_lock lock(mtx_);
+
 	if( count > (POP_SLOT_COUNT - the_map_.size()) )
 	{
 		std::cout << "Not enough room in map" << std::endl;
@@ -354,7 +378,9 @@ bool PopChannelMap::get_block(unsigned count)
 		{
 			given++;
 			set(key, val);
+#ifdef CHANNEL_MAP_VERBOSE
 			std::cout << "giving out key " << i << std::endl;
+#endif
 			i = (i + walk)%POP_SLOT_COUNT;
 		}
 		else
@@ -365,38 +391,6 @@ bool PopChannelMap::get_block(unsigned count)
 
 	return true;
 }
-
-//void PopChannelMap::add_sighting(const PopSighting& sighting)
-//{
-//	MapKey key;
-//	key.full_secs = sighting.full_secs;
-//	key.tracker_id = sighting.tracker_id;
-//	key.base_station = GetBaseStation(sighting.hostname);
-//
-//	MapValue* const value = new MapValue();
-//	value->lat = sighting.lat;
-//	value->lng = sighting.lng;
-//	value->frac_secs = sighting.frac_secs;
-//
-//	bool inserted = false;
-//	{
-//		mutex::scoped_lock lock(mtx_);
-//
-//		// If multiple sightings are received with the same (full_secs, serial,
-//		// base_station) key, only the first sighting will be recorded.
-//		// TODO(snyderek): Is this the desired behavior?
-//		inserted = the_map_.insert(make_pair(key, value)).second;
-//	}
-//
-//	// If the key already exists in the map, delete the newly allocated map
-//	// value to avoid a memory leak.
-//	if (!inserted)
-//		delete value;
-//
-//	aggregate_sightings(sighting.full_secs, sighting.tracker_id);
-//
-//	// TODO(snyderek): Delete old sightings.
-//}
 
 bool PopChannelMap::MapKeyCompare::operator()(const MapKey& a,
 												 const MapKey& b) const
@@ -413,6 +407,8 @@ bool PopChannelMap::MapKeyCompare::operator()(const MapKey& a,
 
 void PopChannelMap::checksum_dump(void)
 {
+	mutex::scoped_lock lock(mtx_);
+
 	cout << endl;
 	ostringstream os;
 	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end(); ++it)
@@ -432,106 +428,5 @@ void PopChannelMap::checksum_dump(void)
 
 	cout << endl;
 }
-
-// Builds a vector of all sightings for the given time and tracker. If there are
-// at least five sightings, performs multilateration and stores the computed
-// tracker location.
-//void PopChannelMap::aggregate_sightings(time_t full_secs,
-//										   uint64_t tracker_id)
-//{
-//	vector<PopSighting> sightings;
-//
-//	{
-//		mutex::scoped_lock lock(mtx_);
-//
-//		const pair<MapType::const_iterator, MapType::const_iterator> range =
-//			get_sighting_range(full_secs, tracker_id);
-//
-//		for (MapType::const_iterator it = range.first; it != range.second;
-//			 ++it) {
-//			const MapKey& key = it->first;
-//			const MapValue& value = *it->second;
-//
-//			assert(key.full_secs == full_secs);
-//			assert(key.tracker_id == tracker_id);
-//
-//			sightings.resize(sightings.size() + 1);
-//			PopSighting* const sighting = &sightings.back();
-//
-//			sighting->hostname = key.base_station->hostname();
-//			sighting->tracker_id = tracker_id;
-//			sighting->lat = value.lat;
-//			sighting->lng = value.lng;
-//			sighting->full_secs = full_secs;
-//			sighting->frac_secs = value.frac_secs;
-//		}
-//	}
-//
-//	if (sightings.size() >=
-//		static_cast<vector<PopSighting>::size_type>(
-//			PopMultilateration::MIN_NUM_BASESTATIONS)) {
-//		double lat = 0.0;
-//		double lng = 0.0;
-//		multilateration_->calculate_location(sightings, &lat, &lng);
-//
-//		tracker_location_store_->report_tracker_location(tracker_id, full_secs,
-//														 lat, lng);
-//	}
-//}
-
-//// Returns a (begin, end) iterator pair for the range of map entries that match
-//// the given (full_secs, tracker_id) partial key. You can use this range to
-//// iterate over the subset of key-value pairs in 'the_map_'.
-////
-//// The first iterator points to the first map entry that is greater than or
-//// equal to the partial key. The second iterator points to the first map entry
-//// that is strictly greater than the partial key [or end() if no such key
-//// exists]. If no matching entries are found, the two returned iterators will be
-//// equal.
-////
-//// mtx_ must be locked when this function is called.
-//pair<PopSightingStore::MapType::const_iterator,
-//	 PopSightingStore::MapType::const_iterator>
-//PopSightingStore::get_sighting_range(time_t full_secs,
-//									 uint64_t tracker_id) const
-//{
-//	pair<MapType::const_iterator, MapType::const_iterator> range;
-//
-//	MapKey key;
-//	key.full_secs = full_secs;
-//	key.tracker_id = tracker_id;
-//
-//	range.first = the_map_.lower_bound(key);
-//
-//	++key.tracker_id;
-//	// Check for integer overflow.
-//	if (key.tracker_id > 0) {
-//		// Normal case.
-//		range.second = the_map_.lower_bound(key);
-//	} else {
-//		// tracker_id was already the maximum uint64_t value. Use the_map_.end()
-//		// as the end of the range.
-//		range.second = the_map_.end();
-//	}
-//
-//	return range;
-//}
-
-//// Returns a unique base station pointer for the given hostname.
-//const PopBaseStation* PopSightingStore::GetBaseStation(const string& hostname)
-//{
-//	mutex::scoped_lock lock(mtx_);
-//
-//	const pair<unordered_map<string, PopBaseStation*>::iterator, bool>
-//		insert_result = base_stations_.insert(
-//			pair<string, PopBaseStation*>(hostname, NULL));
-//
-//	PopBaseStation** const base_station = &insert_result.first->second;
-//
-//	if (insert_result.second)
-//		*base_station = new PopBaseStation(hostname);
-//
-//	return *base_station;
-//}
 
 }

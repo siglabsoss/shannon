@@ -39,7 +39,6 @@ public:
 	bool map_full();
 	bool get_block(unsigned count);
 	unsigned poll();
-	void clear_map();
 	void set(uint16_t slot, uint64_t tracker, uint32_t basestation);
 	void checksum_dump(void);
 	void request_sync(void);
