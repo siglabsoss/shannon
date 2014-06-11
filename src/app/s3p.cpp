@@ -45,7 +45,6 @@
 using namespace boost;
 using namespace pop;
 using namespace std;
-using namespace rbx;
 
 namespace po = boost::program_options;
 

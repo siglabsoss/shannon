@@ -44,7 +44,6 @@ int main(int argc, char *argv[])
 	using namespace boost;
 	using namespace pop;
 	using namespace std;
-	using namespace rbx;
 
 
 

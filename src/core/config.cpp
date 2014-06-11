@@ -14,12 +14,12 @@
 #include <boost/spirit/include/qi.hpp>
 
 
-using namespace rbx;
+using namespace pop;
 using namespace std;
 using boost::spirit::classic::file_iterator;
 namespace qi = boost::spirit::qi;
 
-rbx::Config* rbx::Config::instance = 0;
+pop::Config* pop::Config::instance = 0;
 
 void Config::loadFile( std::string const& filename )
 {
@@ -47,10 +47,10 @@ void Config::loadFile( std::string const& filename )
 
 void Config::loadFromDisk()
 {
-	rbx::Config::loadFile( DEFAULT_CONFIG_FILE_PATH );
+	pop::Config::loadFile( DEFAULT_CONFIG_FILE_PATH );
 }
 
-namespace rbx // template specializations need to be in the cpp file but in the same namespace
+namespace pop // template specializations need to be in the cpp file but in the same namespace
 {
 
 // see json.tcc if types need to be added
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( init )
 
 
 
-	rbx::Config::loadFile( "init_test.json.txt" );
+	pop::Config::loadFile( "init_test.json.txt" );
 
 
 	std::string d = "date";

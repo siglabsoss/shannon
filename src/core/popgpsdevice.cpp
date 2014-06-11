@@ -76,7 +76,7 @@ void PopGpsDevice::process(const boost::tuple<char[20], PopTimestamp>* data, siz
 
 	try
 	{
-		allow_unfixed = rbx::Config::get<bool>("allow_gps_unfixed");
+		allow_unfixed = pop::Config::get<bool>("allow_gps_unfixed");
 	}
 	catch(std::exception const& x) {}
 
