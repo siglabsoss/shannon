@@ -21,7 +21,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include "core/popbasestation.hpp"
-#include "core/popmultilateration.hpp"
+#include "core/popgeolocation.hpp"
 #include "core/popsighting.hpp"
 #include "core/popsightingstore.hpp"
 #include "core/poptrackerlocationstore.hpp"
@@ -37,12 +37,12 @@ namespace pop
 {
 
 PopSightingStore::PopSightingStore(
-	const PopMultilateration* multilateration,
+	const PopGeoLocation* geo_location,
 	PopTrackerLocationStore* tracker_location_store)
-	: multilateration_(multilateration),
+	: geo_location_(geo_location),
 	  tracker_location_store_(tracker_location_store)
 {
-	assert(multilateration != NULL);
+	assert(geo_location != NULL);
 	assert(tracker_location_store != NULL);
 }
 
@@ -69,7 +69,7 @@ void PopSightingStore::add_sighting(const PopSighting& sighting)
 	MapKey key;
 	key.full_secs = sighting.full_secs;
 	key.tracker_id = sighting.tracker_id;
-	key.base_station = GetBaseStation(sighting.hostname);
+	key.base_station = get_base_station(sighting.hostname);
 
 	MapValue* const value = new MapValue();
 	value->lat = sighting.lat;
@@ -103,15 +103,17 @@ bool PopSightingStore::MapKeyCompare::operator()(const MapKey& a,
 		return a.full_secs < b.full_secs;
 	if (a.tracker_id != b.tracker_id)
 		return a.tracker_id < b.tracker_id;
-	if (a.base_station != b.base_station)
-		return a.base_station->hostname() < b.base_station->hostname();
+	if (a.base_station != b.base_station) {
+		return b.base_station != NULL &&
+			   (a.base_station == NULL ||
+			    a.base_station->hostname() < b.base_station->hostname());
+	}
 
 	return false;
 }
 
-// Builds a vector of all sightings for the given time and tracker. If there are
-// at least five sightings, performs multilateration and stores the computed
-// tracker location.
+// Builds a vector of all sightings for the given time and tracker, performs
+// multilateration, and stores the computed tracker location.
 void PopSightingStore::aggregate_sightings(time_t full_secs,
 										   uint64_t tracker_id)
 {
@@ -143,13 +145,9 @@ void PopSightingStore::aggregate_sightings(time_t full_secs,
 		}
 	}
 
-	if (sightings.size() >=
-		static_cast<vector<PopSighting>::size_type>(
-			PopMultilateration::MIN_NUM_BASESTATIONS)) {
-		double lat = 0.0;
-		double lng = 0.0;
-		multilateration_->calculate_location(sightings, &lat, &lng);
-
+	double lat = 0.0;
+	double lng = 0.0;
+	if (geo_location_->calculate_location(sightings, &lat, &lng)) {
 		tracker_location_store_->report_tracker_location(tracker_id, full_secs,
 														 lat, lng);
 	}
@@ -173,9 +171,12 @@ PopSightingStore::get_sighting_range(time_t full_secs,
 {
 	pair<MapType::const_iterator, MapType::const_iterator> range;
 
+	// TODO(snyderek): We should aggregate multiple sightings even if they fall
+	// on either side of a second boundary.
 	MapKey key;
 	key.full_secs = full_secs;
 	key.tracker_id = tracker_id;
+	key.base_station = NULL;
 
 	range.first = the_map_.lower_bound(key);
 
@@ -194,8 +195,10 @@ PopSightingStore::get_sighting_range(time_t full_secs,
 }
 
 // Returns a unique base station pointer for the given hostname.
-const PopBaseStation* PopSightingStore::GetBaseStation(const string& hostname)
+const PopBaseStation* PopSightingStore::get_base_station(const string& hostname)
 {
+	assert(!hostname.empty());
+
 	mutex::scoped_lock lock(mtx_);
 
 	const pair<unordered_map<string, PopBaseStation*>::iterator, bool>
