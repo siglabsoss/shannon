@@ -6,6 +6,9 @@
 #ifndef __STANDARD_UTILITIES_HPP__
 #define __STANDARD_UTILITIES_HPP__
 
+#include <sstream>
+#include <string>
+
 #include "poptimestamp.hpp"
 
 // returns a random value between to floats, min, max.  run srand before
@@ -16,6 +19,24 @@ namespace pop
 {
 
 PopTimestamp get_microsec_system_time(void);
+int getch(void);
+int kbhit(void);
+
+
+
+template<typename T>
+T parseNumber(const std::string& in)
+{
+	T result;
+	std::stringstream ss(in);
+	ss >> result;
+	return result;
+}
+
+
+// This macro is sugar for the std string constructor when using the frozen json library
+#define FROZEN_GET_STRING(token) std::string(token->ptr, token->len)
+
 
 }
 

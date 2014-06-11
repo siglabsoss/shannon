@@ -57,6 +57,39 @@ if(NOT CUDA_FOUND)
     
 endif()
 
+
+
+# --- 0MQ ---   https://www.mail-archive.com/zeromq-dev@lists.zeromq.org/msg17331.html http://pastebin.com/fLsm9SYf http://pastebin.com/sSJJVw6u
+
+SET ( ZEROMQ_FIND_REQUIRED TRUE )
+ 
+### ZeroMQ ###
+ 
+FIND_PATH ( ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS /usr/include/ /usr/local/include/ )
+FIND_LIBRARY ( ZEROMQ_LIBRARY NAMES zmq PATHS /usr/lib /usr/local/lib )
+ 
+IF ( ZEROMQ_INCLUDE_DIR AND ZEROMQ_LIBRARY )
+    SET ( ZEROMQ_FOUND TRUE )
+ENDIF ( ZEROMQ_INCLUDE_DIR AND ZEROMQ_LIBRARY )
+ 
+ 
+IF ( ZEROMQ_FOUND )
+    IF ( NOT ZEROMQ_FIND_QUIETLY )
+        MESSAGE ( STATUS "Found ZeroMQ:" )
+        MESSAGE ( STATUS "  (Headers)       ${ZEROMQ_INCLUDE_DIR}" )
+        MESSAGE ( STATUS "  (Library)       ${ZEROMQ_LIBRARY}" )
+    ENDIF ( NOT ZEROMQ_FIND_QUIETLY )
+ELSE ( ZEROMQ_FOUND )
+    IF ( ZEROMQ_FIND_REQUIRED )
+        MESSAGE ( FATAL_ERROR "Could not find ZeroMQ" )
+    ENDIF ( ZEROMQ_FIND_REQUIRED )
+ENDIF ( ZEROMQ_FOUND )
+
+
+# --- End 0MQ ---
+
+
+
 set(CUDA_64_BIT_DEVICE_CODE ON)
 set(BUILD_SHARED_LIBS OFF)
 # set(CUDA_VERBOSE_BUILD ON)

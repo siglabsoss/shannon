@@ -126,6 +126,12 @@ void PopGpsDevice::process(const boost::tuple<char[20], PopTimestamp>* data, siz
 	tx.process(packet.c_str(), packet.length());
 }
 
+void PopGpsDevice::greet_s3p(void)
+{
+	std::string message("{method:\"gravitino_boot\",\"params\":[]}");
+
+	tx.process(message.c_str(), message.length());
+}
 
 } //namespace
 

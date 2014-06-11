@@ -156,6 +156,12 @@ public:
 	{
 		//			            cout << "received UDP packet" << endl;
 
+//		std::string s;
+//		s = socket_.remote_endpoint().address().to_string();
+//		s = incoming_endpoint_.address().to_string();
+//		cout << s << endl;
+
+
 		size_t objectCount = bytes_transferred / sizeof(DATA_TYPE);
 
 		if( bytes_transferred % sizeof(DATA_TYPE) != 0 )

@@ -7,6 +7,7 @@
 #include "core/popsink.hpp"
 #include "core/popsource.hpp"
 #include "frozen/frozen.h"
+#include "core/utilities.hpp"
 
 // how many tokens do we support in messages
 #define POP_JSON_RPC_SUPPORTED_TOKENS (2000)
@@ -38,14 +39,10 @@ public:
 	virtual void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str) = 0;
 
 	void respond_int(int value, int methodId);
-
-protected:
 	void send_rpc(const char *rpc_string, size_t length);
+	uint16_t rpc_get_autoinc(void);
 };
 
 }
-
-// This macro is sugar for the std string constructor
-#define FROZEN_GET_STRING(token) std::string(token->ptr, token->len)
 
 #endif

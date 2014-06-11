@@ -127,6 +127,23 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 			handler->process(values, params->num_desc, 0, 0);
 		}
 	}
+
+	if( method.compare("bs_rq_utc") == 0 )
+	{
+		if( idTok != 0 )
+		{
+			char buf[128];
+			PopTimestamp now = get_microsec_system_time();
+			uint64_t full = now.get_full_secs();
+			uint64_t fracns = now.get_frac_secs()*1000000000;
+			snprintf(buf, 127, "{\"result\":[%lu, %lu], \"id\":%d}", full, fracns, parseUint32_t(FROZEN_GET_STRING(idTok)));
+			buf[127] = '\0';
+			send_rpc(buf, strlen(buf));
+		}
+
+
+
+	}
 }
 
 

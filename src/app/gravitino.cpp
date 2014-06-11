@@ -9,6 +9,10 @@
 
 
 #include <iostream>
+#include <zmq.hpp>
+#include <string>
+#include <iostream>
+#include <unistd.h>
 //#include <complex>
 
 //#include <boost/bind.hpp>
@@ -26,8 +30,11 @@
 #include "core/popserial.hpp"
 #include "core/popgpsdevice.hpp"
 #include "core/popartemisrpc.hpp"
+#include "core/pops3prpc.hpp"
 #include "core/popparsegps.hpp"
 #include "core/poppackethandler.hpp"
+#include "core/popchannelmap.hpp"
+#include "core/utilities.hpp"
 
 
 
@@ -46,6 +53,11 @@ int main(int argc, char *argv[])
 
 
 
+
+
+	zmq::context_t context(1); // only 1 per thread
+
+	PopChannelMap channel_map(false, context);
 
 
 	PopArtemisRPC rpc(1);
@@ -72,13 +84,22 @@ int main(int argc, char *argv[])
 
 	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 0);
 
-	PopGpsDevice updates(1);
+	PopS3pRPC s3p(0);
+	handler.s3p = &s3p;
 
-	rpc.packets.connect(updates);
-	updates.tx.connect(json);
-	updates.gps = &gps;
+	s3p.tx.connect(json);
+	json.connect(s3p);
+
+//	PopGpsDevice updates(1);
+
+//	rpc.packets.connect(updates);
+//	updates.tx.connect(json);
+//	updates.gps = &gps;
 	json.wakeup();
-	updates.tx.start_thread();
+//	updates.tx.start_thread();
+//	handler.s3p = &updates;
+
+	s3p.greet_s3p();
 
 //	rpc.mock();
 
@@ -90,7 +111,11 @@ int main(int argc, char *argv[])
 //	rpc.rx.connect(simArt);
 
 //	simArt.rx.start_thread();
+	//channel_map.set(i%POP_SLOT_COUNT, 54, 0);
 
+	sleep(1);
+	channel_map.poll();
+	channel_map.checksum_dump();
 
 
 	char c;
@@ -100,16 +125,10 @@ int main(int argc, char *argv[])
 	// Run Control Loop
 	while(1)
 	{
-		/*c = getch();
-		if( c == '-' ) h_start_chan--;
-		if( c == '+' ) h_start_chan++;*/
+		channel_map.poll();
 
-		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
 		boost::posix_time::milliseconds workTime(1000);
 		boost::this_thread::sleep(workTime);
-
-//		if( i % 1000 == 0)
-//			file.read(1);
 
 		i++;
 	}
