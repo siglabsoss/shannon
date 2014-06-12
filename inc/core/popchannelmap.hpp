@@ -46,21 +46,21 @@ public:
 	int32_t request_block(unsigned count);
 	bool dirty();
 
-
-private:
-	struct MapKey
-	{
-		uint16_t slot;
-	};
-
-	struct MapValue
+	struct PopChannelMapValue
 	{
 		uint64_t tracker;
 
 		std::string basestation;
 	};
 
-	void set(MapKey key, MapValue val);
+	struct PopChannelMapKey
+	{
+		uint16_t slot;
+	};
+
+
+private:
+	void set(PopChannelMapKey key, PopChannelMapValue val);
 	unsigned master_poll();
 	unsigned slave_poll();
 	uint8_t get_update_autoinc();
@@ -69,12 +69,12 @@ private:
 
 
 	// Custom less-than comparison function for the map keys.
-	struct MapKeyCompare
+	struct PopChannelMapKeyCompare
 	{
-		bool operator()(const MapKey& a, const MapKey& b) const;
+		bool operator()(const PopChannelMapKey& a, const PopChannelMapKey& b) const;
 	};
 
-	typedef std::map<MapKey, MapValue, MapKeyCompare> MapType;
+	typedef std::map<PopChannelMapKey, PopChannelMapValue, PopChannelMapKeyCompare> MapType;
 
 
 

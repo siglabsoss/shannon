@@ -226,14 +226,15 @@ void PopChannelMap::sync_table(void)
 	{
 		for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end(); ++it)
 		{
-			const MapKey& key = it->first;
-			const MapValue& val = it->second;
+			const PopChannelMapKey& key = it->first;
+			const PopChannelMapValue& val = it->second;
 			set(key, val);
 		}
 		notify_clean();
 	}
 }
 
+// tell slaves that for now all updates have been sent
 void PopChannelMap::notify_clean()
 {
 	if( !master )
@@ -241,8 +242,7 @@ void PopChannelMap::notify_clean()
 		return;
 	}
 
-	// tell slaves that for now all updates have been sent
-	std::string message = "{\"command\":\"set_clean\"}"; // unset_dirty sounds weird
+	std::string message = "{\"command\":\"set_clean\"}"; // unset_dirty would sound weird
 	s_sendmore (*publisher, "CHANNEL_MAP");
 	s_send (*publisher, message);
 }
@@ -252,10 +252,10 @@ void PopChannelMap::set(uint16_t slot, uint64_t tracker, std::string basestation
 {
 	mutex::scoped_lock lock(mtx_);
 
-	MapKey key;
+	PopChannelMapKey key;
 	key.slot = slot;
 
-	MapValue val;
+	PopChannelMapValue val;
 	val.tracker = tracker;
 	val.basestation = basestation;
 
@@ -273,7 +273,7 @@ void PopChannelMap::set(uint16_t slot, uint64_t tracker, std::string basestation
 }
 
 // you must hold mutex to call this function
-void PopChannelMap::set(MapKey key, MapValue val)
+void PopChannelMap::set(PopChannelMapKey key, PopChannelMapValue val)
 {
 	ostringstream os;
 	os << "{\"slot\":" << key.slot << ",\"tracker\":" << val.tracker << ",\"basestation\":\"" << val.basestation << '"'; // json message is missing ending '}'
@@ -383,10 +383,10 @@ void PopChannelMap::patch_datastore(std::string str)
 	}
 
 	// apply the actual patch
-	MapKey key;
+	PopChannelMapKey key;
 	key.slot = parseNumber<uint16_t>(FROZEN_GET_STRING(slotTok));
 
-	MapValue val;
+	PopChannelMapValue val;
 	val.tracker = parseNumber<uint64_t>(FROZEN_GET_STRING(trackerTok));
 	val.basestation = FROZEN_GET_STRING(basestationTok);
 
@@ -455,7 +455,7 @@ bool PopChannelMap::get_block(std::string bs, unsigned count)
 	unsigned walk = std::max(1u, POP_SLOT_COUNT / count); // floor math
 	unsigned i;
 
-	MapKey key;
+	PopChannelMapKey key;
 	unsigned given = 0;
 
 	i = 0;
@@ -468,7 +468,7 @@ bool PopChannelMap::get_block(std::string bs, unsigned count)
 			std::cout << "map filled up unexpectedly" << std::endl;
 		}
 
-		MapValue val;
+		PopChannelMapValue val;
 		val.tracker = 0; // "0" is a special value which means "assigned to basestation, but not given to a tracker"
 		val.basestation = bs;
 
@@ -493,8 +493,8 @@ bool PopChannelMap::get_block(std::string bs, unsigned count)
 	return true;
 }
 
-bool PopChannelMap::MapKeyCompare::operator()(const MapKey& a,
-												 const MapKey& b) const
+bool PopChannelMap::PopChannelMapKeyCompare::operator()(const PopChannelMapKey& a,
+												 const PopChannelMapKey& b) const
 {
 //	if (a.full_secs != b.full_secs)
 //		return a.full_secs < b.full_secs;
@@ -514,8 +514,8 @@ void PopChannelMap::checksum_dump(void)
 	ostringstream os;
 	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end(); ++it)
 	{
-		const MapKey& key = it->first;
-		const MapValue& value = it->second;
+		const PopChannelMapKey& key = it->first;
+		const PopChannelMapValue& value = it->second;
 		os << key.slot << ", " << value.tracker << ", " << value.basestation << endl;
 	}
 
