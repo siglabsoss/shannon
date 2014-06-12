@@ -21,6 +21,7 @@ namespace pop
 PopTimestamp get_microsec_system_time(void);
 int getch(void);
 int kbhit(void);
+std::string pop_get_hostname(void);
 
 
 

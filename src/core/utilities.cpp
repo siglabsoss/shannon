@@ -46,5 +46,26 @@ int kbhit(void)
     return select(1, &fds, NULL, NULL, &tv);
 }
 
+std::string pop_get_hostname(void)
+{
+	static bool set = false;
+	char buf[256];
+
+	if(!set)
+	{
+		int ret = gethostname(buf, 256);
+		if( ret != 0 )
+		{
+			std::cout << "couldn't read linux hostname!" << std::endl;
+			strncpy(buf, "unkown", 256);
+		}
+		set = true;
+	}
+
+	static std::string hostname(buf);
+
+	return hostname;
+}
+
 
 }

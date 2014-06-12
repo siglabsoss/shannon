@@ -415,16 +415,8 @@ int32_t PopChannelMap::request_block(unsigned count)
 		return -1;
 	}
 
-	char hostname[256];
-	int ret = gethostname(hostname, 256);
-	if( ret != 0 )
-	{
-		cout << "couldn't read linux hostname!" << endl;
-		strncpy(hostname, "unkown", 256);
-	}
-
 	ostringstream os;
-	os << "{\"command\":\"request_block\", \"params\":[\"" << hostname << "\"," << count << "]}";
+	os << "{\"command\":\"request_block\", \"params\":[\"" << pop_get_hostname() << "\"," << count << "]}";
 
 	dirty_ = true;
 
