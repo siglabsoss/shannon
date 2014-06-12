@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <inttypes.h>
 
 //#include "phy/popsparsecorrelate.h"
 #include "dsp/prota/popsparsecorrelate.h"
@@ -10,6 +11,7 @@
 #include "phy/radio.h"
 #include "hal/cpu.h"
 #include "hal/dma.h"
+#include "hal/pit.h"
 #else
 #include "core/basestationfreq.h"
 #include "core/util.h"
@@ -187,13 +189,13 @@ FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t d
 
 	if( denseDataLength < denseCombLength )
 	{
-		printf("dense data size %d must not be less than dense comb size %d\r\n", denseDataLength, denseCombLength);
+		printf("dense data size %"PRIu32" must not be less than dense comb size %"PRIu32"\r\n", denseDataLength, denseCombLength);
 		//FIXME: this is not an appropriate way of returning an error condition
 		return 0;
 	}
 
 	int32_t score, scoreLeft, scoreRight, maxScoreQuick = 0, maxScore = 0; //x(key)score
-	uint32_t maxScoreOffsetQuick, maxScoreOffset, scoreOffsetBinSearch, maxScoreOffsetRight, iterations, combOffset;
+	uint32_t maxScoreOffsetQuick, maxScoreOffset, scoreOffsetBinSearch, iterations, combOffset;
 
 
 	// Artemis is given a "guess" of the start timer value when the start-of-frame should occur
@@ -288,7 +290,6 @@ FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t d
 // pass in the sample which is the end of the comb
 FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert)
 {
-	size_t i;
 	size_t j,k,jp,kp;
 	int32_t xscore; //x(key)score
 	uint32_t start, head, now;
@@ -387,10 +388,7 @@ unsigned ota_length_encoded(unsigned len)
 void decode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out_size)
 {
 	size_t i,j;
-
-	int delta = 1;
-	int bit, prev;
-	int bit0, bit1, bit2, bit3;
+	int bit, bit0, bit1, bit2, bit3;
 
 	*out_size = in_size/4;
 
@@ -435,8 +433,7 @@ void encode_ota_bytes(uint8_t* in, uint32_t in_size, uint8_t* out, uint32_t* out
 {
 	size_t i,j;
 
-	int delta = 1;
-	int bit, prev;
+	int bit;
 
 	*out_size = in_size*4;
 
@@ -500,7 +497,7 @@ uint16_t ota_packet_checksum(ota_packet_t* p)
 void ota_packet_set_checksum(ota_packet_t* p)
 {
 	uint16_t checksum = ota_packet_checksum(p);
-	printf("checksum: %d\r\n", checksum);
+//	printf("checksum: %d\r\n", checksum);
 	p->checksum = checksum;
 }
 
@@ -586,12 +583,45 @@ crc_t crcSlow(uint8_t const message[], int nBytes)
 
 
 
+#ifdef POPWI_PLATFORM_ARTEMIS
 
+uint32_t pop_get_now_slot(void)
+{
+	return pop_get_slot_pit(pit_get_utc_counts());
+}
 
+// how many pit counts until the slot appears
+// if we are already in the slot when this is called, we assume it's too late to transmit, so counts till the next available slot is returned
+uint32_t pop_get_next_slot_pit(uint32_t slot)
+{
+	if( slot >= POP_SLOT_COUNT )
+	{
+		printf("Asking for impossible slot %lu in pop_get_pit_next_slot\r\n", slot);
+		return 0;
+	}
 
+	uint64_t now = pit_get_utc_counts();
+	uint32_t now_slot = pop_get_slot_pit(now);
 
+	if( now_slot >= slot )
+	{
+		slot += POP_PERIOD_LENGTH;
+	}
 
+	uint64_t rounded = now % (POP_SLOT_LENGTH*19200000); // how many pit counts since the beginning of this slot
+	uint64_t remaining = ((slot - now_slot) * (POP_SLOT_LENGTH*19200000)) - rounded;
 
+	return remaining;
+}
+
+#endif
+
+uint32_t pop_get_slot_pit(uint64_t pit)
+{
+	uint64_t secs = pit / 19200000; //floor
+
+	return (secs / POP_SLOT_LENGTH) % POP_SLOT_COUNT;
+}
 
 
 
