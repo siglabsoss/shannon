@@ -35,17 +35,6 @@ public:
 	PopChannelMap(std::string, bool, zmq::context_t&);
 	~PopChannelMap();
 
-
-	bool map_full();
-	bool get_block(std::string bs, unsigned count);
-	unsigned poll();
-	void set(uint16_t slot, uint64_t tracker, std::string basestation);
-	void checksum_dump(void);
-	void request_sync(void);
-	void sync_table(void);
-	int32_t request_block(unsigned count);
-	bool dirty();
-
 	struct PopChannelMapValue
 	{
 		uint64_t tracker;
@@ -58,6 +47,16 @@ public:
 		uint16_t slot;
 	};
 
+	bool map_full();
+	bool get_block(std::string bs, unsigned count);
+	unsigned poll();
+	void set(uint16_t slot, uint64_t tracker, std::string basestation);
+	void checksum_dump(void);
+	void request_sync(void);
+	void sync_table(void);
+	int32_t request_block(unsigned count);
+	bool dirty();
+	void find_by_basestation(std::string bs, std::vector<PopChannelMapKey>& keys, std::vector<PopChannelMapValue>& values);
 
 private:
 	void set(PopChannelMapKey key, PopChannelMapValue val);

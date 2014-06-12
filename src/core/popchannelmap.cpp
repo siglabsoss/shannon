@@ -493,6 +493,26 @@ bool PopChannelMap::get_block(std::string bs, unsigned count)
 	return true;
 }
 
+void PopChannelMap::find_by_basestation(std::string bs, std::vector<PopChannelMapKey>& keys, std::vector<PopChannelMapValue>& values)
+{
+
+	mutex::scoped_lock lock(mtx_);
+
+
+	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end(); ++it)
+	{
+		const PopChannelMapKey& key = it->first;
+		const PopChannelMapValue& val = it->second;
+
+		if( val.basestation.compare(bs) == 0 )
+		{
+			keys.push_back(key);
+			values.push_back(val);
+		}
+	}
+
+}
+
 bool PopChannelMap::PopChannelMapKeyCompare::operator()(const PopChannelMapKey& a,
 												 const PopChannelMapKey& b) const
 {
