@@ -19,10 +19,11 @@
 
 #include <map>
 #include <string>
-#include <utility>
+
 
 #include <boost/thread/mutex.hpp>
 
+#include "dsp/prota/popsparsecorrelate.h"
 
 
 namespace pop
@@ -37,7 +38,7 @@ public:
 
 	struct PopChannelMapValue
 	{
-		uint64_t tracker;
+		uuid_t tracker;
 
 		std::string basestation;
 	};
@@ -50,7 +51,7 @@ public:
 	bool map_full();
 	bool get_block(std::string bs, unsigned count);
 	unsigned poll();
-	void set(uint16_t slot, uint64_t tracker, std::string basestation);
+	void set(uint16_t slot, uuid_t tracker, std::string basestation);
 	void checksum_dump(void);
 	void request_sync(void);
 	void sync_table(void);

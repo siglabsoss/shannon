@@ -9,6 +9,7 @@
 #include "dsp/prota/popsparsecorrelate.h"
 #include "popjsonrpc.hpp"
 #include "core/pops3prpc.hpp"
+#include "core/popchannelmap.hpp"
 
 
 namespace pop
@@ -16,6 +17,7 @@ namespace pop
 
 class PopArtemisRPC;
 class PopS3pRPC;
+class PopChannelMap;
 
 class PopPacketHandler : public PopSink<uint64_t>
 {
@@ -27,6 +29,7 @@ public:
        void init() {}
        PopArtemisRPC* rpc;
        PopS3pRPC* s3p;
+       PopChannelMap* map;
 
 };
 

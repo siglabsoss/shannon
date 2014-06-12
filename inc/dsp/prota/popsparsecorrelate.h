@@ -33,6 +33,8 @@ typedef struct
 } uuid_t;
 
 
+extern const uuid_t zero_uuid;
+
 
 uint32_t artemis_pop_correlate(int32_t* scoreOut, int32_t guess);
 uint32_t artemis_pop_data_demodulate(const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert);

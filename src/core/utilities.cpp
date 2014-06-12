@@ -3,10 +3,57 @@
 
 
 #include "core/utilities.hpp"
+#include "b64/b64.h"
 
 
 namespace pop
 {
+
+
+bool operator==(const uuid_t& lhs, const uuid_t& rhs)
+{
+    return (lhs.parts.UIDMH == rhs.parts.UIDMH) && (lhs.parts.UIDML == rhs.parts.UIDML) && (lhs.parts.UIDL == rhs.parts.UIDL);
+}
+
+
+uuid_t b64_to_uuid(std::string b64_serial)
+{
+	uuid_t result;
+
+	unsigned encodedCount = b64_serial.length();
+	char serialDecoded[encodedCount];
+	unsigned decodedCount;
+	b64_decode(b64_serial.c_str(), encodedCount, serialDecoded, &decodedCount);
+
+	if( decodedCount != sizeof(uuid_t) )
+	{
+		std::cout << "Invalid serial length" << std::endl;
+		result.parts.UIDMH = result.parts.UIDML = result.parts.UIDL = 0;
+		return result;
+	}
+
+	// #lazy
+	b64_decode(b64_serial.c_str(), encodedCount, (char*)&result, &decodedCount);
+
+	return result;
+}
+
+std::string uuid_to_b64(uuid_t u)
+{
+
+	unsigned encodedCount;
+	// b64_length_encoded() tells us the worst case size for the b64 string, we need 1 more char
+	char b64_encoded[b64_length_encoded(sizeof(uuid_t))+1];
+
+	// b64 encode data
+	b64_encode((char*)&u, sizeof(uuid_t), b64_encoded, &encodedCount);
+
+	// pack in a null so we can %s with printf
+	b64_encoded[encodedCount] = '\0';
+
+	return std::string(b64_encoded);
+}
+
 
 // code pulled from '/home/joel/uhd/host/lib/types/time_spec.cpp
 // because that file was compiled with incorrect flags and get_system_time() returns garbage

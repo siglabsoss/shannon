@@ -9,27 +9,16 @@
 
 #include <assert.h>
 #include <stddef.h>
-#include <stdint.h>
-#include <time.h>
 
-#include <map>
-#include <string>
-//#include <tr1/unordered_map>
-#include <utility>
 #include <vector>
-#include <zmq.hpp>
-#include <iostream>
-#include <unistd.h>
-#include <sstream>
-#include <sstream>
 
 #include <boost/thread/mutex.hpp>
 
-#include "dsp/prota/popsparsecorrelate.h"
 #include "core/popchannelmap.hpp"
 #include "zmq/zhelpers.hpp"
 #include "frozen/frozen.h"
 #include "core/utilities.hpp"
+#include "core/poppackethandler.hpp"
 
 using boost::mutex;
 using std::make_pair;
@@ -248,7 +237,7 @@ void PopChannelMap::notify_clean()
 }
 
 
-void PopChannelMap::set(uint16_t slot, uint64_t tracker, std::string basestation)
+void PopChannelMap::set(uint16_t slot, uuid_t tracker, std::string basestation)
 {
 	mutex::scoped_lock lock(mtx_);
 
@@ -276,7 +265,7 @@ void PopChannelMap::set(uint16_t slot, uint64_t tracker, std::string basestation
 void PopChannelMap::set(PopChannelMapKey key, PopChannelMapValue val)
 {
 	ostringstream os;
-	os << "{\"slot\":" << key.slot << ",\"tracker\":" << val.tracker << ",\"basestation\":\"" << val.basestation << '"'; // json message is missing ending '}'
+	os << "{\"slot\":" << key.slot << ",\"tracker\":\"" << uuid_to_b64(val.tracker) << "\",\"basestation\":\"" << val.basestation << '"'; // json message is missing ending '}'
 	string message;
 
 	if( master )
@@ -371,7 +360,7 @@ void PopChannelMap::patch_datastore(std::string str)
 	}
 
 	trackerTok = find_json_token(arr, "tracker");
-	if( !(trackerTok && trackerTok->type == JSON_TYPE_NUMBER) )
+	if( !(trackerTok && trackerTok->type == JSON_TYPE_STRING) )
 	{
 		return;
 	}
@@ -387,7 +376,7 @@ void PopChannelMap::patch_datastore(std::string str)
 	key.slot = parseNumber<uint16_t>(FROZEN_GET_STRING(slotTok));
 
 	PopChannelMapValue val;
-	val.tracker = parseNumber<uint64_t>(FROZEN_GET_STRING(trackerTok));
+	val.tracker = b64_to_uuid(FROZEN_GET_STRING(trackerTok));
 	val.basestation = FROZEN_GET_STRING(basestationTok);
 
 	// only need the mutex from here on out
@@ -461,7 +450,7 @@ bool PopChannelMap::get_block(std::string bs, unsigned count)
 		}
 
 		PopChannelMapValue val;
-		val.tracker = 0; // "0" is a special value which means "assigned to basestation, but not given to a tracker"
+		val.tracker = zero_uuid; // "0" is a special value which means "assigned to basestation, but not given to a tracker"
 		val.basestation = bs;
 
 		key.slot = i;
@@ -528,7 +517,7 @@ void PopChannelMap::checksum_dump(void)
 	{
 		const PopChannelMapKey& key = it->first;
 		const PopChannelMapValue& value = it->second;
-		os << key.slot << ", " << value.tracker << ", " << value.basestation << endl;
+		os << key.slot << ", " << uuid_to_b64(value.tracker) << ", " << value.basestation << endl;
 	}
 
 	cout << os.str();
