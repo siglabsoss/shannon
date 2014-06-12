@@ -102,7 +102,7 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 //				PopChannelMap::PopChannelMapValue updatedVal = val;
 
 
-				if( val.tracker == zero_uuid )
+				if( val.tracker == zero_uuid || val.tracker == uuid ) // give slot to tracker if it's empty OR if we've already given it to the same tracker
 				{
 					slots[chosen] = key.slot;
 					chosen++;
@@ -124,13 +124,13 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			os << "{\"result\":[";
 			for( unsigned i = 0; i < chosen; i++ )
 			{
-				os << slots[i];
 				if( i != 0 )
 				{
 					os << ",";
 				}
+				os << slots[i];
 			}
-			os << "\"id\":%d}";
+			os << "],\"id\":" << original_id << "}";
 
 			snprintf(packet.data, sizeof(packet.data), "%s", os.str().c_str()); // lazy way to cap length
 			ota_packet_prepare_tx(&packet);
