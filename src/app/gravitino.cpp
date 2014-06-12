@@ -57,8 +57,26 @@ int main(int argc, char *argv[])
 	zmq::context_t context(1); // only 1 per thread
 	PopChannelMap channel_map("localhost", false, context);
 
+	cout << "Waiting for Channel Map to sync";
 
-	channel_map.request_block(10); // ask to be given 10 channels
+	while(channel_map.dirty())
+	{
+		boost::posix_time::milliseconds workTime(500);
+		boost::this_thread::sleep(workTime);
+		cout << '.';
+		channel_map.poll();
+	}
+
+	cout << "  done!" << endl;
+
+	uint32_t target_slots = 5;
+	uint32_t owned_slots = channel_map.allocated_count();
+	if( target_slots > owned_slots )
+	{
+		// only request slots to meet our target
+		channel_map.request_block(target_slots-owned_slots);
+	}
+
 
 
 

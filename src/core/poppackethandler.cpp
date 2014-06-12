@@ -85,7 +85,7 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 
 
 			// how many slots are we giving out?
-			unsigned remaining = 4;
+			unsigned remaining = 5;
 			unsigned chosen = 0;
 			uint16_t slots[remaining];
 

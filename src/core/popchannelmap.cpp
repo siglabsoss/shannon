@@ -30,7 +30,7 @@ using namespace std;
 
 #define POP_CHANNEL_MAP_TOKENS (12)
 
-#define CHANNEL_MAP_VERBOSE
+//#define CHANNEL_MAP_VERBOSE
 
 namespace pop
 {
@@ -415,6 +415,16 @@ int32_t PopChannelMap::request_block(unsigned count)
 
 	return 0;
 }
+
+// how many slots do we already have allocated?
+int32_t PopChannelMap::allocated_count(void)
+{
+	std::vector<PopChannelMap::PopChannelMapKey> keys;
+	std::vector<PopChannelMap::PopChannelMapValue> values;
+	find_by_basestation(pop_get_hostname(), keys, values);
+	return keys.size();
+}
+
 
 // returns success
 bool PopChannelMap::get_block(std::string bs, unsigned count)
