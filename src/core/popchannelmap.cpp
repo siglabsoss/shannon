@@ -41,14 +41,14 @@ using namespace std;
 
 #define POP_CHANNEL_MAP_TOKENS (12)
 
-//#define CHANNEL_MAP_VERBOSE
+#define CHANNEL_MAP_VERBOSE
 
 namespace pop
 {
 
 // FIXME: copy the logic of http://zguide.zeromq.org/php:chapter5#Reliable-Pub-Sub-Clone-Pattern
 
-PopChannelMap::PopChannelMap(bool m, zmq::context_t& context) : master(m), publisher(0), subscriber(0)
+PopChannelMap::PopChannelMap(std::string ip, bool m, zmq::context_t& context) : master(m), dirty_(0), publisher(0), subscriber(0), pusher(0)
 {
 	if( master )
 	{
@@ -60,10 +60,10 @@ PopChannelMap::PopChannelMap(bool m, zmq::context_t& context) : master(m), publi
 	else
 	{
 		subscriber = new zmq::socket_t(context, ZMQ_SUB);
-		subscriber->connect("tcp://localhost:11526");
+		subscriber->connect(std::string("tcp://" + ip + ":11526").c_str());
 		subscriber->setsockopt( ZMQ_SUBSCRIBE, "CHANNEL_MAP", 11);
 		pusher = new zmq::socket_t(context, ZMQ_PUSH);
-		pusher->connect("tcp://localhost:11527");
+		pusher->connect(std::string("tcp://" + ip + ":11527").c_str());
 
 		request_sync();
 	}
@@ -194,6 +194,14 @@ uint8_t PopChannelMap::get_update_autoinc()
 	return update++;
 }
 
+
+// if a slave has taken an action which requires a roundtrip to the server, this will return true until
+// all pending updates have been given by the server
+bool PopChannelMap::dirty()
+{
+	return dirty_;
+}
+
 void PopChannelMap::request_sync(void)
 {
 	if( master )
@@ -202,6 +210,7 @@ void PopChannelMap::request_sync(void)
 	}
 	else
 	{
+		dirty_ = true;
 		std::string message = "{\"command\":\"sync\"}";
 		s_sendmore (*pusher, "CHANNEL_MAP_SLAVE");
 		s_send (*pusher, message);
@@ -221,11 +230,25 @@ void PopChannelMap::sync_table(void)
 			const MapValue& val = it->second;
 			set(key, val);
 		}
+		notify_clean();
 	}
 }
 
+void PopChannelMap::notify_clean()
+{
+	if( !master )
+	{
+		return;
+	}
 
-void PopChannelMap::set(uint16_t slot, uint64_t tracker, uint32_t basestation)
+	// tell slaves that for now all updates have been sent
+	std::string message = "{\"command\":\"set_clean\"}"; // unset_dirty sounds weird
+	s_sendmore (*publisher, "CHANNEL_MAP");
+	s_send (*publisher, message);
+}
+
+
+void PopChannelMap::set(uint16_t slot, uint64_t tracker, std::string basestation)
 {
 	mutex::scoped_lock lock(mtx_);
 
@@ -236,14 +259,24 @@ void PopChannelMap::set(uint16_t slot, uint64_t tracker, uint32_t basestation)
 	val.tracker = tracker;
 	val.basestation = basestation;
 
+	if( !master )
+	{
+		dirty_ = true;
+	}
+
 	set(key, val);
+
+	if( master )
+	{
+		notify_clean();
+	}
 }
 
 // you must hold mutex to call this function
 void PopChannelMap::set(MapKey key, MapValue val)
 {
 	ostringstream os;
-	os << "{\"slot\":" << key.slot << ",\"tracker\":" << val.tracker << ",\"basestation\":" << val.basestation; // json message is missing ending '}'
+	os << "{\"slot\":" << key.slot << ",\"tracker\":" << val.tracker << ",\"basestation\":\"" << val.basestation << '"'; // json message is missing ending '}'
 	string message;
 
 	if( master )
@@ -268,7 +301,7 @@ void PopChannelMap::patch_datastore(std::string str)
 	const char *json = str.c_str();
 
 	struct json_token arr[POP_CHANNEL_MAP_TOKENS];
-	const struct json_token *slotTok = 0, *trackerTok = 0, *idTok = 0, *basestationTok = 0, *commandTok;
+	const struct json_token *slotTok = 0, *trackerTok = 0, *idTok = 0, *basestationTok = 0, *commandTok = 0, *paramsTok = 0, *p0 = 0, *p1 = 0;
 
 	// Tokenize json string, fill in tokens array
 	int returnValue = parse_json(json, strlen(json), arr, POP_CHANNEL_MAP_TOKENS);
@@ -297,6 +330,37 @@ void PopChannelMap::patch_datastore(std::string str)
 			sync_table();
 			return;
 		}
+
+		if( FROZEN_GET_STRING(commandTok).compare("set_clean") == 0 )
+		{
+			dirty_ = false;
+			return;
+		}
+
+		if( FROZEN_GET_STRING(commandTok).compare("request_block") == 0 )
+		{
+			paramsTok = find_json_token(arr, "params");
+			if( paramsTok && paramsTok->type == JSON_TYPE_ARRAY )
+			{
+				p0 = find_json_token(arr, "params[0]");
+				p1 = find_json_token(arr, "params[1]");
+
+				if( p0 && p1 && p0->type == JSON_TYPE_STRING && p1->type == JSON_TYPE_NUMBER)
+				{
+					std::string bs = FROZEN_GET_STRING(p0);
+					unsigned count = parseNumber<unsigned>(FROZEN_GET_STRING(p1));
+
+#ifdef CHANNEL_MAP_VERBOSE
+					cout << "Request for block from basestation: " << bs << ", count: " << count << endl;
+#endif
+
+					get_block(bs, count);
+					return;
+				}
+			}
+
+		}
+
 	}
 
 
@@ -313,7 +377,7 @@ void PopChannelMap::patch_datastore(std::string str)
 	}
 
 	basestationTok = find_json_token(arr, "basestation");
-	if( !(basestationTok && basestationTok->type == JSON_TYPE_NUMBER) )
+	if( !(basestationTok && basestationTok->type == JSON_TYPE_STRING) )
 	{
 		return;
 	}
@@ -324,7 +388,7 @@ void PopChannelMap::patch_datastore(std::string str)
 
 	MapValue val;
 	val.tracker = parseNumber<uint64_t>(FROZEN_GET_STRING(trackerTok));
-	val.basestation = parseNumber<uint64_t>(FROZEN_GET_STRING(basestationTok));
+	val.basestation = FROZEN_GET_STRING(basestationTok);
 
 	// only need the mutex from here on out
 	mutex::scoped_lock lock(mtx_);
@@ -333,6 +397,7 @@ void PopChannelMap::patch_datastore(std::string str)
 	{
 		 // set the val, and also tell all slaves
 		set(key, val);
+		notify_clean();
 	}
 	else
 	{
@@ -341,15 +406,49 @@ void PopChannelMap::patch_datastore(std::string str)
 	}
 }
 
+// Slave only, request a block of non sequential time slots
+// returns -1 for error, or count of blocks
+int32_t PopChannelMap::request_block(unsigned count)
+{
+	if( master )
+	{
+		return -1;
+	}
+
+	char hostname[256];
+	int ret = gethostname(hostname, 256);
+	if( ret != 0 )
+	{
+		cout << "couldn't read linux hostname!" << endl;
+		strncpy(hostname, "unkown", 256);
+	}
+
+	ostringstream os;
+	os << "{\"command\":\"request_block\", \"params\":[\"" << hostname << "\"," << count << "]}";
+
+	dirty_ = true;
+
+	s_sendmore (*pusher, "CHANNEL_MAP_SLAVE");
+	s_send (*pusher, os.str());
+
+
+	return 0;
+}
 
 // returns success
-bool PopChannelMap::get_block(unsigned count)
+bool PopChannelMap::get_block(std::string bs, unsigned count)
 {
+	if( !master )
+	{
+		return false;
+	}
+
 	mutex::scoped_lock lock(mtx_);
 
 	if( count > (POP_SLOT_COUNT - the_map_.size()) )
 	{
 		std::cout << "Not enough room in map" << std::endl;
+		notify_clean();
 		return false;
 	}
 
@@ -370,11 +469,11 @@ bool PopChannelMap::get_block(unsigned count)
 		}
 
 		MapValue val;
-		val.tracker = 34;
-		val.basestation = 342;
+		val.tracker = 0; // "0" is a special value which means "assigned to basestation, but not given to a tracker"
+		val.basestation = bs;
 
 		key.slot = i;
-		if( the_map_.count(key) == 0 ) //if( the_map_.find(key) == the_map_.end() )
+		if( the_map_.count(key) == 0 || the_map_[key].basestation.compare("") == 0 ) // map key doesn't exist, or if it does, it's empty
 		{
 			given++;
 			set(key, val);
@@ -388,6 +487,8 @@ bool PopChannelMap::get_block(unsigned count)
 			i++;
 		}
 	}
+
+	notify_clean();
 
 	return true;
 }

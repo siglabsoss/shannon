@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
 	zmq::context_t context(1); // only 1 per thread
 
-	PopChannelMap channel_map(true, context);
+	PopChannelMap channel_map("", true, context);
 
 
 

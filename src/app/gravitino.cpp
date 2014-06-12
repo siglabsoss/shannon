@@ -55,8 +55,12 @@ int main(int argc, char *argv[])
 
 
 	zmq::context_t context(1); // only 1 per thread
+	PopChannelMap channel_map("localhost", false, context);
 
-	PopChannelMap channel_map(false, context);
+
+	channel_map.request_block(10); // ask to be given 10 channels
+
+
 
 
 	PopArtemisRPC rpc(1);
@@ -112,9 +116,9 @@ int main(int argc, char *argv[])
 //	simArt.rx.start_thread();
 	//channel_map.set(i%POP_SLOT_COUNT, 54, 0);
 
-	sleep(1);
-	channel_map.poll();
-	channel_map.checksum_dump();
+//	sleep(1);
+//	channel_map.poll();
+//	channel_map.checksum_dump();
 
 
 	char c;
@@ -125,6 +129,7 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		channel_map.poll();
+
 
 		boost::posix_time::milliseconds workTime(1000);
 		boost::this_thread::sleep(workTime);

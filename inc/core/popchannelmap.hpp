@@ -32,17 +32,19 @@ namespace pop
 class PopChannelMap
 {
 public:
-	PopChannelMap(bool, zmq::context_t&);
+	PopChannelMap(std::string, bool, zmq::context_t&);
 	~PopChannelMap();
 
 
 	bool map_full();
-	bool get_block(unsigned count);
+	bool get_block(std::string bs, unsigned count);
 	unsigned poll();
-	void set(uint16_t slot, uint64_t tracker, uint32_t basestation);
+	void set(uint16_t slot, uint64_t tracker, std::string basestation);
 	void checksum_dump(void);
 	void request_sync(void);
 	void sync_table(void);
+	int32_t request_block(unsigned count);
+	bool dirty();
 
 
 private:
@@ -55,7 +57,7 @@ private:
 	{
 		uint64_t tracker;
 
-		uint32_t basestation;
+		std::string basestation;
 	};
 
 	void set(MapKey key, MapValue val);
@@ -63,6 +65,7 @@ private:
 	unsigned slave_poll();
 	uint8_t get_update_autoinc();
 	void patch_datastore(std::string s);
+	void notify_clean();
 
 
 	// Custom less-than comparison function for the map keys.
@@ -76,6 +79,7 @@ private:
 
 
 	bool master; // this instance is the source of truth?
+	bool dirty_;
 	zmq::socket_t* publisher;
 	zmq::socket_t* subscriber;
 	zmq::socket_t* collector;

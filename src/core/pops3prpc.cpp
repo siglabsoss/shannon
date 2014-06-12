@@ -157,33 +157,6 @@ void PopS3pRPC::packet_rx(std::string b64_serial, uint32_t offset, double clock_
 //	packets.process(&packet, 1);
 }
 
-void PopS3pRPC::forward_packet(char* data, uint32_t size, uint32_t txTime, uint64_t pitTxTime)
-{
-	unsigned encodedCount;
-	char b64_encoded[b64_length_encoded(size)+1];
-
-	b64_encode(data, size, b64_encoded, &encodedCount);
-
-	// pack in a null so we can %s with printf
-	b64_encoded[encodedCount] = '\0';
-
-
-	char hostname[256];
-	int ret = gethostname(hostname, 256);
-	if( ret != 0 )
-	{
-		cout << "couldn't read linux hostname!" << endl;
-		strncpy(hostname, "unkown", 256);
-	}
-
-	unsigned final_length = 128+encodedCount+256;
-
-	// Guaranteed to be longer than our entire json message
-	char buf[final_length];
-
-	unsigned jsonSize = snprintf(buf, final_length, "{\"method\":\"grav_forward\",\"params\":[\"%s\", \"%s\", %" PRIu32 ", %" PRIu64 "]}", hostname, b64_encoded, txTime, pitTxTime );
-	send_rpc(buf, jsonSize);
-}
 
 void PopS3pRPC::greet_s3p(void)
 {

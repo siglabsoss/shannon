@@ -43,7 +43,7 @@ void ota_packet_zero_fill_data(ota_packet_t* p);
 
 // both in seconds
 #define POP_SLOT_LENGTH (2)
-#define POP_PERIOD_LENGTH (52)
+#define POP_PERIOD_LENGTH (60)
 #define POP_SLOT_COUNT (POP_PERIOD_LENGTH/POP_SLOT_LENGTH)
 
 
