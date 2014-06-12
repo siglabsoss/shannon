@@ -19,10 +19,11 @@
 
 #include <map>
 #include <string>
-#include <utility>
+
 
 #include <boost/thread/mutex.hpp>
 
+#include "dsp/prota/popsparsecorrelate.h"
 
 
 namespace pop
@@ -32,50 +33,53 @@ namespace pop
 class PopChannelMap
 {
 public:
-	PopChannelMap(bool, zmq::context_t&);
+	PopChannelMap(std::string, bool, zmq::context_t&);
 	~PopChannelMap();
 
+	struct PopChannelMapValue
+	{
+		uuid_t tracker;
 
-	bool map_full();
-	bool get_block(unsigned count);
-	unsigned poll();
-	void set(uint16_t slot, uint64_t tracker, uint32_t basestation);
-	void checksum_dump(void);
-	void request_sync(void);
-	void sync_table(void);
+		std::string basestation;
+	};
 
-
-private:
-	struct MapKey
+	struct PopChannelMapKey
 	{
 		uint16_t slot;
 	};
 
-	struct MapValue
-	{
-		uint64_t tracker;
+	bool map_full();
+	bool get_block(std::string bs, unsigned count);
+	unsigned poll();
+	void set(uint16_t slot, uuid_t tracker, std::string basestation);
+	void checksum_dump(void);
+	void request_sync(void);
+	void sync_table(void);
+	int32_t request_block(unsigned count);
+	bool dirty();
+	void find_by_basestation(std::string bs, std::vector<PopChannelMapKey>& keys, std::vector<PopChannelMapValue>& values);
 
-		uint32_t basestation;
-	};
-
-	void set(MapKey key, MapValue val);
+private:
+	void set(PopChannelMapKey key, PopChannelMapValue val);
 	unsigned master_poll();
 	unsigned slave_poll();
 	uint8_t get_update_autoinc();
 	void patch_datastore(std::string s);
+	void notify_clean();
 
 
 	// Custom less-than comparison function for the map keys.
-	struct MapKeyCompare
+	struct PopChannelMapKeyCompare
 	{
-		bool operator()(const MapKey& a, const MapKey& b) const;
+		bool operator()(const PopChannelMapKey& a, const PopChannelMapKey& b) const;
 	};
 
-	typedef std::map<MapKey, MapValue, MapKeyCompare> MapType;
+	typedef std::map<PopChannelMapKey, PopChannelMapValue, PopChannelMapKeyCompare> MapType;
 
 
 
 	bool master; // this instance is the source of truth?
+	bool dirty_;
 	zmq::socket_t* publisher;
 	zmq::socket_t* subscriber;
 	zmq::socket_t* collector;

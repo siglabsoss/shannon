@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
 	zmq::context_t context(1); // only 1 per thread
 
-	PopChannelMap channel_map(true, context);
+	PopChannelMap channel_map("", true, context);
 
 
 
@@ -160,6 +160,11 @@ int main(int argc, char *argv[])
 
 		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);
+
+		if( i % 30 == 0 )
+		{
+			channel_map.checksum_dump();
+		}
 
 		i++;
 	}

@@ -6,6 +6,8 @@
 #include "core/popartemisrpc.hpp"
 #include "core/basestationfreq.h"
 #include "core/utilities.hpp"
+#include "core/popchannelmap.hpp"
+#include "b64/b64.h"
 
 
 using namespace std;
@@ -74,18 +76,78 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 
 	if( method.compare("slot_rq") == 0  && original_id != -1 )
 	{
-//		p0 = find_json_token(arr, "params[0]");
-//		if( p0 && p0->type == JSON_TYPE_STRING )
-//		{
-//			ota_packet_t packet;
-//			ota_packet_zero_fill(&packet);
-//			snprintf(packet.data, sizeof(packet.data), "{\"result\":[%d],\"id\":%d}", 1, original_id);
-//			ota_packet_prepare_tx(&packet);
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+
+			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
+
+
+
+			// how many slots are we giving out?
+			unsigned remaining = 4;
+			unsigned chosen = 0;
+			uint16_t slots[remaining];
+
+			// grab all slots avaliable to us
+			std::vector<PopChannelMap::PopChannelMapKey> keys;
+			std::vector<PopChannelMap::PopChannelMapValue> values;
+			map->find_by_basestation(pop_get_hostname(), keys, values);
+
+			//		unsigned n = keys.size() ; // size before the inserts
+			for( unsigned i = 0; i < keys.size(); i++ )
+			{
+				const PopChannelMap::PopChannelMapKey& key = keys[i];
+				PopChannelMap::PopChannelMapValue val = values[i];
+//				PopChannelMap::PopChannelMapValue updatedVal = val;
+
+
+				if( val.tracker == zero_uuid || val.tracker == uuid ) // give slot to tracker if it's empty OR if we've already given it to the same tracker
+				{
+					slots[chosen] = key.slot;
+					chosen++;
+
+					map->set(key.slot, uuid, val.basestation);
+
+
+					if( chosen >= remaining )
+					{
+						break;
+					}
+				}
+			}
+
+			ota_packet_t packet;
+			ota_packet_zero_fill(&packet);
+
+			ostringstream os;
+			os << "{\"result\":[";
+			for( unsigned i = 0; i < chosen; i++ )
+			{
+				if( i != 0 )
+				{
+					os << ",";
+				}
+				os << slots[i];
+			}
+			os << "],\"id\":" << original_id << "}";
+
+			snprintf(packet.data, sizeof(packet.data), "%s", os.str().c_str()); // lazy way to cap length
+			ota_packet_prepare_tx(&packet);
+
+			puts(packet.data);
+
+			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+
+		}
+
 //
-//			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+//		for (std::vector<mystruct>::iterator iter = Vect.begin(); iter != Vect.end(); ++iter)
+//		{
+//			Vect.insert(iter + 1, otherstruct);
+//
 //		}
 
-		s3p->forward_packet(str, strlen(str), txTime, pitTxTime);
 	}
 
 	if( method.compare("poll") == 0 )
