@@ -628,7 +628,16 @@ uint32_t pop_get_slot_pit(uint64_t pit)
 }
 
 
+uint32_t pop_get_slot_pit_rounded(uint64_t pit)
+{
+	long double secs = pit / 19200000.0;
 
+	long double fslot = secs / (double) POP_SLOT_LENGTH;
+
+	uint32_t slot = (uint32_t)(fslot + 0.5); // floor
+
+	return slot % POP_SLOT_COUNT;
+}
 
 
 
