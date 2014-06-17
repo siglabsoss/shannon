@@ -486,9 +486,7 @@ bool PopChannelMap::get_block(std::string bs, unsigned count)
 
 void PopChannelMap::find_by_basestation(std::string bs, std::vector<PopChannelMapKey>& keys, std::vector<PopChannelMapValue>& values)
 {
-
 	mutex::scoped_lock lock(mtx_);
-
 
 	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end(); ++it)
 	{
@@ -501,7 +499,23 @@ void PopChannelMap::find_by_basestation(std::string bs, std::vector<PopChannelMa
 			values.push_back(val);
 		}
 	}
+}
 
+void PopChannelMap::find_by_tracker(uuid_t tracker, std::vector<PopChannelMapKey>& keys, std::vector<PopChannelMapValue>& values)
+{
+	mutex::scoped_lock lock(mtx_);
+
+	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end(); ++it)
+	{
+		const PopChannelMapKey& key = it->first;
+		const PopChannelMapValue& val = it->second;
+
+		if( val.tracker == tracker )
+		{
+			keys.push_back(key);
+			values.push_back(val);
+		}
+	}
 }
 
 bool PopChannelMap::PopChannelMapKeyCompare::operator()(const PopChannelMapKey& a,
@@ -527,7 +541,7 @@ void PopChannelMap::checksum_dump(void)
 	{
 		const PopChannelMapKey& key = it->first;
 		const PopChannelMapValue& value = it->second;
-		os << key.slot << ", " << uuid_to_b64(value.tracker) << ", " << value.basestation << endl;
+		os << std::setw(3) << std::left << key.slot << "  " << uuid_to_b64(value.tracker) << ", " << value.basestation << endl;
 	}
 
 	cout << os.str();

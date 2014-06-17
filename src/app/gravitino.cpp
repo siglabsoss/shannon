@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
 	cout << "  done!" << endl;
 
-	uint32_t target_slots = 5;
+	uint32_t target_slots = 30;
 	uint32_t owned_slots = channel_map.allocated_count();
 	if( target_slots > owned_slots )
 	{

@@ -56,9 +56,11 @@ void ota_packet_set_size(ota_packet_t* p);
 uint32_t counts_per_bits(uint16_t bits);
 void ota_packet_zero_fill_data(ota_packet_t* p);
 uint32_t pop_get_now_slot(void);
-uint32_t pop_get_next_slot_pit(uint32_t slot);
+uint64_t pop_get_next_slot_pit(uint32_t slot);
 uint32_t pop_get_slot_pit(uint64_t pit);
 uint32_t pop_get_slot_pit_rounded(uint64_t pit);
+int64_t pop_get_slot_error(uint32_t, uint64_t);
+double pop_get_slot_pit_float(uint64_t pit);
 
 
 // both in seconds
