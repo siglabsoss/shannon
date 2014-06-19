@@ -223,31 +223,30 @@ void PopSightingStore::scan_sighting_map(
 			vector<PopSighting>* const sightings =
 				&(*tracker_sightings)[map_value->tracker_id];
 
-			// TODO(snyderek): What if *sightings is empty?
+			// If the range of sighting times for a given tracker is greater
+			// than the aggregation window, perform multilateration on the older
+			// sightings before adding the new one.
 			if (!sightings->empty()) {
 				const PopSighting& first_sighting = sightings->front();
 
-				// If the range of sighting times for a given tracker is greater
-				// than the aggregation window, perform multilateration on the
-				// older sightings before adding the new one.
 				if (time_diff_msec(
 						map_key.full_secs, map_key.frac_secs,
 						first_sighting.full_secs, first_sighting.frac_secs) >
 					AGGREGATION_WINDOW_MSEC) {
 					flush_sighting_vector(sightings);
 				}
-
-				// Add the sighting to *tracker_sightings.
-				sightings->resize(sightings->size() + 1);
-				PopSighting* const new_sighting = &sightings->back();
-
-				new_sighting->hostname = map_value->base_station->hostname();
-				new_sighting->tracker_id = map_value->tracker_id;
-				new_sighting->lat = map_value->lat;
-				new_sighting->lng = map_value->lng;
-				new_sighting->full_secs = map_key.full_secs;
-				new_sighting->frac_secs = map_key.frac_secs;
 			}
+
+			// Add the sighting to *tracker_sightings.
+			sightings->resize(sightings->size() + 1);
+			PopSighting* const new_sighting = &sightings->back();
+
+			new_sighting->hostname = map_value->base_station->hostname();
+			new_sighting->tracker_id = map_value->tracker_id;
+			new_sighting->lat = map_value->lat;
+			new_sighting->lng = map_value->lng;
+			new_sighting->full_secs = map_key.full_secs;
+			new_sighting->frac_secs = map_key.frac_secs;
 		}
 
 		delete map_value;
