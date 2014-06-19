@@ -27,6 +27,7 @@ public:
        void process_ota_packet(ota_packet_t* p, uint32_t txTime, uint64_t pitTxTime, uint64_t pitPrnCodeStart);
        void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], char *str, uint32_t txTime, uint64_t pitTxTime, uint64_t pitPrnCodeStart);
        int32_t pop_get_tracker_slot_now(uuid_t uuid);
+       int32_t pop_get_nearest_slot(uuid_t uuid, int32_t system_now_slot);
        void init() {}
        PopArtemisRPC* rpc;
        PopS3pRPC* s3p;

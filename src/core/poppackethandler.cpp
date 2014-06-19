@@ -22,36 +22,28 @@ PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint64_t>("PopPac
 
 }
 
-
-
-// takes the "now" timeslot from the system clock and looks through the the timeslot list for device to find the closest slot
-// this should be the timeslot that the tracker thinks it is transmitting on
-int32_t PopPacketHandler::pop_get_tracker_slot_now(uuid_t uuid)
+// returns the nearest slot for a tracker
+int32_t PopPacketHandler::pop_get_nearest_slot(uuid_t uuid, int32_t slot_in)
 {
-	PopTimestamp system_now = get_microsec_system_time();
-	uint64_t system_pit = round(system_now.get_frac_secs() * 19200000.0) + system_now.get_full_secs()*19200000;
-
 	std::vector<PopChannelMap::PopChannelMapKey> keys;
 	std::vector<PopChannelMap::PopChannelMapValue> values;
 	map->find_by_tracker(uuid, keys, values);
 
-	// according to basestation clock, what slot is it?
-	int32_t system_now_slot = pop_get_slot_pit_rounded(system_pit);
 	int32_t diff = POP_SLOT_COUNT + 1; // worst case
 	uint32_t diff_slot = 0;
 
 	int32_t tmp;
 
 
-//	cout << "System Slot: " << system_now_slot << endl;
-//	cout << "Closest slot: " << pop_get_tracker_slot_now(uuid) << endl;
+	//	cout << "System Slot: " << system_now_slot << endl;
+	//	cout << "Closest slot: " << pop_get_tracker_slot_now(uuid) << endl;
 
 	for( unsigned i = 0; i < keys.size(); i++ )
 	{
 		const PopChannelMap::PopChannelMapKey& key = keys[i];
 		PopChannelMap::PopChannelMapValue val = values[i];
 
-		tmp = abs((int32_t) key.slot - system_now_slot);
+		tmp = abs((int32_t) key.slot - slot_in);
 
 		if( tmp < diff )
 		{
@@ -60,7 +52,7 @@ int32_t PopPacketHandler::pop_get_tracker_slot_now(uuid_t uuid)
 		}
 
 		// now compare against wrapped version
-		tmp = abs((int32_t) key.slot + POP_SLOT_COUNT - system_now_slot);
+		tmp = abs((int32_t) key.slot + POP_SLOT_COUNT - slot_in);
 
 		if( tmp < diff )
 		{
@@ -75,9 +67,21 @@ int32_t PopPacketHandler::pop_get_tracker_slot_now(uuid_t uuid)
 		return 0;
 	}
 
-	cout << "Slot: " << diff_slot << " is closest to system's now slot: " << system_now_slot << endl;
+	cout << "Slot: " << diff_slot << " is closest to system's now slot: " << slot_in << endl;
 
 	return diff_slot;
+}
+
+// takes the "now" timeslot from the system clock and looks through the the timeslot list for device to find the closest slot
+// this should be the timeslot that the tracker thinks it is transmitting on
+int32_t PopPacketHandler::pop_get_tracker_slot_now(uuid_t uuid)
+{
+	// according to basestation clock, what slot is it?
+	PopTimestamp system_now = get_microsec_system_time();
+	uint64_t system_pit = round(system_now.get_frac_secs() * 19200000.0) + system_now.get_full_secs()*19200000;
+	int32_t system_now_slot = pop_get_slot_pit_rounded(system_pit);
+
+	return pop_get_nearest_slot(uuid, system_now_slot);
 }
 
 void PopPacketHandler::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], char *str, uint32_t txTime, uint64_t pitTxTime, uint64_t pitPrnCodeStart)
@@ -241,20 +245,21 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 
 			cout << "BS PIT: " << pitPrnCodeStart << endl;
 			cout << "T  PIT: " << tracker_pit << endl;
+//			cout << "t slot: " <<
 
 			// this trim includes jitter between the time that the tracker builds the packet with it's PIT value and the time when it's transmitted.
 			// A better way is to determine which slot the tracker was trying to tx, calculate the pit counts which differ from that slot, and correct based on that
-			int64_t error_counts = tracker_pit - pitPrnCodeStart;
+//			int64_t error_counts = tracker_pit - pitPrnCodeStart;
 
-//			uint32_t target_slot = pop_get_tracker_slot_now(uuid);
-//			int64_t error_counts = pop_get_slot_errort(target_slot, pitPrnCodeStart);
+			uint32_t target_slot = pop_get_nearest_slot( uuid, pop_get_slot_pit_rounded(tracker_pit) );
+			int64_t error_counts = pop_get_slot_error(target_slot, pitPrnCodeStart);
 
 
 
 //			PopTimestamp system_now = get_microsec_system_time();
 //			uint64_t system_pit = round(system_now.get_frac_secs() * 19200000.0) + system_now.get_full_secs()*19200000;
 
-//			cout << "target_slot: " << target_slot << endl;
+			cout << "target_slot: " << target_slot << endl;
 			cout << "error_counts: " << error_counts << endl;
 //			cout << "System Slot: " << pop_get_slot_pit_rounded(system_pit) << endl;
 //			cout << "Closest slot: " << pop_get_tracker_slot_now(uuid) << endl;

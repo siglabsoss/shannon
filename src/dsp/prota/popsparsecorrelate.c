@@ -660,7 +660,7 @@ int64_t pop_get_slot_error(uint32_t target_slot, uint64_t pit_in)
 
 	long double fslot = pop_get_slot_pit_float(pit_in);
 
-	return (fslot - target_slot) * 19200000;
+	return (target_slot - fslot) * 19200000;
 }
 
 
