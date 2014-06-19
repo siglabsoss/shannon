@@ -77,6 +77,39 @@ int main(int argc, char *argv[])
 		channel_map.request_block(target_slots-owned_slots);
 	}
 
+	// reset device at baud 1000000
+	{
+		PopArtemisRPC rpc(1);
+		PopSerial uart0("/dev/ttyUSB0", 1000000);
+		rpc.tx.connect(uart0);
+		rpc.send_reset();
+	}
+
+	// reset device at baud 115200
+	{
+		int j = 0;
+		PopArtemisRPC rpc(1);
+		PopSerial uart0("/dev/ttyUSB0", 115200);
+		rpc.tx.connect(uart0);
+		uart0.rx.connect(rpc);
+		uart0.rx.start_thread();
+		rpc.send_reset();
+		boost::posix_time::milliseconds one_second(1000);
+		for(j = 0; j < 4; j++)
+		{
+			boost::this_thread::sleep(one_second);
+			rpc.set_role_base_station();
+		}
+
+		boost::posix_time::milliseconds two_second(2000);
+		boost::this_thread::sleep(two_second);
+
+		if(!rpc.received_basestation_boot())
+		{
+			cout << endl << endl << "attached device did not startup in basestation mode!!!" << endl << endl;
+			boost::this_thread::sleep(one_second);
+		}
+	}
 
 
 

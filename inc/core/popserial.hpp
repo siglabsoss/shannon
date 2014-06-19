@@ -146,7 +146,17 @@ public:
     {
     	char* buf = rx.get_buffer(1);
 
-    	buf[0] = handle.readChar();
+
+    	try {
+    		buf[0] = handle.readChar();
+    	}
+    	catch (const boost::system::system_error& e) {
+    		cout << "Exception in PopSerial: " << e.what() << endl;
+
+    		// return non-zero because something went wrong
+    		return 1;
+    	}
+
 
 //    	if( buf[0] == '\0')
 //    	{

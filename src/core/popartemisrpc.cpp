@@ -36,7 +36,7 @@ namespace pop
 
 
 
-PopArtemisRPC::PopArtemisRPC(unsigned notused) : PopJsonRPC(0), handler(0)
+PopArtemisRPC::PopArtemisRPC(unsigned notused) : PopJsonRPC(0), handler(0), basestation_boot(0)
 {
 }
 
@@ -140,9 +140,11 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 			buf[127] = '\0';
 			send_rpc(buf, strlen(buf));
 		}
+	}
 
-
-
+	if( method.compare("basestation_boot") == 0 )
+	{
+		basestation_boot = 1;
 	}
 }
 
@@ -226,11 +228,25 @@ void PopArtemisRPC::packet_tx(char* data, uint32_t size, uint32_t txTime, uint64
 
 void PopArtemisRPC::set_role_base_station()
 {
-	static const char RPC_STRING[] =
-		"{ \"method\": \"set_role_base_station\", \"params\": [] }";
+	static const char RPC_STRING[] = "{ \"method\": \"set_role_base_station\", \"params\": [] }";
 
 	// Subtract one from the string size to exclude the trailing '\0' character.
 	send_rpc(RPC_STRING, sizeof(RPC_STRING) - 1);
+}
+
+
+void PopArtemisRPC::send_reset()
+{
+	static const char RPC_STRING[] = "{ \"method\": \"cpu_reset\", \"params\": [] }";
+
+	// Subtract one from the string size to exclude the trailing '\0' character.
+	send_rpc(RPC_STRING, sizeof(RPC_STRING) - 1);
+}
+
+// have we received a "basestation_boot" message?
+int PopArtemisRPC::received_basestation_boot()
+{
+	return basestation_boot;
 }
 
 }

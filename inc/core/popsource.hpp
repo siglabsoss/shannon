@@ -57,6 +57,11 @@ public:
      */
     ~PopSource()
     {
+    	if( mp_thread )
+    	{
+    		delete mp_thread;
+    	}
+
     	m_buf.free_circular_buffer(m_buf.m_bytesAllocated);
     	m_timestamp_buf.free_circular_buffer(m_timestamp_buf.m_bytesAllocated);
     }

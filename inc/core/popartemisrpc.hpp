@@ -24,10 +24,13 @@ public:
 	void execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);
 	void packet_rx(std::string b64_serial, uint32_t offset, double clock_correction);
 	void packet_tx(char* data, uint32_t size, uint32_t txTime, uint64_t pitTxTime);
+	void send_reset();
 	void set_role_base_station();
 	void mock(void);
+	int received_basestation_boot();
 
 	PopPacketHandler* handler;
+	int basestation_boot;
 };
 
 }
