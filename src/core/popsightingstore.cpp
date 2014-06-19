@@ -153,6 +153,9 @@ bool PopSightingStore::MapKeyCompare::operator()(const MapKey& a,
 // This is the main method for the aggregation thread.
 void PopSightingStore::aggregate_sightings()
 {
+	// 'current_map_key' is the key for the sighting that's currently being
+	// processed. The combined value of (full_secs + frac_secs) will increase
+	// monotonically.
 	MapKey current_map_key;
 	current_map_key.full_secs = 0;
 	current_map_key.frac_secs = 0.0;
@@ -160,15 +163,21 @@ void PopSightingStore::aggregate_sightings()
 	mutex::scoped_lock lock(mtx_);
 
 	for (;;) {
+		// Scan the current contents of the sighting map and group the sightings
+		// by tracker ID.
 		unordered_map<uint64_t, vector<PopSighting> > tracker_sightings;
 		scan_sighting_map(&current_map_key, &tracker_sightings);
 
+		// For each tracker, perform multilateration if enough base stations
+		// have reported.
 		for (unordered_map<uint64_t, vector<PopSighting> >::iterator it =
 				 tracker_sightings.begin();
 			 it != tracker_sightings.end(); ++it) {
 			flush_sighting_vector(&it->second);
 		}
 
+		// Sleep for a while. If PopSightingStore::stop_thread() is called,
+		// return immediately.
 		const system_time timeout = get_system_time() + milliseconds(500);
 		if (stopping_cond_.timed_wait(
 				lock, timeout, bind(&PopSightingStore::is_stopping, this))) {
@@ -177,6 +186,10 @@ void PopSightingStore::aggregate_sightings()
 	}
 }
 
+// This method iterates over the sightings in the sighting map, removes the
+// sightings from the map, and adds them to *tracker_sightings. The key in
+// *tracker_sightings is the tracker ID. Sightings that occurred within the past
+// PROCESSING_DELAY_SEC seconds are ignored and left in the sighting map.
 void PopSightingStore::scan_sighting_map(
 	MapKey* current_map_key,
 	unordered_map<uint64_t, vector<PopSighting> >* tracker_sightings)
@@ -194,18 +207,29 @@ void PopSightingStore::scan_sighting_map(
 		const MapKey& map_key = it->first;
 		MapValue* const map_value = it->second;
 
+		// If the current sighting falls within the processing delay window,
+		// ignore it and all subsequent sightings.
 		if (map_key.full_secs >= now - PROCESSING_DELAY_SEC)
 			return;
 
+		// If the current sighting is older than *current_map_key, remove the
+		// sighting from the sighting map and throw it away. The sighting is too
+		// old to be useful. This can happen if network delays cause the
+		// sighting to reach the S3P after other sightings from around the same
+		// time have already been processed.
 		if (!map_key_less_than(map_key, *current_map_key)) {
 			*current_map_key = map_key;
 
 			vector<PopSighting>* const sightings =
 				&(*tracker_sightings)[map_value->tracker_id];
 
+			// TODO(snyderek): What if *sightings is empty?
 			if (!sightings->empty()) {
 				const PopSighting& first_sighting = sightings->front();
 
+				// If the range of sighting times for a given tracker is greater
+				// than the aggregation window, perform multilateration on the
+				// older sightings before adding the new one.
 				if (time_diff_msec(
 						map_key.full_secs, map_key.frac_secs,
 						first_sighting.full_secs, first_sighting.frac_secs) >
@@ -213,6 +237,7 @@ void PopSightingStore::scan_sighting_map(
 					flush_sighting_vector(sightings);
 				}
 
+				// Add the sighting to *tracker_sightings.
 				sightings->resize(sightings->size() + 1);
 				PopSighting* const new_sighting = &sightings->back();
 
@@ -230,6 +255,8 @@ void PopSightingStore::scan_sighting_map(
 	}
 }
 
+// Performs multilateration using the data in *sightings, and then clears
+// *sightings.
 void PopSightingStore::flush_sighting_vector(vector<PopSighting>* sightings)
 {
 	assert(sightings != NULL);
