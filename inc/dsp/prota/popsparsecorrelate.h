@@ -17,6 +17,23 @@ typedef struct
 } __attribute__((__packed__)) ota_packet_t;
 
 
+typedef struct
+{
+	  uint16_t UIDMH;                                  /**< Unique Identification Register Mid-High, offset: 0x1058 */
+	  uint32_t UIDML;                                  /**< Unique Identification Register Mid Low, offset: 0x105C */
+	  uint32_t UIDL;                                   /**< Unique Identification Register Low, offset: 0x1060 */
+} __attribute__((__packed__)) uuid_parts_t;
+
+typedef struct
+{
+	union {
+		uint8_t bytes[10];
+		uuid_parts_t parts;
+	} __attribute__((__packed__));
+} uuid_t;
+
+
+extern const uuid_t zero_uuid;
 
 
 uint32_t artemis_pop_correlate(int32_t* scoreOut, int32_t guess);
@@ -38,7 +55,14 @@ void ota_packet_prepare_tx(ota_packet_t* p);
 void ota_packet_set_size(ota_packet_t* p);
 uint32_t counts_per_bits(uint16_t bits);
 void ota_packet_zero_fill_data(ota_packet_t* p);
+uint32_t pop_get_now_slot(void);
+uint32_t pop_get_next_slot_pit(uint32_t slot);
 
+
+// both in seconds
+#define POP_SLOT_LENGTH (2)
+#define POP_PERIOD_LENGTH (60)
+#define POP_SLOT_COUNT (POP_PERIOD_LENGTH/POP_SLOT_LENGTH)
 
 
 

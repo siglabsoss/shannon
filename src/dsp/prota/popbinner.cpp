@@ -112,7 +112,7 @@ void PopBinner::process(const double(*data)[CHANNELS_USED][SPREADING_CODES][SPRE
 
 
 
-	double threshold = rbx::Config::get<double>("basestation_threshhold");
+	double threshold = pop::Config::get<double>("basestation_threshhold");
 
 
 	// allocate data in a rectangle which is +- neighbor samples and +- 1 fbin (which gives us *3)

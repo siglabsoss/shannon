@@ -10,6 +10,12 @@
 
 #include <iostream>
 #include <complex>
+#include <zmq.hpp>
+#include <string>
+#include <iostream>
+#include <unistd.h>
+#include <sstream>
+
 
 #include <boost/bind.hpp>
 #include <boost/program_options.hpp>
@@ -22,6 +28,7 @@
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "net/popnetwork.hpp"
+#include "net/popnetworkwrapped.hpp"
 #include "net/popwebhook.hpp"
 #include "mdl/poppeak.hpp"
 #include "core/geohelper.hpp"
@@ -30,31 +37,18 @@
 #include "core/popgravitinoparser.hpp"
 #include "core/popsightingstore.hpp"
 #include "core/poptrackerlocationstore.hpp"
+#include "core/popchannelmap.hpp"
+#include "core/utilities.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
 using namespace boost;
 using namespace pop;
 using namespace std;
-using namespace rbx;
 
 namespace po = boost::program_options;
 
 extern size_t h_start_chan;
-
-int getch(void)
-{
-  int ch;
-  struct termios oldt;
-  struct termios newt;
-  tcgetattr(STDIN_FILENO, &oldt); /*store old settings */
-  newt = oldt; /* copy old settings to new settings */
-  newt.c_lflag &= ~(ICANON | ECHO); /* make one change to old settings in new settings */
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt); /*apply the new settings immediatly */
-  ch = getchar(); /* standard getchar call */
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt); /*reapply the old settings */
-  return ch; /*return received char */
-}
 
 int main(int argc, char *argv[])
 {
@@ -91,6 +85,11 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
+	zmq::context_t context(1); // only 1 per thread
+
+	PopChannelMap channel_map("", true, context);
+
+
 
 
 
@@ -125,9 +124,9 @@ int main(int argc, char *argv[])
 
 //	PopReadFromFile<PopPeak> file ("incoming_packets.raw");
 
-	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
+//	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
-	PopNetwork<char> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
+	PopNetworkWrapped<char> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
 	PopTokenizer tokenizer;
 
@@ -144,6 +143,7 @@ int main(int argc, char *argv[])
 	PopGravitinoParser gravitinoParser(0, &sighting_store);
 
 	basestationConnection.connect(gravitinoParser);
+	gravitinoParser.tx.connect(basestationConnection);
 
 	// call this after connecting all sources or sinks
 	basestationConnection.wakeup();
@@ -157,16 +157,15 @@ int main(int argc, char *argv[])
 	// Run Control Loop
 	while(1)
 	{
-		/*c = getch();
-		if( c == '-' ) h_start_chan--;
-		if( c == '+' ) h_start_chan++;*/
+		channel_map.poll();
 
-		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
 		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);
 
-//		if( i % 1000 == 0)
-//			file.read(1);
+		if( i % 30 == 0 )
+		{
+			channel_map.checksum_dump();
+		}
 
 		i++;
 	}

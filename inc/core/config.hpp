@@ -9,7 +9,7 @@
 
 #define DEFAULT_CONFIG_FILE_PATH "node_config.json"
 
-namespace rbx
+namespace pop
 {
 /// this class has its own internal singleton instead of using the Singleton
 /// class to avoid using the syntax Config::get()->get() which is pretty ugly

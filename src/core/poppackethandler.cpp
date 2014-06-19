@@ -3,9 +3,11 @@
 
 #include "core/poppackethandler.hpp"
 #include "core/util.h"
-#include "dsp/prota/popsparsecorrelate.h"
 #include "core/popartemisrpc.hpp"
 #include "core/basestationfreq.h"
+#include "core/utilities.hpp"
+#include "core/popchannelmap.hpp"
+#include "b64/b64.h"
 
 
 using namespace std;
@@ -19,7 +21,256 @@ PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint64_t>("PopPac
 
 }
 
-char dataTx[2] = {0x0f, 0x00};
+void PopPacketHandler::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], char *str, uint32_t txTime, uint64_t pitTxTime)
+{
+	std::string method = FROZEN_GET_STRING(methodTok);
+	const struct json_token *params, *p0, *p1, *p2;
+
+	int32_t original_id = -1;
+
+	if( idTok )
+	{
+		original_id = parseNumber<int32_t>(FROZEN_GET_STRING(idTok));
+	}
+
+
+	if( method.compare("log") == 0 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+//			rcp_log(FROZEN_GET_STRING(p0));
+//			respond_int(0, methodId);
+		}
+	}
+
+	if( method.compare("utc_rq") == 0 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+			cout << "Serial: " << FROZEN_GET_STRING(p0) << endl;
+
+
+			// Traditionally all ota packets are replied with a "tx" rpc here.
+			// but in this case we want the basestation to behave smart, so we actually send an rpc
+
+			int32_t original_id = -1;
+
+			if( idTok )
+			{
+				original_id = parseNumber<int32_t>(FROZEN_GET_STRING(idTok));
+			}
+
+			char buf[128];
+
+			// we encapsulate the original rpc id so that the basestation can correctly reply
+			snprintf(buf, 128, "{\"method\":\"bs_send_utc_reply\",\"params\":[%d, %d, %ld]}", original_id, txTime, pitTxTime);
+
+			printf("\r\n");
+			puts(buf);
+
+			rpc->send_rpc(buf, strlen(buf));
+		}
+	}
+
+	if( method.compare("slot_rq") == 0  && original_id != -1 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+
+			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
+
+
+
+			// how many slots are we giving out?
+			unsigned remaining = 4;
+			unsigned chosen = 0;
+			uint16_t slots[remaining];
+
+			// grab all slots avaliable to us
+			std::vector<PopChannelMap::PopChannelMapKey> keys;
+			std::vector<PopChannelMap::PopChannelMapValue> values;
+			map->find_by_basestation(pop_get_hostname(), keys, values);
+
+			//		unsigned n = keys.size() ; // size before the inserts
+			for( unsigned i = 0; i < keys.size(); i++ )
+			{
+				const PopChannelMap::PopChannelMapKey& key = keys[i];
+				PopChannelMap::PopChannelMapValue val = values[i];
+//				PopChannelMap::PopChannelMapValue updatedVal = val;
+
+
+				if( val.tracker == zero_uuid || val.tracker == uuid ) // give slot to tracker if it's empty OR if we've already given it to the same tracker
+				{
+					slots[chosen] = key.slot;
+					chosen++;
+
+					map->set(key.slot, uuid, val.basestation);
+
+
+					if( chosen >= remaining )
+					{
+						break;
+					}
+				}
+			}
+
+			ota_packet_t packet;
+			ota_packet_zero_fill(&packet);
+
+			ostringstream os;
+			os << "{\"result\":[";
+			for( unsigned i = 0; i < chosen; i++ )
+			{
+				if( i != 0 )
+				{
+					os << ",";
+				}
+				os << slots[i];
+			}
+			os << "],\"id\":" << original_id << "}";
+
+			snprintf(packet.data, sizeof(packet.data), "%s", os.str().c_str()); // lazy way to cap length
+			ota_packet_prepare_tx(&packet);
+
+			puts(packet.data);
+
+			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+
+		}
+
+//
+//		for (std::vector<mystruct>::iterator iter = Vect.begin(); iter != Vect.end(); ++iter)
+//		{
+//			Vect.insert(iter + 1, otherstruct);
+//
+//		}
+
+	}
+
+	if( method.compare("poll") == 0 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING )
+		{
+			ota_packet_t packet;
+			ota_packet_zero_fill(&packet);
+			snprintf(packet.data, sizeof(packet.data), "{}");
+			ota_packet_prepare_tx(&packet);
+
+			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+		}
+	}
+
+
+
+//	if( method.compare("rx") == 0 )
+//	{
+//		p0 = find_json_token(arr, "params[0]");
+//		p1 = find_json_token(arr, "params[1]");
+//		p2 = find_json_token(arr, "params[2]");
+//		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_NUMBER && p2 && p2->type == JSON_TYPE_NUMBER )
+//		{
+//			cout << "got rx" << endl;
+//			cout << str << endl;
+//
+//			unsigned long offset;
+//			istringstream ( FROZEN_GET_STRING(p1) ) >> offset;
+//
+//			double clockCorrection;
+//
+//			istringstream ( FROZEN_GET_STRING(p2) ) >> clockCorrection;
+//
+//			packet_rx( FROZEN_GET_STRING(p0), (uint32_t)offset, clockCorrection );
+////			rcp_log(std::string(tok->ptr, tok->len));
+//			//			respond_int(0, methodId);
+//		}
+//	}
+//
+//	if( method.compare("raw") == 0 )
+//	{
+//		params = find_json_token(arr, "params");
+//
+//		int j;
+//		char buf[128];
+//		uint64_t values[params->num_desc];
+//		uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
+//
+//		for(j=0;j<params->num_desc-1;j++)
+//		{
+//			snprintf(buf, 128, "params[%d]", j);
+//			values[j] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf))) + modulusCorrection;
+//
+//			if( values[j] < values[j-1] && j != 0)
+//			{
+//				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
+//
+//				// bump current sample as well
+//				values[j] += ARTEMIS_CLOCK_SPEED_HZ;
+//			}
+//
+////			printf("val = %u", values[j]);
+//		}
+//
+//		// last sample is different
+//		snprintf(buf, 128, "params[%d]", params->num_desc-1);
+//		values[params->num_desc-1] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf)));
+//
+//		if( handler )
+//		{
+//			handler->process(values, params->num_desc, 0, 0);
+//		}
+//	}
+}
+
+// most of this was copied from popjsonrpc.cpp
+void PopPacketHandler::process_ota_packet(ota_packet_t* p, uint32_t txTime, uint64_t pitTxTime)
+{
+	const char *json = p->data;
+
+	struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS];
+	const struct json_token *methodTok = 0, *paramsTok = 0, *idTok = 0;
+
+	// Tokenize json string, fill in tokens array
+	int returnValue = parse_json(json, strlen(json), arr, POP_JSON_RPC_SUPPORTED_TOKENS);
+
+	if( returnValue == JSON_STRING_INVALID || returnValue == JSON_STRING_INCOMPLETE )
+	{
+		cout << "problem with json string (" <<  json << ")" << endl;
+		return;
+	}
+
+	if( returnValue == JSON_TOKEN_ARRAY_TOO_SMALL )
+	{
+		cout << "problem with json string (too many things for us to parse)" << endl;
+		return;
+	}
+
+	// verify message has "method" key
+	methodTok = find_json_token(arr, "method");
+	if( !(methodTok && methodTok->type == JSON_TYPE_STRING) )
+	{
+		return;
+	}
+
+	// verify message has "params" key
+	paramsTok = find_json_token(arr, "params");
+	if( !(paramsTok && paramsTok->type == JSON_TYPE_ARRAY) )
+	{
+		return;
+	}
+
+	// "id" key is optional.  It's absence means the message will not get a response
+	idTok = find_json_token(arr, "id");
+	if( !(idTok && idTok->type == JSON_TYPE_NUMBER) )
+	{
+		idTok = 0;
+	}
+
+	execute(methodTok, paramsTok, idTok, arr, p->data, txTime, pitTxTime);
+}
 
 
 void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
@@ -59,8 +310,8 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 	prnCodeStart = shannon_pop_correlate(data2, size-1, comb, ARRAY_LEN(comb), &scorePrn);
 
 
-	printf("Score: %d\r\n", scorePrn);
-	printf("Start: %d\r\n", prnCodeStart);
+//	printf("Score: %d\r\n", scorePrn);
+//	printf("Start: %d\r\n", prnCodeStart);
 //	if( abs(scorePrn) < )
 
 	double elapsed_time = t.elapsed();
@@ -78,7 +329,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 	}
 
-	printf("\r\ntime %f\r\n", elapsed_time);
+//	printf("\r\ntime %f\r\n", elapsed_time);
 
 
 	if( prnCodeStart != 0 )
@@ -108,94 +359,149 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 		}
 
 
-//		printf("start end %d %d\r\n", start, end);
-		printf("prn data start: %d\r\n", prnCodeStart+combDenseLength);
 
 
-		uint8_t dataRx[8];
+		uint32_t lastTime = data2[size-2];
+		//
+		// pit_last_sample_time this is approximately the time of the last sample from the dma
 
-//		printf("Bit sync method:\r\n");
-//		pop_data_demodulate(data2, size-1, bitSyncStart+bitSyncDenseLength, dataRx, 2, (scorePrn<0?1:0));
+		// this is approximately the pit time of start of frame
+		uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
 
-		printf("PRN sync method:\r\n");
-		shannon_pop_data_demodulate(data2, size-1, prnCodeStart+combDenseLength, dataRx, 8, (scorePrn<0?1:0));
+		printf("PIT start: %lu\r\n", pitPrnCodeStart);
 
-		uint8_t data_decode[2];
+		double txDelta = 0.75;
+
+
+
+		// add .75 seconds
+		uint32_t txTime = (prnCodeStart + (uint32_t)(ARTEMIS_CLOCK_SPEED_HZ*txDelta)) % ARTEMIS_CLOCK_SPEED_HZ;
+
+		uint64_t pitTxTime = pitPrnCodeStart + (uint32_t)(ARTEMIS_PIT_SPEED_HZ*txDelta);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		ota_packet_t rx_packet;
+
+		unsigned peek_length = 4; // how many bytes do we need to find the size?
+		unsigned peek_length_encoded = ota_length_encoded(peek_length);
+
+		uint8_t data_rx[peek_length_encoded];
+
+
+		shannon_pop_data_demodulate(data2, size-1, prnCodeStart+combDenseLength, data_rx, peek_length_encoded, (scorePrn<0?1:0));
+
+		uint8_t data_decode[peek_length];
 
 		uint32_t data_decode_size;
 
-		decode_ota_bytes(dataRx, 8, data_decode, &data_decode_size);
-
-		printf("----------------\r\n\r\n");
-
-		printf("data: %02x\r\n", data_decode[0]);
-		printf("data: %02x\r\n", data_decode[1]);
-
-		uint8_t bitSyncRx[3];
-
-		printf("\r\n\r\n");
+		decode_ota_bytes(data_rx, peek_length_encoded, data_decode, &data_decode_size);
 
 
+		//	printf("data: %02x\r\n", data_decode[0]);
+		//	printf("data: %02x\r\n", data_decode[1]);
+		//	printf("data: %02x\r\n", data_decode[2]);
+		//	printf("data: %02x\r\n", data_decode[3]);
+		//
 
+		ota_packet_zero_fill(&rx_packet);
+		memcpy(&rx_packet, data_decode, peek_length);
+		uint16_t packet_size = MIN(rx_packet.size, ARRAY_LEN(rx_packet.data)-1);
 
-//		if( dataRx[0] == 0xf0 )
-//		{
+		int packet_good = 0;
+		int j;
 
+		// search around a bit till the checksum matches up.  This is our "bit sync"
+		for(j = -2400; j < 2400; j+=300)
+		{
+			uint16_t decode_remainig_size = MAX(0, packet_size);
+			unsigned remaining_length = ota_length_encoded(decode_remainig_size);
+			uint8_t data_rx_remaining[remaining_length];
+			shannon_pop_data_demodulate(data2, size-1, prnCodeStart+combDenseLength+j, data_rx_remaining, remaining_length, (scorePrn<0?1:0));
+			uint8_t data_decode_remaining[decode_remainig_size];
+			uint32_t data_decode_size_remaining;
+			decode_ota_bytes(data_rx_remaining, remaining_length, data_decode_remaining, &data_decode_size_remaining);
 
-			uint32_t lastTime = data2[size-2];
-//
-			// pit_last_sample_time this is approximately the time of the last sample from the dma
+			// the null terminated character is not transmitted
+			ota_packet_zero_fill_data(&rx_packet);
+			memcpy(((uint8_t*)&rx_packet), data_decode_remaining, decode_remainig_size);
 
-			// this is approximately the pit time of start of frame
-			uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
-
-			double txDelta = 0.75;
-
-
-
-			// add .75 seconds
-			uint32_t txTime = (prnCodeStart + (uint32_t)(ARTEMIS_CLOCK_SPEED_HZ*txDelta)) % ARTEMIS_CLOCK_SPEED_HZ;
-
-			uint64_t pitTxTime = pitPrnCodeStart + (uint32_t)(ARTEMIS_PIT_SPEED_HZ*txDelta);
-
-
-			if( rpc )
+			if(ota_packet_checksum_good(&rx_packet))
 			{
-
-				ota_packet_t packet;
-				ota_packet_zero_fill(&packet);
-				//strcpy(packet.data, "{\"method\":\"xtal_set_pwm_counts\",\"params\":[8448]}");
-				strcpy(packet.data, "{\"method\":\"mkw01_print_regs\",\"params\":[]}");
-				ota_packet_prepare_tx(&packet);
-				//				printf("Checksum ok? %d\r\n", ota_packet_checksum_good(&packet)); // this should always be 1
-
-				// the null terminated character is not transmitted
-				rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+				packet_good = 1;
+				break;
 			}
+		}
 
-			dataTx[1]++;
+		if( !packet_good )
+		{
+			printf("Bad packet checksum\r\n");
+			return;
+		}
 
-//			printf("last pit %llu\r\n", pitLastSampleTime);
-//			printf("calc pit %llu\r\n", pitPrnCodeStart);
-//			printf("%f\r\n\r\n", (pitLastSampleTime-pitPrnCodeStart)/19200000.0);
-//
-//			printf("code start %lu\r\n", prnCodeStart);
-//			printf("last  samp %lu\r\n", lastTime);
-//			printf("%f\r\n\r\n", (lastTime-prnCodeStart)/48000000.0);
-//
-//			printf("%lu\r\n", (txTime - prnCodeStart));
-//			printf("%f\r\n\r\n", (txTime - prnCodeStart)/48000000.0);
-//
-//			printf("%llu    (%llu - %llu)\r\n", (pitTxTime - pitPrnCodeStart), pitTxTime, pitPrnCodeStart);
-//			printf("%f\r\n\r\n", (pitTxTime - pitPrnCodeStart)/19200000.0);
+		if(rx_packet.data[ARRAY_LEN(rx_packet.data)-1] != '\0' )
+		{
+			printf("Packet c-string is not null terminated\r\n");
+			return;
+		}
+
+		printf("Packet says: %s\r\n", rx_packet.data);
+
+		if( rpc )
+		{
+			process_ota_packet(&rx_packet, txTime, pitTxTime);
+		}
+		else
+		{
+			printf("Rpc pointer not set, skipping json parse\r\n");
+		}
 
 
 
 
 
 
-			printf("\r\n");
-//		}
+
+
+
+
+
+		if( 0 && rpc )
+		{
+
+			ota_packet_t packet;
+			ota_packet_zero_fill(&packet);
+			//strcpy(packet.data, "{\"method\":\"xtal_set_pwm_counts\",\"params\":[8448]}");
+			strcpy(packet.data, "{\"method\":\"mkw01_print_regs\",\"params\":[]}");
+			ota_packet_prepare_tx(&packet);
+			//				printf("Checksum ok? %d\r\n", ota_packet_checksum_good(&packet)); // this should always be 1
+
+			// the null terminated character is not transmitted
+
+			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+		}
+
+
+
+
+
+		printf("\r\n");
 
 	}
 	else

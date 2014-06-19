@@ -26,9 +26,11 @@ set(shared_SOURCES
 	core/config.cpp
 	core/utilities.cpp
 	net/popnetwork.cpp
+	net/popnetworkwrapped.cpp
 	../3rd/frozen/frozen.c
 	../3rd/b64/b64.c
 	core/popjsonrpc.cpp
+	core/popchannelmap.cpp
 )
 
 # S3P and Shannon sources
@@ -57,6 +59,7 @@ set(gravatino_SOURCES
 	core/popparsegps.cpp
 	core/popgpsdevice.cpp
 	core/popartemisrpc.cpp
+	core/pops3prpc.cpp
 	core/poppackethandler.cpp
 	dsp/prota/popsparsecorrelate.c
 )
@@ -112,11 +115,11 @@ endif() # if CUDA_FOUND
 
 # For target s3p
 add_executable(s3p ${all_SOURCES} app/s3p.cpp)
-target_link_libraries(s3p ${Boost_LIBRARIES})
+target_link_libraries(s3p ${Boost_LIBRARIES} ${ZEROMQ_LIBRARY})
 
 # For target gravitino
 add_executable(gravitino ${gravatino_SOURCES} app/gravitino.cpp)
-target_link_libraries(gravitino ${Boost_LIBRARIES})
+target_link_libraries(gravitino ${Boost_LIBRARIES} ${ZEROMQ_LIBRARY})
 	
 
 

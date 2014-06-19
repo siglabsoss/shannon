@@ -122,32 +122,13 @@ void PopJsonRPC::parse()
 	}
 
 	// "id" key is optional.  It's absence means the message will not get a response
+	idTok = find_json_token(arr, "id");
+	if( !(idTok && idTok->type == JSON_TYPE_NUMBER) )
+	{
+		idTok = 0;
+	}
 
 	execute(methodTok, paramsTok, idTok, arr, str);
-}
-
-//TODO: flush out implementation and use this
-void PopJsonRPC::respond_int(int value, int methodId)
-{
-	std::ostringstream ss;
-
-	ss << "{\"result\":" << value << ", \"error\": null, \"id\": " << methodId << "}";
-
-	std::string str = ss.str();
-	char *buff;
-
-	buff = tx.get_buffer(1);
-	buff[0] = '\0';
-	tx.process(1);
-
-	// should copy in all the characters but omit the final null
-	buff = tx.get_buffer(str.size());
-	strncpy((char*)buff, str.c_str(), str.size());
-	tx.process(str.size());
-
-	buff = tx.get_buffer(1);
-	buff[0] = '\0';
-	tx.process(1);
 }
 
 
@@ -163,6 +144,13 @@ void PopJsonRPC::send_rpc(const char *rpc_string, size_t length)
 	// Trailing null
 	this->tx.process("\0", 1);
 }
+
+uint16_t PopJsonRPC::rpc_get_autoinc(void)
+{
+	static uint16_t val = 1;
+	return val++;
+}
+
 
 
 }

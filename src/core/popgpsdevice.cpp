@@ -4,6 +4,7 @@
 #include "json/json.h"
 #include "core/popgpsdevice.hpp"
 #include "core/config.hpp"
+#include "core/utilities.hpp"
 
 using namespace std;
 
@@ -76,7 +77,7 @@ void PopGpsDevice::process(const boost::tuple<char[20], PopTimestamp>* data, siz
 
 	try
 	{
-		allow_unfixed = rbx::Config::get<bool>("allow_gps_unfixed");
+		allow_unfixed = pop::Config::get<bool>("allow_gps_unfixed");
 	}
 	catch(std::exception const& x) {}
 
@@ -95,17 +96,9 @@ void PopGpsDevice::process(const boost::tuple<char[20], PopTimestamp>* data, siz
 
 
 
-	char hostname[256];
-	int ret = gethostname(hostname, 256);
-	if( ret != 0 )
-	{
-		cout << "couldn't read linux hostname!" << endl;
-		strncpy(hostname, "unkown", 256);
-	}
-
 	// construct programatically
 	json::array params;
-	params.append(hostname);
+	params.append(pop_get_hostname());
 	params.append(lat);
 	params.append(lng);
 	params.append(get<0>(data[0]));
@@ -126,6 +119,12 @@ void PopGpsDevice::process(const boost::tuple<char[20], PopTimestamp>* data, siz
 	tx.process(packet.c_str(), packet.length());
 }
 
+void PopGpsDevice::greet_s3p(void)
+{
+	std::string message("{method:\"gravitino_boot\",\"params\":[]}");
+
+	tx.process(message.c_str(), message.length());
+}
 
 } //namespace
 
