@@ -27,7 +27,8 @@ public:
 	// https://gitorious.org/serial-port/serial-port/source/03e161e0b788d593773b33006e01333946aa7e13:
 	CallbackAsyncSerial handle;
 
-	PopSerial(std::string devicePath, unsigned baud = 115200);
+	PopSerial(std::string devicePath, unsigned baud, const char* name);
+	~PopSerial();
 	void characters_received(const char*, size_t);
 	void init();
 	void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);

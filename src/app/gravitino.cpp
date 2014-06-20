@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
 	cout << "  done!" << endl;
 
-	uint32_t target_slots = 30;
+	uint32_t target_slots = (POP_SLOT_COUNT/4);
 	uint32_t owned_slots = channel_map.allocated_count();
 	if( target_slots > owned_slots )
 	{
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 	// reset device at baud 1000000
 	{
 		PopArtemisRPC rpc(1);
-		PopSerial uart0("/dev/ttyUSB0", 1000000);
+		PopSerial uart0("/dev/ttyUSB0", 1000000, "one");
 		rpc.tx.connect(uart0);
 		rpc.send_reset();
 	}
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 	{
 		int j = 0;
 		PopArtemisRPC rpc(1);
-		PopSerial uart0("/dev/ttyUSB0", 115200);
+		PopSerial uart0("/dev/ttyUSB0", 115200, "two");
 		rpc.tx.connect(uart0);
 		uart0.rx.connect(rpc);
 		rpc.send_reset();
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 
 	PopArtemisRPC rpc(1);
 
-	PopSerial uart0("/dev/ttyUSB0", 1000000);
+	PopSerial uart0("/dev/ttyUSB0", 1000000, "three");
 
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
