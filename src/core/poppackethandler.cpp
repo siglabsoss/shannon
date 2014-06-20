@@ -63,7 +63,7 @@ int32_t PopPacketHandler::pop_get_nearest_slot(uuid_t uuid, int32_t slot_in)
 
 	if( diff == POP_SLOT_COUNT + 1 )
 	{
-		cout << "something seriously wrong pop_get_tracker_slot_now" << endl;
+		cout << "something seriously wrong pop_get_tracker_slot_now (was s3p restarted?)" << endl;
 		return 0;
 	}
 
@@ -82,6 +82,45 @@ int32_t PopPacketHandler::pop_get_tracker_slot_now(uuid_t uuid)
 	int32_t system_now_slot = pop_get_slot_pit_rounded(system_pit);
 
 	return pop_get_nearest_slot(uuid, system_now_slot);
+}
+
+int PopPacketHandler::basestation_should_respond(uuid_t uuid)
+{
+	std::vector<PopChannelMap::PopChannelMapKey> keys;
+	std::vector<PopChannelMap::PopChannelMapValue> values;
+	map->get_full_map(keys, values);
+
+	std::vector<std::string> basestations;
+
+	// build vector of unique basestation names
+	for( unsigned i = 0; i < keys.size(); i++ )
+	{
+		PopChannelMap::PopChannelMapValue val = values[i];
+		if( std::find(basestations.begin(), basestations.end(), val.basestation) == basestations.end() )
+		{
+			basestations.push_back(val.basestation);
+		}
+	}
+
+	uint16_t count = basestations.size();
+	uint16_t crc = crcSlow(uuid.bytes, sizeof(uuid.bytes)) >> 3; // crcSlow doesn't seem to ever give odd results?
+
+//	cout << "crc " << crc <<  endl;
+
+	// modulus crc of device serial by count of basestations
+	uint16_t result = crc % count;
+
+	cout << "crc " << crc << " result " << result << " bs is " << basestations[result] << endl;
+
+	// determine if this basestation should reply to the packet
+	if( basestations[result].compare(pop_get_hostname()) == 0 )
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 void PopPacketHandler::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], char *str, uint32_t txTime, uint64_t pitTxTime, uint64_t pitPrnCodeStart)
@@ -112,7 +151,18 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 		p0 = find_json_token(arr, "params[0]");
 		if( p0 && p0->type == JSON_TYPE_STRING )
 		{
+			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
 			cout << "Serial: " << FROZEN_GET_STRING(p0) << endl;
+
+
+			if( !basestation_should_respond(uuid) )
+			{
+				cout << "NOT REPLYING" << endl;
+				return;
+			}
+
+			cout << "REPLYING" << endl;
+
 
 
 			// Traditionally all ota packets are replied with a "tx" rpc here.

@@ -59,6 +59,7 @@ public:
 	bool dirty();
 	void find_by_basestation(std::string bs, std::vector<PopChannelMapKey>& keys, std::vector<PopChannelMapValue>& values);
 	void find_by_tracker(uuid_t tracker, std::vector<PopChannelMapKey>& keys, std::vector<PopChannelMapValue>& values);
+	void get_full_map(std::vector<PopChannelMapKey>& keys, std::vector<PopChannelMapValue>& values);
 	int32_t allocated_count(void);
 
 private:
