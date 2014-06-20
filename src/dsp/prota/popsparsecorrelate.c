@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <inttypes.h>
+#include <math.h>
 
 //#include "phy/popsparsecorrelate.h"
 #include "dsp/prota/popsparsecorrelate.h"
@@ -596,7 +597,7 @@ uint32_t pop_get_now_slot(void)
 
 // how many pit counts until the slot appears
 // if we are already in the slot when this is called, we assume it's too late to transmit, so counts till the next available slot is returned
-uint32_t pop_get_next_slot_pit(uint32_t slot)
+uint64_t pop_get_next_slot_pit(uint32_t slot)
 {
 	if( slot >= POP_SLOT_COUNT )
 	{
@@ -615,6 +616,8 @@ uint32_t pop_get_next_slot_pit(uint32_t slot)
 	uint64_t rounded = now % (POP_SLOT_LENGTH*19200000); // how many pit counts since the beginning of this slot
 	uint64_t remaining = ((slot - now_slot) * (POP_SLOT_LENGTH*19200000)) - rounded;
 
+	remaining = remaining % (POP_PERIOD_LENGTH*19200000); // if need this final modulus to wrap our delay time back to a sane value
+
 	return remaining;
 }
 
@@ -628,7 +631,37 @@ uint32_t pop_get_slot_pit(uint64_t pit)
 }
 
 
+uint32_t pop_get_slot_pit_rounded(uint64_t pit)
+{
+	long double secs = pit / 19200000.0;
 
+	long double fslot = secs / (double) POP_SLOT_LENGTH;
+
+	int64_t slot = (uint32_t)(fslot + 0.5); // basic round trick
+
+	return slot % POP_SLOT_COUNT;
+}
+
+double pop_get_slot_pit_float(uint64_t pit)
+{
+	long double secs = pit / 19200000.0;
+
+	long double fslot = secs / (double) POP_SLOT_LENGTH;
+
+//	int64_t slot = (uint32_t)(fslot + 0.5); // basic round trick
+
+	return fmod(fslot,(long double)POP_SLOT_COUNT);
+}
+
+// returns the number of error counts of the pit vs the slot
+int64_t pop_get_slot_error(uint32_t target_slot, uint64_t pit_in)
+{
+	long double secs = pit_in / 19200000.0;
+
+	long double fslot = pop_get_slot_pit_float(pit_in);
+
+	return (target_slot - fslot) * 19200000;
+}
 
 
 

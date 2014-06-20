@@ -7,6 +7,7 @@
 #include "core/basestationfreq.h"
 #include "core/utilities.hpp"
 #include "core/popchannelmap.hpp"
+#include "dsp/prota/popsparsecorrelate.h"
 #include "b64/b64.h"
 
 
@@ -21,7 +22,108 @@ PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint64_t>("PopPac
 
 }
 
-void PopPacketHandler::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], char *str, uint32_t txTime, uint64_t pitTxTime)
+// returns the nearest slot for a tracker
+int32_t PopPacketHandler::pop_get_nearest_slot(uuid_t uuid, int32_t slot_in)
+{
+	std::vector<PopChannelMap::PopChannelMapKey> keys;
+	std::vector<PopChannelMap::PopChannelMapValue> values;
+	map->find_by_tracker(uuid, keys, values);
+
+	int32_t diff = POP_SLOT_COUNT + 1; // worst case
+	uint32_t diff_slot = 0;
+
+	int32_t tmp;
+
+
+	//	cout << "System Slot: " << system_now_slot << endl;
+	//	cout << "Closest slot: " << pop_get_tracker_slot_now(uuid) << endl;
+
+	for( unsigned i = 0; i < keys.size(); i++ )
+	{
+		const PopChannelMap::PopChannelMapKey& key = keys[i];
+		PopChannelMap::PopChannelMapValue val = values[i];
+
+		tmp = abs((int32_t) key.slot - slot_in);
+
+		if( tmp < diff )
+		{
+			diff = tmp;
+			diff_slot = key.slot;
+		}
+
+		// now compare against wrapped version
+		tmp = abs((int32_t) key.slot + POP_SLOT_COUNT - slot_in);
+
+		if( tmp < diff )
+		{
+			diff = tmp;
+			diff_slot = key.slot;
+		}
+	}
+
+	if( diff == POP_SLOT_COUNT + 1 )
+	{
+		cout << "something seriously wrong pop_get_tracker_slot_now (was s3p restarted?)" << endl;
+		return 0;
+	}
+
+	cout << "Slot: " << diff_slot << " is closest to system's now slot: " << slot_in << endl;
+
+	return diff_slot;
+}
+
+// takes the "now" timeslot from the system clock and looks through the the timeslot list for device to find the closest slot
+// this should be the timeslot that the tracker thinks it is transmitting on
+int32_t PopPacketHandler::pop_get_tracker_slot_now(uuid_t uuid)
+{
+	// according to basestation clock, what slot is it?
+	PopTimestamp system_now = get_microsec_system_time();
+	uint64_t system_pit = round(system_now.get_frac_secs() * 19200000.0) + system_now.get_full_secs()*19200000;
+	int32_t system_now_slot = pop_get_slot_pit_rounded(system_pit);
+
+	return pop_get_nearest_slot(uuid, system_now_slot);
+}
+
+int PopPacketHandler::basestation_should_respond(uuid_t uuid)
+{
+	std::vector<PopChannelMap::PopChannelMapKey> keys;
+	std::vector<PopChannelMap::PopChannelMapValue> values;
+	map->get_full_map(keys, values);
+
+	std::vector<std::string> basestations;
+
+	// build vector of unique basestation names
+	for( unsigned i = 0; i < keys.size(); i++ )
+	{
+		PopChannelMap::PopChannelMapValue val = values[i];
+		if( std::find(basestations.begin(), basestations.end(), val.basestation) == basestations.end() )
+		{
+			basestations.push_back(val.basestation);
+		}
+	}
+
+	uint16_t count = basestations.size();
+	uint16_t crc = crcSlow(uuid.bytes, sizeof(uuid.bytes)) >> 3; // crcSlow doesn't seem to ever give odd results?
+
+//	cout << "crc " << crc <<  endl;
+
+	// modulus crc of device serial by count of basestations
+	uint16_t result = crc % count;
+
+	cout << "crc " << crc << " result " << result << " bs is " << basestations[result] << endl;
+
+	// determine if this basestation should reply to the packet
+	if( basestations[result].compare(pop_get_hostname()) == 0 )
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+void PopPacketHandler::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], char *str, uint32_t txTime, uint64_t pitTxTime, uint64_t pitPrnCodeStart)
 {
 	std::string method = FROZEN_GET_STRING(methodTok);
 	const struct json_token *params, *p0, *p1, *p2;
@@ -49,7 +151,18 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 		p0 = find_json_token(arr, "params[0]");
 		if( p0 && p0->type == JSON_TYPE_STRING )
 		{
+			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
 			cout << "Serial: " << FROZEN_GET_STRING(p0) << endl;
+
+
+			if( !basestation_should_respond(uuid) )
+			{
+				cout << "NOT REPLYING" << endl;
+				return;
+			}
+
+			cout << "REPLYING" << endl;
+
 
 
 			// Traditionally all ota packets are replied with a "tx" rpc here.
@@ -85,7 +198,7 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 
 
 			// how many slots are we giving out?
-			unsigned remaining = 4;
+			unsigned remaining = 5;
 			unsigned chosen = 0;
 			uint16_t slots[remaining];
 
@@ -93,6 +206,10 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			std::vector<PopChannelMap::PopChannelMapKey> keys;
 			std::vector<PopChannelMap::PopChannelMapValue> values;
 			map->find_by_basestation(pop_get_hostname(), keys, values);
+
+
+			int walk = 6;
+			int offset = -1;
 
 			//		unsigned n = keys.size() ; // size before the inserts
 			for( unsigned i = 0; i < keys.size(); i++ )
@@ -104,6 +221,17 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 
 				if( val.tracker == zero_uuid || val.tracker == uuid ) // give slot to tracker if it's empty OR if we've already given it to the same tracker
 				{
+					if( offset == -1 )
+					{
+						offset = key.slot;
+					}
+
+					if( ((key.slot-offset) % walk) != 0 )
+					{
+						continue;
+					}
+
+
 					slots[chosen] = key.slot;
 					chosen++;
 
@@ -153,11 +281,60 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 	if( method.compare("poll") == 0 )
 	{
 		p0 = find_json_token(arr, "params[0]");
-		if( p0 && p0->type == JSON_TYPE_STRING )
+		p1 = find_json_token(arr, "params[1]");
+		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_NUMBER )
 		{
+			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
+
+			double pit_epoc = (double)pitPrnCodeStart/19200000.0;
+
+			cout << "start: " << pitPrnCodeStart << endl;
+//			printf("Epoc: %lf\r\n", pit_epoc);
+
+			uint64_t tracker_pit = parseNumber<uint64_t>(FROZEN_GET_STRING(p1));
+
+			cout << "BS PIT: " << pitPrnCodeStart << endl;
+			cout << "T  PIT: " << tracker_pit << endl;
+//			cout << "t slot: " <<
+
+			// this trim includes jitter between the time that the tracker builds the packet with it's PIT value and the time when it's transmitted.
+			// A better way is to determine which slot the tracker was trying to tx, calculate the pit counts which differ from that slot, and correct based on that
+//			int64_t error_counts = tracker_pit - pitPrnCodeStart;
+
+			uint32_t target_slot = pop_get_nearest_slot( uuid, pop_get_slot_pit_rounded(tracker_pit) );
+			int64_t error_counts = pop_get_slot_error(target_slot, pitPrnCodeStart);
+
+
+
+//			PopTimestamp system_now = get_microsec_system_time();
+//			uint64_t system_pit = round(system_now.get_frac_secs() * 19200000.0) + system_now.get_full_secs()*19200000;
+
+			cout << "target_slot: " << target_slot << endl;
+			cout << "error_counts: " << error_counts << endl;
+//			cout << "System Slot: " << pop_get_slot_pit_rounded(system_pit) << endl;
+//			cout << "Closest slot: " << pop_get_tracker_slot_now(uuid) << endl;
+
 			ota_packet_t packet;
 			ota_packet_zero_fill(&packet);
-			snprintf(packet.data, sizeof(packet.data), "{}");
+
+			// do correction
+			if( abs(error_counts) > 0.05 * 19200000.0 )
+			{
+				ostringstream os;
+				os << "{\"method\":\"trim_utc\",\"params\":[" << -1*error_counts << "]}";
+
+				snprintf(packet.data, sizeof(packet.data), "%s", os.str().c_str()); // lazy way to cap length
+
+				cout << endl;
+				puts(packet.data);
+				cout << endl << endl;
+			}
+			else
+			{
+				// do nothing
+				snprintf(packet.data, sizeof(packet.data), "{}");
+			}
+
 			ota_packet_prepare_tx(&packet);
 
 			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
@@ -226,7 +403,7 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 }
 
 // most of this was copied from popjsonrpc.cpp
-void PopPacketHandler::process_ota_packet(ota_packet_t* p, uint32_t txTime, uint64_t pitTxTime)
+void PopPacketHandler::process_ota_packet(ota_packet_t* p, uint32_t txTime, uint64_t pitTxTime, uint64_t pitPrnCodeStart)
 {
 	const char *json = p->data;
 
@@ -269,7 +446,7 @@ void PopPacketHandler::process_ota_packet(ota_packet_t* p, uint32_t txTime, uint
 		idTok = 0;
 	}
 
-	execute(methodTok, paramsTok, idTok, arr, p->data, txTime, pitTxTime);
+	execute(methodTok, paramsTok, idTok, arr, p->data, txTime, pitTxTime, pitPrnCodeStart);
 }
 
 
@@ -368,7 +545,14 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 		// this is approximately the pit time of start of frame
 		uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
 
-		printf("PIT start: %lu\r\n", pitPrnCodeStart);
+		double pit_epoc = (double)pitPrnCodeStart/19200000.0;
+		static double pit_epoc_last;
+
+		printf("PIT start: %lf\r\n", pit_epoc);
+		printf("PIT delta: %lf\r\n", pit_epoc-pit_epoc_last);
+
+
+		pit_epoc_last = pit_epoc;
 
 		double txDelta = 0.75;
 
@@ -465,39 +649,12 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 		if( rpc )
 		{
-			process_ota_packet(&rx_packet, txTime, pitTxTime);
+			process_ota_packet(&rx_packet, txTime, pitTxTime, pitPrnCodeStart);
 		}
 		else
 		{
 			printf("Rpc pointer not set, skipping json parse\r\n");
 		}
-
-
-
-
-
-
-
-
-
-
-
-		if( 0 && rpc )
-		{
-
-			ota_packet_t packet;
-			ota_packet_zero_fill(&packet);
-			//strcpy(packet.data, "{\"method\":\"xtal_set_pwm_counts\",\"params\":[8448]}");
-			strcpy(packet.data, "{\"method\":\"mkw01_print_regs\",\"params\":[]}");
-			ota_packet_prepare_tx(&packet);
-			//				printf("Checksum ok? %d\r\n", ota_packet_checksum_good(&packet)); // this should always be 1
-
-			// the null terminated character is not transmitted
-
-			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
-		}
-
-
 
 
 
