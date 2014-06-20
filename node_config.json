@@ -1,0 +1,7 @@
+{
+    "basestation_s3p_ip": "192.168.1.24",
+    "basestation_s3p_port": 11525,
+    "basestation_id": 1,
+    "s3p_webhook_url":"http://popplanet.herokuapp.com/webhook"
+}
+

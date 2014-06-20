@@ -7,6 +7,8 @@
 #
 ###############################################################################
 
+if(CUDA_FOUND)
+
 add_executable(validate_implementation EXCLUDE_FROM_ALL src/validate_implementation.cpp)
 
 set_target_properties(validate_implementation PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/tools/bin)
@@ -19,3 +21,5 @@ add_executable(usb_reset EXCLUDE_FROM_ALL src/usb_reset.c)
 
 set_target_properties(usb_reset PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/tools/bin)
 
+
+endif() # if CUDA_FOUND

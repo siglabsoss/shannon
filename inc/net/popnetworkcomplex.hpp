@@ -27,7 +27,7 @@ namespace pop
 			              const char* outgoing_address = "127.0.0.1",
 			              int outgoing_port = 5005);
 		~PopNetworkComplex();
-		void process(const NETWORK_STREAM_DATA_TYPE* data, std::size_t size);
+		void process(const NETWORK_STREAM_DATA_TYPE* data, std::size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
 
 	private:
 		void handle_receive(const boost::system::error_code& error,

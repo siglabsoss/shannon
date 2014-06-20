@@ -9,14 +9,18 @@
 
 #include <fstream>
 #include <iostream>
+#include <inttypes.h>
 
 #include <boost/timer.hpp>
+#include <mdl/popradio.h>
+#include <core/objectstash.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/math/special_functions/sinc.hpp>
 
 using namespace boost::posix_time;
 
 #include "core/popblock.hpp"
+#include "core/utilities.hpp"
 
 namespace pop
 {
@@ -45,7 +49,7 @@ public:
     PopPoop() : PopSink<struct odd>("PopPoop") { }
     void process(const struct odd* data, size_t size)
     {
-        printf("received %lu struct odd from PopPoop\r\n", size);
+        printf("received %" PRIuPTR " struct odd from PopPoop\r\n", size);
     }
     void init()
     {
@@ -64,11 +68,25 @@ struct PopMsg
 class PopBob : public PopSink<PopMsg>
 {
 public:
-    PopBob() : PopSink<PopMsg>("PopBob") { }
+    PopBob() : PopSink<PopMsg>("PopBob", 100) { }
     void init() { }
-    void process(const PopMsg* data, size_t size)
+    void process(const PopMsg* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
     {
-        printf("received %lu PopBob(s)\r\n", size);
+        printf("received %" PRIuPTR " PopBob(s)\r\n", size);
+//        for( size_t i = 0; i < size; i++ )
+//        {
+//        	printf("Data was '%s'\r\n", (data+i)->origin);
+//        }
+
+        printf("received %" PRIuPTR " timestamps(s)\r\n", timestamp_size);
+        for( size_t i = 0; i < timestamp_size; i++ )
+        {
+        	std::cout << "time was " << timestamp_data[0].get_full_secs() << std::endl;
+        	std::cout << "frac was " << timestamp_data[0].get_frac_secs() << std::endl;
+        }
+
+
+
     }
 
 };
@@ -98,6 +116,26 @@ public:
 };
 
 
+int64_t bost_to_posix64(const boost::posix_time::ptime& pt)
+{
+  using namespace boost::posix_time;
+  static ptime epoch(boost::gregorian::date(1970, 1, 1));
+  time_duration diff(pt - epoch);
+  return (diff.ticks() / diff.ticks_per_second());
+}
+
+int64_t bost_to_nanosecond(const boost::posix_time::ptime& pt)
+{
+  using namespace boost::posix_time;
+  static ptime epoch(boost::gregorian::date(1970, 1, 1));
+  time_duration diff(pt - epoch);
+//  std::cout << "t: " << diff.ticks_per_second() << std::endl;
+  size_t conversion = 1000000000 / diff.ticks_per_second();
+    std::cout << "conversion: " << conversion << std::endl;
+  return (diff.ticks() % diff.ticks_per_second());
+}
+
+
 class PopAlice : public PopSource<PopMsg>
 {
 public:
@@ -109,9 +147,64 @@ public:
     }
     void start()
     {
-        PopMsg *msg = (PopMsg*)malloc(sizeof(PopMsg) + 10);
+    	int chunk = 50;
 
-        process(msg, 1);
+    	int j = 0;
+    	while(chunk--)
+    	{
+    		j++;
+    		PopMsg b[chunk];
+
+    		for( int i = 0; i < chunk; i++ )
+    		{
+    			char buff[20];
+    			sprintf(buff, "Bob #%d", i);
+    			strcpy(b[i].origin, buff);
+    		}
+
+//    		ptime time = microsec_clock::local_time();
+
+    		PopTimestamp t[4];
+    		t[0] = PopTimestamp(3.3);
+//    		t[0].offset = 0;
+    		t[1] = PopTimestamp(4.0);
+//    		t[1].offset = chunk-1;
+
+//
+//    		std::cout << "time was " << t[0].get_full_secs() << std::endl;
+//    		std::cout << "frac was " << t[0].get_frac_secs() << std::endl;
+
+    		process(b, chunk, t, 2);
+
+
+//    		if( j == 100 )
+//    			return;
+    	}
+    }
+};
+
+class PopAliceFloat : public PopSource<float>
+{
+public:
+    PopAliceFloat() : PopSource<float>("PopAliceFloat") { }
+
+    void send_message(const char* desc, void*, size_t bytes)
+    {
+
+    }
+    void start()
+    {
+//        PopMsg *msg = (PopMsg*)malloc(sizeof(PopMsg) + 10);
+//        msg->origin[0] = 's';
+        
+        float f = 42.1;
+        while(1)
+        {
+            
+            process(&f,sizeof(float));
+                        boost::posix_time::milliseconds workTime(3000);
+            boost::this_thread::sleep(workTime);
+        }
     }
 };
 
@@ -140,6 +233,93 @@ public:
     }
 };
 
+class PopPrintCharStream : public PopSink<char>
+{
+public:
+	PopPrintCharStream() : PopSink<char>("PopPrintCharStream") { }
+    void init() { }
+    void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+    {
+    	std::cout << data << std::endl;
+    }
+
+};
+
+
+class PopRandomMoveGPS : public PopSource<char>
+{
+public:
+	PopRandomMoveGPS() : PopSource<char>("PopRandomMoveGPS"), b(0), testRadioCount(0), stash(NULL) { }
+public:
+    int b;
+    int testRadioCount;
+    ObjectStash* stash;
+    void start()
+    {
+        unsigned n;
+        uint8_t* a;
+
+        while(1)
+        {
+
+        	int radioSerial = round(RAND_BETWEEN(0, testRadioCount));
+
+
+        	bool diceA = RAND_BETWEEN(0,1)<0.5; // Lets get LUCKY!
+        	bool diceB = RAND_BETWEEN(0,1)<0.5;
+
+        	PopRadio *r = (*stash)[radioSerial]; // find or create
+
+//        	std::cout << RAND_BETWEEN(-0.01,0.01) << std::endl;
+
+        	pushJSON("serial", radioSerial);
+
+        	if(diceA)
+        	{
+        		double nudge = RAND_BETWEEN(-0.01,0.01);
+        		r->setLat((r->getLat() + nudge));
+
+        		pushJSON("lat", r->getLat());
+        	}
+
+        	if(diceB)
+        	{
+        		double nudge = RAND_BETWEEN(-0.01,0.01);
+        		r->setLng((r->getLng() + nudge));
+
+        		pushJSON("lon", r->getLng());
+        	}
+
+
+        	sendJSON();
+
+//            a = get_buffer(12);
+//            for( n = 0; n < 12; n++ )
+//                a[n] = n;
+//            printf("%d\r\n", b);
+//            b += 12;
+
+
+//            process();
+            boost::posix_time::milliseconds workTime(50);
+            boost::this_thread::sleep(workTime);
+        }
+    }
+};
+
+void buildNFakePopRadios(ObjectStash &s, unsigned int n)
+{
+	double lat = 37;
+	double lon = -122;
+
+	for(unsigned int i = 0; i < n; i++)
+	{
+		PopRadio* r = s[i]; // find or create
+		r->setLat(lat + i/n);
+		r->setLng(lon + i/n);
+	}
+}
+
 class PopDummySink : public PopSink<>
 {
 public:
@@ -152,7 +332,7 @@ public:
         a %= 500;
 
         if( a == 0 )
-        printf("received %lu samples (500 times)\r\n", size);
+        printf("received %" PRIuPTR " samples (500 times)\r\n", size);
     }
 };
 
@@ -219,7 +399,9 @@ template <typename T>
 class PopDumpToFile : public PopSink<T>
 {
 public:
+	bool flush_immediately;
     PopDumpToFile(const char* file_name = "dump.raw") : PopSink<T>("PopDumpToFile"),
+    	flush_immediately(false),
         m_fileName(file_name)
     {
         printf("%s - created %s file\r\n", PopSink<T>::get_name(), m_fileName);
@@ -233,14 +415,51 @@ private:
     void init()
     {
     }
-    void process(const T* in, size_t size)
+    void process(const T* in, size_t size, const pop::PopTimestamp *t, size_t tt)
     {
         printf("+");
         size_t bytes = size * sizeof(T);
         m_fs.write((const char*)in, bytes);
+
+        if( flush_immediately )
+        	  flush(m_fs);
     }
     std::ofstream m_fs;
     const char* m_fileName;
+};
+
+template <typename T>
+class PopReadFromFile : public PopSource<T>
+{
+public:
+	PopReadFromFile(const char* file_name = "dump.raw") : PopSource<T>("PopReadFromFile"),
+	m_fileName(file_name)
+	{
+		printf("%s - opened %s file for reading\r\n", PopSource<T>::get_name(), m_fileName);
+		m_fs.open(m_fileName, std::ifstream::binary);
+	}
+	~PopReadFromFile()
+	{
+		m_fs.close();
+	}
+
+	void read(size_t count = 16)
+	{
+		T* memory = PopSource<T>::get_buffer(count);
+		size_t bytes = count * sizeof(T);
+		m_fs.read((char*)memory, bytes);
+
+		if( m_fs.eof() )
+		{
+//			printf("END OF FILE \r\n");
+			return;
+		}
+		printf("~");
+
+		PopSource<T>::process();  // because we just called get_buffer, we can use this overload with no params
+	}
+	std::ifstream m_fs;
+	const char* m_fileName;
 };
 
 class PopMagnitude : public PopSink<std::complex<float> >, public PopSource<float>
@@ -308,14 +527,14 @@ private:
     void init() { }
     void process(const std::complex<float>* in, size_t size)
     {
-        signed n, m, p, idx, idx2;
-        std::complex<float>* buf;
+        //signed n, m, p, idx, idx2;
+        //std::complex<float>* buf;
 
         // TODO: get timestamp from attached PopSource
 
         //buf = (std::complex<float>*)malloc( 1040 * 3 * sizeof(std::complex<float>) );
 
-        buf = get_buffer(1040);
+        //buf = get_buffer(1040);
 
         // perform a sinc interpolation
         /*for( n = 0; n < (signed)size; n++ )
@@ -336,7 +555,7 @@ private:
             }
         }*/
 
-        PopSource<std::complex<float> >::process();
+        //PopSource<std::complex<float> >::process();
     }
 };
 
@@ -375,11 +594,11 @@ private:
     }
 };
 
-const char pn_code_a[] = {0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
-                          0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
-                          0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
-                          0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
-                          0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00};
+const unsigned char pn_code_a[] = {0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+								   0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+								   0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+								   0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
+								   0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00};
 
 const uint8_t pn_code_b[] = {
        0x67,0x7A,0xFA,0x1C,0x52,0x07,0x56,0x06,0x08,0x5C,0xBF,0xE4,0xE8,0xAE,0x88,0xDD,
@@ -408,7 +627,7 @@ private:
 
         buf = get_buffer(size*8);
 
-        for( n = 0; n < size; n++ )
+        for( n = 0; n < (signed)size; n++ )
         {
             s = 0;
             for( m = 0; m < 400; m++ )
@@ -432,8 +651,4 @@ private:
     }
 };
 
-class PopRadio : public PopSource<>
-{
-
-};
 }

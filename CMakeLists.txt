@@ -14,7 +14,18 @@
 ########################################################################
 
 cmake_minimum_required(VERSION 2.8)
+
+# These enable Arm crosscompiler
+#set(CMAKE_C_COMPILER "arm-linux-gnueabihf-gcc")
+#set(CMAKE_CXX_COMPILER "arm-linux-gnueabihf-g++")
+
 project(shannon CXX C)
+
+# What does this do? Do we need it?
+#set(BOOST_ROOT ${PROJECT_SOURCE_DIR}/3rd/boost)
+#set(Boost_NO_SYSTEM_PATHS true)
+#set(Boost_NO_BOOST_CMAKE true)
+#set(Boost_USE_STATIC_LIBS ON)
 
 set(shannon_VERSION_MAJOR 0)
 set(shannon_VERSION_MINOR 1)
@@ -27,18 +38,57 @@ set(CMAKE_BUILD_TYPE debug)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
+find_package(Boost COMPONENTS date_time thread filesystem program_options prg_exec_monitor regex system unit_test_framework)
+
 find_library(UHD_LIBRARY uhd)
 
-find_package(Boost 1.48.0 COMPONENTS date_time thread filesystem
-	timer program_options prg_exec_monitor regex system)
+set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-5.5)
 
-set(CUDA_TOOLKIT_ROOT_DIR ~/cuda-5.0)
-
-find_package(CUDA REQUIRED)
+find_package(CUDA)
 
 if(NOT CUDA_FOUND)
-    message(FATAL_ERROR "CUDA Library not properly installed")
+    message(WARNING "CUDA Library not found, skipping")
+
+    # Set all these cuda variables to empty string so that targets down the line don't freak out
+    set(CUDA_INCLUDE_DIRS "")
+    set(CUDA_LIBRARY_DIRS "")
+    set(CUDA_CUDART_LIBRARY "")
+    set(CUDA_cufft_LIBRARY "")
+    
 endif()
+
+
+
+# --- 0MQ ---   https://www.mail-archive.com/zeromq-dev@lists.zeromq.org/msg17331.html http://pastebin.com/fLsm9SYf http://pastebin.com/sSJJVw6u
+
+SET ( ZEROMQ_FIND_REQUIRED TRUE )
+ 
+### ZeroMQ ###
+ 
+FIND_PATH ( ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS /usr/include/ /usr/local/include/ )
+FIND_LIBRARY ( ZEROMQ_LIBRARY NAMES zmq PATHS /usr/lib /usr/local/lib )
+ 
+IF ( ZEROMQ_INCLUDE_DIR AND ZEROMQ_LIBRARY )
+    SET ( ZEROMQ_FOUND TRUE )
+ENDIF ( ZEROMQ_INCLUDE_DIR AND ZEROMQ_LIBRARY )
+ 
+ 
+IF ( ZEROMQ_FOUND )
+    IF ( NOT ZEROMQ_FIND_QUIETLY )
+        MESSAGE ( STATUS "Found ZeroMQ:" )
+        MESSAGE ( STATUS "  (Headers)       ${ZEROMQ_INCLUDE_DIR}" )
+        MESSAGE ( STATUS "  (Library)       ${ZEROMQ_LIBRARY}" )
+    ENDIF ( NOT ZEROMQ_FIND_QUIETLY )
+ELSE ( ZEROMQ_FOUND )
+    IF ( ZEROMQ_FIND_REQUIRED )
+        MESSAGE ( FATAL_ERROR "Could not find ZeroMQ" )
+    ENDIF ( ZEROMQ_FIND_REQUIRED )
+ENDIF ( ZEROMQ_FOUND )
+
+
+# --- End 0MQ ---
+
+
 
 set(CUDA_64_BIT_DEVICE_CODE ON)
 set(BUILD_SHARED_LIBS OFF)
@@ -61,8 +111,8 @@ add_custom_target(doc ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile WORKING
 ########################################################################
 # Set the compiler and linker flags
 ########################################################################
-set(POP_ALL_FLAGS "-DDEBUG -Wall -Wno-switch")
-set(POP_CXX_FLAGS "-std=c++98")
+set(POP_ALL_FLAGS "-DDEBUG -Wall -Wno-switch -Wno-unused-function -Wno-unused-variable -D__STDC_FORMAT_MACROS")
+set(POP_CXX_FLAGS "-std=c++0x")
 set(POP_C_FLAGS "")
 set(POP_EXE_LINKER_FLAGS "")
 
@@ -75,7 +125,9 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${POP_EXE_LINKER_FLAGS}")
 # Setup the include and linker paths
 ########################################################################
 include_directories(
+	${CMAKE_SOURCE_DIR}/src/mdl
 	${CMAKE_SOURCE_DIR}/inc
+	${CMAKE_SOURCE_DIR}/src
 	${CMAKE_SOURCE_DIR}/3rd
 	${Boost_INCLUDE_DIRS}
 	${CUDA_INCLUDE_DIRS}

@@ -11,9 +11,11 @@
 #define __POP_SINK_HPP_
 
 #include <boost/thread.hpp>
+#include <boost/signals2/mutex.hpp>
 
 #include "core/popobject.hpp"
 #include "core/popqueue.hpp"
+#include "mdl/poptimestamp.hpp"
 
 namespace pop
 {
@@ -26,8 +28,12 @@ struct buffer_read_pointer
 {
     const T* data;
     size_t len;
-    buffer_read_pointer(const T* d, size_t l) : data(d), len(l) {}
-    buffer_read_pointer() : data(0), len(0) {}
+
+    const PopTimestamp* timestamp_data;
+    size_t timestamp_len;
+
+    buffer_read_pointer(const T* d, size_t l, const PopTimestamp* td, size_t tl) : data(d), len(l), timestamp_data(td), timestamp_len(tl) {}
+    buffer_read_pointer() : data(0), len(0), timestamp_data(0), timestamp_len(0) {}
 };
 
 
@@ -49,7 +55,7 @@ protected:
      * zero indicates that the class can accept any number of input samples.
      */
     PopSink(const char* name, size_t nInBuf = 0) : PopObject(name), m_reqBufSize(nInBuf),
-        m_sourceBufIdx(0), m_pThread(0)
+        m_sourceBufIdx(0), m_timestampSourceBufIdx(0), m_pThread(0), m_rgSource(0)
     {
     }
 
@@ -64,7 +70,7 @@ protected:
     /**
      * Needs to be implemented by child class to handle incoming data.
      */
-    virtual void process(const IN_TYPE* in, size_t size) = 0;
+    virtual void process(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size) = 0;
 
     /**
      * Needs to be implemented by child class to initialize anything
@@ -79,7 +85,11 @@ public:
     void start_thread()
     {
         if( 0 == m_pThread )
+        {
+            m_mutex.lock();
             m_pThread = new boost::thread(boost::bind(&PopSink::run, this));
+            m_mutex.lock();
+        }
     }
 
     /**
@@ -99,18 +109,20 @@ private:
 
         init();
 
+        m_mutex.unlock();
+
         while(1)
         {
-            wait_and_pop( buf );
+        	this->wait_and_pop( buf );
 
-            process( buf.data, buf.len );
+            process( buf.data, buf.len, buf.timestamp_data, buf.timestamp_len );
         }
     }
 
     /**
      * Called by connecting block to unblock data.
      */
-    void unblock(const IN_TYPE* in, size_t size)
+    void unblock(const IN_TYPE* in, size_t size, const PopTimestamp* timestamp_in, size_t timestamp_size )
     {
         // check to for a valid amount of input samples
         if( 0 != m_reqBufSize )
@@ -121,18 +133,18 @@ private:
             throw PopException( msg_passing_invalid_amount_of_samples, get_name() );
 
         if( m_pThread )
-            push( buffer_read_pointer<IN_TYPE>(in,size) );
+            this->push( buffer_read_pointer<IN_TYPE>(in, size, timestamp_in, timestamp_size ) );
         else
-            process( in, size );
+            process( in, size, timestamp_in, timestamp_size );
     }
 
     /**
      * Helper function when the amount of data received is apriori known.
      */
-    int unblock(IN_TYPE* const buf)
-    {
-        return unblock( buf, m_reqBufSize );
-    }
+//    int unblock(IN_TYPE* const buf)
+//    {
+//        return unblock( buf, m_reqBufSize );
+//    }
 
     /// In Buffer size in number of samples
     size_t m_reqBufSize;
@@ -140,11 +152,21 @@ private:
     /// In Buffer index in respective PopSource
     size_t m_sourceBufIdx;
 
+    /// In timestamp Buffer index in respective PopSource
+    size_t m_timestampSourceBufIdx;
+
     /// thread
     boost::thread *m_pThread;
 
+    // initialize mutex
+    boost::mutex m_mutex;
+
     // friend classes
     template <typename> friend class PopSource;
+
+protected:
+    // pointer to the source that feeds into us
+    PopSource<IN_TYPE>* m_rgSource;
 };
 
 } // namespace pop

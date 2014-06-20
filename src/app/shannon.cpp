@@ -17,32 +17,28 @@
 #include "net/popnetworkcomplex.hpp"
 #include "sdr/popuhd.hpp"
 #include "examples/popexamples.hpp"
-#include "dsp/prota/popprotadespread.hpp"
+#include "dsp/prota/popchanfilter.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
+#include "dsp/prota/popdeconvolve.hpp"
+#include "core/config.hpp"
+#include "net/popnetwork.hpp"
+#include "mdl/popsymbol.hpp"
+#include "core/poptimestampinterpolate.hpp"
+#include "dsp/prota/popbinner.hpp"
+#include "core/utilities.hpp"
+
+#include "dsp/common/poputils.hpp"
 
 //#include "core/popsourcemsg.hpp"
 
 using namespace boost;
 using namespace pop;
 using namespace std;
+using namespace rbx;
 
 namespace po = boost::program_options;
 
 extern size_t h_start_chan;
-
-int getch(void)
-{
-  int ch;
-  struct termios oldt;
-  struct termios newt;
-  tcgetattr(STDIN_FILENO, &oldt); /*store old settings */
-  newt = oldt; /* copy old settings to new settings */
-  newt.c_lflag &= ~(ICANON | ECHO); /* make one change to old settings in new settings */
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt); /*apply the new settings immediatly */
-  ch = getchar(); /* standard getchar call */
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt); /*reapply the old settings */
-  return ch; /*return received char */
-}
 
 int main(int argc, char *argv[])
 {
@@ -60,10 +56,10 @@ int main(int argc, char *argv[])
 	    ("help", "help message")
 	    ("server", po::value<string>(&server_name)->default_value("papa.popwi.com"), "Remote Manager Location")
 	    ("file", po::value<string>(&server_name)->default_value("shannon.xml"), "Setup File")
-	    ("incoming-address", po::value<string>(&incoming_address)->default_value("173.167.119.220"), "Incoming UDP address")
+	    ("incoming-address", po::value<string>(&incoming_address)->default_value("127.0.0.1"), "Incoming UDP address")
 	    ("incoming-port", po::value<unsigned>(&incoming_port)->default_value(5004), "Incoming UDP port")
-	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("173.167.119.220"), "Outgoing UDP address")
-	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(35005), "Outgoing UDP port")
+	    ("outgoing-address", po::value<string>(&outgoing_address)->default_value("127.0.0.1"), "Outgoing UDP address")
+	    ("outgoing-port", po::value<unsigned>(&outgoing_port)->default_value(5005), "Outgoing UDP port")
 	    ("debug-file", po::value<string>(&debug_file)->default_value("dat/dump.raw"), "filename used for raw data dump")
 	;
 
@@ -79,37 +75,15 @@ int main(int argc, char *argv[])
 		return ~0;
 	}
 
-#if 0
-	// test code
-	PopPiSource pisource;
-	PopTest1 test;
-	PopOdd strange;
-	PopPoop quark;
-	//PopSourceMsg msg;
 
-
-	pisource.connect(test);
-
-	//msg.add("MSG_TRACKER", 34.12325f);
-
-	//pisource.start();
-	//strange.start();
-	//strange.start();
-	//strange.connect(quark);
-	//strange.start();
-
-	PopAlice alice;
-	PopBob bob;
-
-	alice.connect(bob);
-
-	alice.start();
-#endif
 
 #if 1
+
+	Config::loadFromDisk();
+
 	// Initialize Graphics Card
-	PopProtADespread despread;
-	despread.start_thread();
+	PopChanFilter chanfilter;
+	chanfilter.start_thread();
 
 	// Initialize Protocol A bin
 	//PopProtATdmaBin bin;
@@ -117,77 +91,52 @@ int main(int argc, char *argv[])
 	// Initialize Software Defined Radio (SDR) and start
 	PopUhd popuhd;
 
+	// Initialize data upconversion
+	PopTypeConversion<complex<float>, complex<double> > conv;
+
 	// Initialize Decimator
 	//PopDecimate<complex<float> > decimate(64);
 
-	// Initialize Network Connection
-	PopNetworkComplex popnetwork(incoming_address.c_str(), incoming_port,
-		                         outgoing_address.c_str(), outgoing_port);
+	// Setup timestamp interpolate block.  This number is hardcoded.. how can we grab it from popuhd?
+	PopTimestampInterpolation<complex<double> > timestampInterpolation(507);
+	timestampInterpolation.start_thread();
 
-	popuhd.connect(despread);
+	popuhd.connect(timestampInterpolation);
 
-	PopDecimate<complex<float> > decimate(2);
+	timestampInterpolation.connect(chanfilter);
 
-	despread.connect(decimate);
+	PopProtADeconvolve deconvolve;
+	deconvolve.start_thread();
 
-	//decimate.connect(popnetwork);
+//	chanfilter.strided_gpu.debug_free_buffers = true;
 
-	PopMagnitude popmag;
+	chanfilter.strided_gpu.connect(deconvolve);
+	//chanfilter.connect(popnetwork);
 
-	//PopWeightSideBand popwsb;
-	//popwsb.start_thread();
+	PopBinner binner;
+	binner.start_thread();
 
-	//PopWeightSideBandDebug popwsbd;
-	//popwsbd.start_thread();
-	PopGmskDemod popgmsk;
-	popgmsk.start_thread();
+	deconvolve.cts_mag_gpu.connect(binner);
+
+	// Open Network Connection to our designated s3p
+//	PopNetwork<PopPeak> s3pConnection(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 1);
+
+//	deconvolve.peaks.connect(s3pConnection);
+
+	// call this after connecting all sources or sinks
+//	s3pConnection.wakeup();
+//	s3pConnection.process();
+
+	//PopDumpToFile<complex<double> > dump;
 
 
-	PopWeightSideBand popwsb;
-	popwsb.start_thread();
-
-	despread.connect(popwsb);
-	despread.connect(popgmsk);
-
-	
-	PopDigitalDeconvolve popdd;
-	popdd.start_thread();
-	popwsb.connect(popdd);
-
-	//despread.connect(popnetwork);
-
-	popdd.connect(popnetwork);
-	//PopDumpToFile<complex<float> > dump(debug_file.c_str());
-
-	//despread.connect(dump);
-	//despread.connect(popwsb);
-	//despread.connect(popwsbd);
-
-	//popwsbd.connect(popnetwork);
-
-	//PopDigitalDeconvolve popdd;
-	//popdd.start_thread();
-
-	//popwsb.connect(popdd);
-	//despread.connect(dump);
-
-	//diff.connect(popnetwork);
-	
-	//popmag.connect(popnetwork);
-		
-	//popuhd.connect(decimate);
-	//decimate.connect(popnetwork);
-
-	//popmag.connect(popnetwork);
-	//popmag.connect(popdec);
-
-	//popdec.connect(popnetwork);
 
 	popuhd.start();
 
 #endif
 
 	char c;
+	size_t i = 0;
 
 	// Run Control Loop
 	while(1)
@@ -199,6 +148,15 @@ int main(int argc, char *argv[])
 		// if( (c == '-') || (c == '+')) printf("h_start_chan = %lu\r\n", h_start_chan);
 		boost::posix_time::microseconds workTime(10);
 		boost::this_thread::sleep(workTime);
+
+		// check to see if the SDR is frozen
+		if( i > 150000 && popuhd.init_stage < 4 )
+		{
+			if( i % 1000 == 0)
+				cout << RED "ERROR: PopUhd looks frozen.  The SDR may require a restart!" RESETCOLOR << endl;
+		}
+
+		i++;
 	}
 
     return ret;

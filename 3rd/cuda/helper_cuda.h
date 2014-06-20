@@ -681,8 +681,21 @@ bool check(T result, char const *const func, const char *const file, int const l
 {
     if (result)
     {
-        fprintf(stderr, "CUDA error at %s:%d code=%d(%s) \"%s\" \n",
-                file, line, static_cast<unsigned int>(result), _cudaGetErrorEnum(result), func);
+
+    	 if (result != cudaSuccess) {
+    		 fprintf(stderr, " ---------------------CUDA ERROR---------------------\n" );
+    		 fprintf(stderr, "Error at: %s:%d\n", file, line );
+    		 fprintf(stderr, "--> %s %s\n", cudaGetErrorString(result), func );
+    		 exit(EXIT_FAILURE);
+
+//    	    std::cerr << " ---------------------CUDA ERROR---------------------" << std::endl;
+//    	    std::cerr << "Error at: " << file << ":" << line << std::endl;
+//    	    std::cerr << "--> " << cudaGetErrorString(err) << " " << func << std::endl;
+//    	    exit(EXIT_FAILURE);
+    	  }
+
+//        fprintf(stderr, "CUDA error at %s:%d code=%d(%s) \"%s\" \n",
+//                file, line, static_cast<unsigned int>(result), _cudaGetErrorEnum(result), func);
         /*
                 std::stringstream ss;
                 std::string msg("CUDA error at ");

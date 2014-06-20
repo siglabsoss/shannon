@@ -3,6 +3,7 @@ bin/*
 lib/*
 doc/*
 tools/bin/*
+*.cu.o
 
 # all build system files
 CMakeCache.txt
@@ -18,3 +19,11 @@ Doxyfile
 # matlab files
 *.asv
 *.mat
+
+# KDevelop
+.kdev4
+.kdev_include_paths
+shannon.kdev4
+
+# Backup files created by winmerge
+*.bak

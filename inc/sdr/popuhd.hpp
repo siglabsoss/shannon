@@ -16,38 +16,31 @@
 #include <boost/thread.hpp>
 #include <boost/signals2.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/types/time_spec.hpp>
 
 #include "core/global.h"
 #include "core/popassert.h"
 #include "core/popsource.hpp"
 
+// include macros for frequency constants
+#include "core/basestationfreq.h"
+
 namespace pop
 {
 
-#define POP_PROTA_BLOCK_A_UPLK 903626953
-#define POP_PROTA_BLOCK_B_UPLK 906673828
-#define POP_PROTA_BLOCK_C_UPLK 909720703
-#define POP_PROTA_BLOCK_D_UPLK 912767578
-
-#define POP_PROTA_BLOCK_A_DOWN 917236328
-#define POP_PROTA_BLOCK_B_DOWN 920283203
-#define POP_PROTA_BLOCK_C_DOWN 923330078
-#define POP_PROTA_BLOCK_D_DOWN 926376953
-
-#define POP_PROTA_BLOCK_A_WIDTH 3200000
-#define POP_PROTA_BLOCK_B_WIDTH 3200000
-#define POP_PROTA_BLOCK_C_WIDTH 3200000
-#define POP_PROTA_BLOCK_D_WIDTH 3200000
 
 	typedef void (*SDR_DATA_FUNC)(void* data, std::size_t len);
 
-	class PopUhd : public PopSource<>
+	class PopUhd : public PopSource<std::complex<double> >
 	{
 	public:
 		PopUhd();
 		~PopUhd();
 		POP_ERROR start();
 		POP_ERROR stop();
+
+		// this variable tracks the init stage of the pop uhd
+		unsigned init_stage;
 
 	private:
 		POP_ERROR run();
@@ -56,6 +49,7 @@ namespace pop
 		uhd::tx_streamer::sptr tx_stream;
 		uhd::rx_metadata_t md;
 		boost::thread *mp_thread;
+		uhd::time_spec_t m_timestamp_offset;
 	};
 }
 
