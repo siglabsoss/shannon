@@ -31,6 +31,7 @@ set(shared_SOURCES
 	../3rd/b64/b64.c
 	core/popjsonrpc.cpp
 	core/popchannelmap.cpp
+	../3rd/boost_serial/AsyncSerial.cpp
 )
 
 # S3P and Shannon sources
@@ -61,6 +62,7 @@ set(gravatino_SOURCES
 	core/popartemisrpc.cpp
 	core/pops3prpc.cpp
 	core/poppackethandler.cpp
+	core/popserial.cpp
 	dsp/prota/popsparsecorrelate.c
 )
 

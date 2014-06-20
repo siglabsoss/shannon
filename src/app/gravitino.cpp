@@ -92,7 +92,6 @@ int main(int argc, char *argv[])
 		PopSerial uart0("/dev/ttyUSB0", 115200);
 		rpc.tx.connect(uart0);
 		uart0.rx.connect(rpc);
-		uart0.rx.start_thread();
 		rpc.send_reset();
 		boost::posix_time::milliseconds one_second(1000);
 		for(j = 0; j < 4; j++)
@@ -120,7 +119,7 @@ int main(int argc, char *argv[])
 
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
-	uart0.rx.start_thread();
+
 
 	// Send a "set_role_base_station" RPC to the Artemis board to force it into
 	// base station mode.
@@ -135,7 +134,6 @@ int main(int argc, char *argv[])
 	PopParseGPS gps(1);
 //	PopSerial uart4("/dev/tty4", 4800);
 //	uart4.rx.connect(gps);
-//	uart4.rx.start_thread();
 
 	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 0);
 

@@ -1,15 +1,13 @@
 #ifndef __POP_SERIAL_HPP_
 #define __POP_SERIAL_HPP_
 
-
-#include <core/popsink.hpp>
-#include <core/popsource.hpp>
-
 #include <string>     // string function definitions
 #include <iostream>
-
-
 #include <boost/asio.hpp>
+
+#include "core/popsink.hpp"
+#include "core/popsource.hpp"
+#include "boost_serial/AsyncSerial.h"
 
 using namespace std;
 
@@ -18,164 +16,21 @@ using namespace std;
 namespace pop
 {
 
-
-// http://www.webalice.it/fede.tft/serial_port/serial_port.html
-// https://gitorious.org/serial-port/serial-port/source/03e161e0b788d593773b33006e01333946aa7e13:
-class SimpleSerial
-{
-
-
-public:
-    /**
-     * Constructor.
-     * \param port device name, example "/dev/tt yUSB0" or "COM4"
-     * \param baud_rate communication speed, example 9600 or 115200
-     * \throws boost::system::system_error if cannot open the
-     * serial device
-     */
-    SimpleSerial(std::string port, unsigned int baud_rate)
-    : io(), serial(io,port)
-    {
-        serial.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
-    }
-
-    /**
-     * Write a string to the serial device.
-     * \param s string to write
-     * \throws boost::system::system_error on failure
-     */
-    void writeString(std::string s)
-    {
-        boost::asio::write(serial,boost::asio::buffer(s.c_str(),s.size()));
-    }
-
-    void write(const char *data, size_t size)
-    {
-    	boost::asio::write(serial,boost::asio::buffer(data,size));
-    }
-
-    void close()
-    {
-    	boost::system::error_code ec;
-    	serial.close(ec);
-    }
-
-    /**
-     * Blocks until a line is received from the serial device.
-     * Eventual '\n' or '\r\n' characters at the end of the string are removed.
-     * \return a string containing the received line
-     * \throws boost::system::system_error on failure
-     */
-    std::string readLine()
-    {
-        //Reading data char by char, code is optimized for simplicity, not speed
-        using namespace boost;
-        char c;
-        std::string result;
-        for(;;)
-        {
-            asio::read(serial,asio::buffer(&c,1));
-            switch(c)
-            {
-                case '\r':
-                    break;
-                case '\n':
-                    return result;
-                default:
-                    result+=c;
-            }
-        }
-    }
-
-    unsigned char readChar()
-	{
-		//Reading data char by char, code is optimized for simplicity, not speed
-		using namespace boost;
-		unsigned c;
-
-		asio::read(serial,asio::buffer(&c,1));
-		return c;
-	}
-
-private:
-    boost::asio::io_service io;
-    boost::asio::serial_port serial;
-};
-
-
-
-
-
-
-
-
-
 class PopSerial : public PopSink<char>
 {
 public:
-	 PopSink<char> *tx;
-	 PopSource<char> rx; // serial receive generates characters
-	 string path;
-	 SimpleSerial handle;
+	PopSink<char> *tx;
+	PopSource<char> rx; // serial receive generates characters
+	string path;
 
+	// http://www.webalice.it/fede.tft/serial_port/serial_port.html
+	// https://gitorious.org/serial-port/serial-port/source/03e161e0b788d593773b33006e01333946aa7e13:
+	CallbackAsyncSerial handle;
 
-
-
-	PopSerial(std::string devicePath, unsigned baud = 115200) : PopSink<char>("PopSerialSink", 0), rx("PopSerialSource"), path(devicePath), handle(devicePath, baud)
-    {
-		tx = this;
-
-		// this ugly syntax is required if we want to use start_thread()
-		this->rx.set_loop_function(boost::bind(&PopSerial::run_loop,this));
-
-    }
-    void init()
-    {
-//    	 handle.writeString("Serial Boot\r\n");
-//    	while(1)
-//    	{
-//    		cout<<"Received : " << handle.readChar() << " : end" << endl;
-//    	}
-
-//		handle.close();
-    }
-
-    // this gets called over and over in a while(1), this function should not contain any sort of infinite loop itself
-    // return non-zero to exit loop
-    unsigned int run_loop()
-    {
-    	char* buf = rx.get_buffer(1);
-
-
-    	try {
-    		buf[0] = handle.readChar();
-    	}
-    	catch (const boost::system::system_error& e) {
-    		cout << "Exception in PopSerial: " << e.what() << endl;
-
-    		// return non-zero because something went wrong
-    		return 1;
-    	}
-
-
-//    	if( buf[0] == '\0')
-//    	{
-//    		cout << "NULL" << endl;
-//    	}
-//    	else
-//    	{
-//    		cout<<"Received : " << buf[0] << " (" << (int)buf[0] << ")" << endl;
-//    	}
-
-    	rx.process(1);
-
-    	return 0;
-    }
-
-    void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
-    {
-    	handle.write(data, size);
-    }
+	PopSerial(std::string devicePath, unsigned baud = 115200);
+	void characters_received(const char*, size_t);
+	void init();
+	void process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
 };
 
 }
