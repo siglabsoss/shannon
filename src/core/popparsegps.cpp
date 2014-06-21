@@ -1,5 +1,9 @@
-#include "core/popparsegps.hpp"
 #include <iostream>
+
+#include "core/popparsegps.hpp"
+#include "core/geohelper.hpp"
+#include "core/utilities.hpp"
+
 
 
 //#include <boost/lexical_cast.hpp>
@@ -42,7 +46,7 @@ char* strtok_r_single(char *str, const char *delim, char **nextp)
 	return ret;
 }
 
-PopParseGPS::PopParseGPS(unsigned notused) : PopSink<char>("PopParseGPS", 1), headValid(false), gpsFix(false), lat(0.0), lng(0.0)
+PopParseGPS::PopParseGPS(unsigned notused) : PopSink<char>("PopParseGPS", 1), headValid(false), gpsFix(false), lat(0.0), lng(0.0), tx("PopParseGPStx")
 {
 
 }
@@ -259,6 +263,8 @@ void PopParseGPS::parse()
 
 	cok = checksumOk(str, len);
 
+	cout << str << endl;
+
 	if( !cok ) {
 //		cout << "bad GPS checksum (" << str << ")" << endl;
 		return;
@@ -286,6 +292,33 @@ void PopParseGPS::parse()
 	{
 		gga(str);
 	}
+
+}
+
+void PopParseGPS::hotStart()
+{
+	GeoHelper geo_helper_;
+
+	double lat,lng, alt;
+
+	lat = 37.477083;
+	lng = -122.196742;
+	alt = 0.0;
+
+	double x, y, z;
+	boost::tie(x, y, z) = geo_helper_.turn_llh_into_xyz(lat, lng, alt, "wgs84");
+
+	ostringstream os;
+
+	PopTimestamp now = get_microsec_system_time();
+
+
+	uint32_t clk_offset = 0; // 0 is use saved value
+	uint32_t time_of_week = now.get_full_secs() % 511200; // GPS time of week
+
+	os << "$PSRF101," << x << y << z << "";
+
+
 
 }
 

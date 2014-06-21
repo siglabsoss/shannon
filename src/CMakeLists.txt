@@ -32,6 +32,7 @@ set(shared_SOURCES
 	core/popjsonrpc.cpp
 	core/popchannelmap.cpp
 	../3rd/boost_serial/AsyncSerial.cpp
+	core/geohelper.cpp
 )
 
 # S3P and Shannon sources
@@ -42,7 +43,6 @@ set(all_SOURCES
 	core/basestationfreq.c
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
-	core/geohelper.cpp
 	core/popbuchermultilateration.cpp
 	core/popcoordinatetransform.cpp
 	core/popfangmultilateration.cpp

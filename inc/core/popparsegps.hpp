@@ -1,9 +1,11 @@
 #ifndef __POP_PARSE_GPS_HPP_
 #define __POP_PARSE_GPS_HPP_
 
-#include <core/popsink.hpp>
 #include <string>
 #include <boost/tuple/tuple.hpp>
+
+#include "core/popsink.hpp"
+#include "core/popsource.hpp"
 
 namespace pop
 {
@@ -17,6 +19,7 @@ public:
 	bool gpsFix;
 	double lat;
 	double lng;
+	PopSource<char> tx;
 	boost::mutex mtx_;
 
 public:
@@ -27,6 +30,7 @@ public:
 	void parse();
 	bool gpsFixed();
 	boost::tuple<double, double, double> getFix();
+	void hotStart();
 
 private:
 	void setFix(double lat, double lng, double time);
