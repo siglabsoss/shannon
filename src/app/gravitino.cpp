@@ -132,8 +132,8 @@ int main(int argc, char *argv[])
 
 
 	PopParseGPS gps(1);
-	PopSerial uart4("/dev/ttyUSB1", 4800, "gps");
-	uart4.rx.connect(gps);
+	PopSerial uart1("/dev/ttyUSB1", 4800, "gps");
+	uart1.rx.connect(gps);
 	gps.tx.connect(uart1);
 
 	gps.set_debug_on();
