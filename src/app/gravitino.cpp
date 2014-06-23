@@ -132,8 +132,13 @@ int main(int argc, char *argv[])
 
 
 	PopParseGPS gps(1);
-//	PopSerial uart4("/dev/tty4", 4800);
-//	uart4.rx.connect(gps);
+	PopSerial uart4("/dev/ttyUSB1", 4800, "gps");
+	uart4.rx.connect(gps);
+	gps.tx.connect(uart1);
+
+	gps.set_debug_on();
+	gps.hot_start();
+
 
 	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 0);
 
