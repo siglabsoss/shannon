@@ -30,7 +30,11 @@ public:
 	void parse();
 	bool gpsFixed();
 	boost::tuple<double, double, double> getFix();
-	void hotStart();
+	void hot_start();
+	boost::tuple<uint32_t, uint32_t> gps_now();
+	std::string get_checksum(std::string str);
+	void set_debug_on();
+	void set_debug_off();
 
 private:
 	void setFix(double lat, double lng, double time);
