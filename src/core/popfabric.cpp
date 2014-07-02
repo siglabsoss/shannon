@@ -142,7 +142,7 @@ unsigned PopFabric::router_poll()
 				// message is for us
 				if( this->fp )
 				{
-					this->fp(from, contents);
+					this->fp(to, from, contents);
 				}
 			}
 			else
@@ -230,7 +230,7 @@ unsigned PopFabric::node_poll()
 				// message is for us
 				if( this->fp )
 				{
-					this->fp(from, contents);
+					this->fp(to, from, contents);
 				}
 			}
 			else
@@ -253,6 +253,9 @@ void PopFabric::send_up(std::string to, std::string from, std::string message)
 {
 	if( pub_up )
 	{
+#ifdef FABRIC_VERBOSE
+	cout << "Send Up: [" << to << "," << from << "] " << message << std::endl;
+#endif
 		// sending an _ allows for messaging re-syncing (if subscriber doesn't pull each piece correctly)
 		s_sendmore(*pub_up, std::string("_"));
 		s_sendmore(*pub_up, to);
@@ -267,6 +270,9 @@ void PopFabric::send_up(std::string to, std::string from, std::string message)
 
 void PopFabric::send_down(std::string to, std::string from, std::string message)
 {
+#ifdef FABRIC_VERBOSE
+	cout << "Send Down: [" << to << "," << from << "] " << message << std::endl;
+#endif
 	s_sendmore(*pub_down, std::string("_"));
 	s_sendmore(*pub_down, to);
 	s_sendmore(*pub_down, from);
@@ -302,7 +308,7 @@ unsigned PopFabric::poll()
 	}
 }
 
-void PopFabric::set_receive_function(boost::function<void(std::string, std::string)> in)
+void PopFabric::set_receive_function(boost::function<void(std::string, std::string, std::string)> in)
 {
 	this->fp = in;
 }

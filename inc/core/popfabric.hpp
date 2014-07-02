@@ -42,13 +42,13 @@ public:
 	void send(std::string to, std::string message);
 	void send_down(std::string to, std::string from, std::string message);
 	void send_up(std::string to, std::string from, std::string message);
-	void set_receive_function(boost::function<void(std::string, std::string)>);
+	void set_receive_function(boost::function<void(std::string, std::string, std::string)>);
 
 
 private:
 	unsigned router_poll();
 	unsigned node_poll();
-	boost::function<void(std::string, std::string)> fp;
+	boost::function<void(std::string, std::string, std::string)> fp;
 
 
 
