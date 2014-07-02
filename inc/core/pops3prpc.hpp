@@ -7,6 +7,7 @@
 
 #include "core/popjsonrpc.hpp"
 #include "core/poppackethandler.hpp"
+#include "core/popfabric.hpp"
 
 
 namespace pop
@@ -18,7 +19,7 @@ namespace pop
 class PopS3pRPC : public PopJsonRPC
 {
 public:
-	PopS3pRPC(unsigned notused);
+	PopS3pRPC(PopFabric*);
 	PopSource<char> network;
 
 	void forward_packet(char* data, uint32_t size, uint32_t txTime, uint64_t pitTxTime);
@@ -27,8 +28,9 @@ public:
 	void packet_tx(char* data, uint32_t size, uint32_t txTime, uint64_t pitTxTime);
 	void set_role_base_station();
 	void greet_s3p(void);
+	void fabric_send_rpc(std::string msg);
 
-//	PopPacketHandler* handler;
+	PopFabric* fabric;
 };
 
 }

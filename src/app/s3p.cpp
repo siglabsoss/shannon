@@ -28,7 +28,6 @@
 #include "examples/popexamples.hpp"
 #include "dsp/prota/popprotatdmabin.hpp"
 #include "net/popnetwork.hpp"
-#include "net/popnetworkwrapped.hpp"
 #include "net/popwebhook.hpp"
 #include "mdl/poppeak.hpp"
 #include "core/geohelper.hpp"
@@ -38,6 +37,7 @@
 #include "core/popsightingstore.hpp"
 #include "core/poptrackerlocationstore.hpp"
 #include "core/popchannelmap.hpp"
+#include "core/popfabric.hpp"
 #include "core/utilities.hpp"
 
 //#include "core/popsourcemsg.hpp"
@@ -126,7 +126,6 @@ int main(int argc, char *argv[])
 
 //	PopDumpToFile<PopPeak> dump ("incoming_packets.raw");
 
-	PopNetworkWrapped<char> basestationConnection(Config::get<int>("basestation_s3p_port"), "", 0);
 
 	PopTokenizer tokenizer;
 
@@ -139,13 +138,10 @@ int main(int argc, char *argv[])
 	PopTrackerLocationStore tracker_location_store(&hook);
 	PopSightingStore sighting_store(&geo_location, &tracker_location_store);
 
-	PopGravitinoParser gravitinoParser(0, &sighting_store);
+	// there is only one s3p.  name discovery is a problem we will solve later
+	PopFabric fabric(context, "s3p", true);
 
-	basestationConnection.connect(gravitinoParser);
-	gravitinoParser.tx.connect(basestationConnection);
-
-	// call this after connecting all sources or sinks
-	basestationConnection.wakeup();
+	PopGravitinoParser gravitinoParser(&sighting_store, &fabric);
 
 //	file.connect(tokenizer);
 
@@ -157,6 +153,7 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		channel_map.poll();
+		fabric.poll();
 
 		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);

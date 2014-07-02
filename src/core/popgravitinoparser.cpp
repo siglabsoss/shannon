@@ -24,11 +24,15 @@ using namespace std;
 namespace pop
 {
 
-PopGravitinoParser::PopGravitinoParser(unsigned notused, PopSightingStore* sighting_store)
-	: PopSink<char>("PopJsonRPCSink", 0), tx("PopJsonRPCResponse"), headValid(false), command(0),
-	  sighting_store_(sighting_store)
+
+PopGravitinoParser::PopGravitinoParser(PopSightingStore* sighting_store, PopFabric* f) : command(0),  fabric(f), sighting_store_(sighting_store)
 {
 	assert(sighting_store != NULL);
+
+	if( fabric )
+	{
+		fabric->set_receive_function(boost::bind(&PopGravitinoParser::fabric_rx, this, _1, _2, _3));
+	}
 }
 
 
@@ -88,59 +92,47 @@ void PopGravitinoParser::execute(const struct json_token *methodTok, const struc
 
 		cout << message << endl;
 
-		send_network_rpc(message.c_str(), message.length(), stream_index);
+		send_fabric_rpc(message.c_str(), message.length(), stream_index);
 	}
 }
 
-unsigned PopGravitinoParser::get_stream_index(wrapped_net_header_t &header)
+// Internally we keep separate streams from each gravitino we are talking to.
+// These are stored in parallel vectors remotes, streams.  This function returns an index to BOTH of those arrays
+unsigned PopGravitinoParser::get_stream_index(std::string &name)
 {
 	unsigned i;
 	for(i = 0; i < remotes.size(); i++)
 	{
-		if( header.source_port == remotes[i].source_port && header.source == remotes[i].source )
+		if( name.compare(remotes[i]) == 0 )
 		{
+			// found existing index
 			return i;
 		}
 	}
 
-	remotes.push_back(header);
+	// never seen name before
+	remotes.push_back(name);
 	streams.push_back(std::vector<char>());
 
 	return remotes.size()-1;
 }
 
-void PopGravitinoParser::init() {}
 
-void PopGravitinoParser::process(const char* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopGravitinoParser::fabric_rx(std::string to, std::string from, std::string msg)
 {
-	// first bytes always have source ip/port
-	wrapped_net_header_t header;
-	memcpy(&header, data, sizeof(wrapped_net_header_t) );
+//	cout << "to: " << to << " from: " << from << " msg: " << msg << endl;
 
-	unsigned index = get_stream_index(header);
+	unsigned index = get_stream_index(from);
 
 	std::vector<char>* stream = &streams[index];
 
-
-	const char* real_data = data + sizeof(wrapped_net_header_t);
-	size_t real_size = size - sizeof(wrapped_net_header_t);
-
-
-	unsigned i;
-	for( i = 0; i < real_size; i++ )
-	{
-		char c = real_data[i];
-
-		if( c == 0 )
-		{
-			parse(index);
-			stream->erase(stream->begin(),stream->end());
-		}
-		else
-		{
-			stream->push_back(c);
-		}
+	// This loop from std::string -> vector -> std::string is a vestige of this class using PopNetworkWrapped
+	for(char& c : msg) {
+		stream->push_back(c);
 	}
+
+	parse(index);
+	stream->erase(stream->begin(),stream->end());
 }
 
 
@@ -213,24 +205,11 @@ uint16_t PopGravitinoParser::rpc_get_autoinc(void)
 	return val++;
 }
 
-// add the correct header and send.  This should only be used when tx is connected to a PopNetworkWrapped class
-void PopGravitinoParser::send_network_rpc(const char* data, size_t size, unsigned stream_index)
+void PopGravitinoParser::send_fabric_rpc(const char* data, size_t size, unsigned stream_index)
 {
-	// data, header, and two nulls
-	size_t final_size = size+sizeof(wrapped_net_header_t)+2;
+	std::string destination = remotes[stream_index];
 
-	char copy[final_size];
-
-	wrapped_net_header_t header = remotes[stream_index];
-
-
-
-	memcpy(copy, &header, sizeof(wrapped_net_header_t));
-	memcpy(copy+1+sizeof(wrapped_net_header_t), data, size);
-	copy[final_size-1] = copy[sizeof(wrapped_net_header_t)] = '\0';
-
-	this->tx.process(copy, final_size);
+	fabric->send(destination, std::string(data, size));
 }
-
 
 }

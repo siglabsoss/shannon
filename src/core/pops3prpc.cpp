@@ -16,10 +16,14 @@ using namespace std;
 namespace pop
 {
 
+//FIXME: this class needs to be untwisted from PopJsonRPC
 
-
-PopS3pRPC::PopS3pRPC(unsigned notused) : PopJsonRPC(0)//, handler(0)
+PopS3pRPC::PopS3pRPC(PopFabric *f) : PopJsonRPC(0), fabric(f)
 {
+//	if( fabric )
+//	{
+//		fabric->set_receive_function(boost::bind(&PopS3pRPC::fabric_rx, this, _1, _2, _3));
+//	}
 }
 
 
@@ -182,7 +186,13 @@ void PopS3pRPC::forward_packet(char* data, uint32_t size, uint32_t txTime, uint6
 	char buf[final_length];
 
 	unsigned jsonSize = snprintf(buf, final_length, "{\"method\":\"grav_forward\",\"params\":[\"%s\", \"%s\", %" PRIu32 ", %" PRIu64 "]}", hostname, b64_encoded, txTime, pitTxTime );
-	send_rpc(buf, jsonSize);
+	fabric_send_rpc(std::string(buf));
+}
+
+void PopS3pRPC::fabric_send_rpc(std::string msg)
+{
+	std::string dest("s3p");
+	fabric->send(dest, msg);
 }
 
 void PopS3pRPC::greet_s3p(void)
@@ -193,7 +203,7 @@ void PopS3pRPC::greet_s3p(void)
 	os << "{method:\"grav_boot\",\"params\":[],\"id\":" << autoinc << "}";
 	string message = os.str();
 
-	send_rpc(message.c_str(), message.length());
+	fabric_send_rpc(message);
 }
 
 

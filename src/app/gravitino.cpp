@@ -34,6 +34,7 @@
 #include "core/popparsegps.hpp"
 #include "core/poppackethandler.hpp"
 #include "core/popchannelmap.hpp"
+#include "core/popfabric.hpp"
 #include "core/utilities.hpp"
 
 
@@ -57,7 +58,7 @@ int main(int argc, char *argv[])
 	zmq::context_t context(1); // only 1 per thread
 	PopChannelMap channel_map(Config::get<std::string>("basestation_s3p_ip"), false, context);
 
-	cout << "Waiting for Channel Map to sync";
+	cout << "Waiting for Channel Map to sync" << endl;
 
 	while(channel_map.dirty())
 	{
@@ -139,41 +140,12 @@ int main(int argc, char *argv[])
 	gps.set_debug_on();
 	gps.hot_start();
 
+	PopFabric fabric(context, pop_get_hostname(), false, Config::get<std::string>("basestation_s3p_ip"));
 
-	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 0);
-
-	PopS3pRPC s3p(0);
+	PopS3pRPC s3p(&fabric);
 	handler.s3p = &s3p;
-
-	s3p.tx.connect(json);
-	json.connect(s3p);
-
-//	PopGpsDevice updates(1);
-
-//	rpc.packets.connect(updates);
-//	updates.tx.connect(json);
-//	updates.gps = &gps;
-	json.wakeup();
-//	updates.tx.start_thread();
-//	handler.s3p = &updates;
-
 	s3p.greet_s3p();
 
-//	rpc.mock();
-
-
-
-
-//	SimulateArtemis simArt(0);
-//	simArt.rx.connect(rpc);
-//	rpc.rx.connect(simArt);
-
-//	simArt.rx.start_thread();
-	//channel_map.set(i%POP_SLOT_COUNT, 54, 0);
-
-//	sleep(1);
-//	channel_map.poll();
-//	channel_map.checksum_dump();
 
 
 	char c;
@@ -184,6 +156,7 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		channel_map.poll();
+		fabric.poll();
 
 
 		boost::posix_time::milliseconds workTime(1000);
