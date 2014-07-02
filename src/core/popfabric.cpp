@@ -37,13 +37,13 @@ using namespace std;
 namespace pop
 {
 
-//FIXME: up connection in router mode isn't tested
+//FIXME: add simple routing to not send messages back to sender during a send_down()
 
 PopFabric::PopFabric(zmq::context_t& context, std::string n, bool r, std::string ip_up) : fp(0), router(r), router_has_up(0), pub_up(0), sub_up(0), pub_down(0), sub_down(0), name(n)
 {
 
 	// bind to ports
-	if( r )
+	if( router )
 	{
 		// this bool is only set if in router mode, and we've connected an up
 		if(ip_up.compare("null") == 0 || ip_up.compare("") == 0)
@@ -67,7 +67,7 @@ PopFabric::PopFabric(zmq::context_t& context, std::string n, bool r, std::string
 	}
 
 	// connect to up
-	if( !r || router_has_up )
+	if( !router || router_has_up )
 	{
 		// my pub connects to your sub (port)
 		pub_up = new zmq::socket_t(context, ZMQ_PUB);
@@ -107,7 +107,7 @@ PopFabric::~PopFabric()
 
 }
 
-unsigned PopFabric::router_poll()
+unsigned PopFabric::poll_downwards()
 {
 	unsigned updates = 0;
 
@@ -157,7 +157,7 @@ unsigned PopFabric::router_poll()
 			}
 
 #ifdef FABRIC_VERBOSE
-			std::cout << "[" << to << "," << from << "] " << contents << std::endl;
+			std::cout << "(" << name << ") Received [" << to << "," << from << "] " << contents << std::endl;
 #endif
 
 			updates++;
@@ -167,7 +167,7 @@ unsigned PopFabric::router_poll()
 	return updates;
 }
 
-unsigned PopFabric::node_poll()
+unsigned PopFabric::poll_upwards()
 {
 	//	zmq::pollitem_t items [] = {
 	//				{ *collector, 0, ZMQ_POLLIN, 0 },
@@ -235,11 +235,17 @@ unsigned PopFabric::node_poll()
 			}
 			else
 			{
-				// ignore b/c we do not route
+				if( router )
+				{
+					// route
+					send_down(to, from, contents);
+
+					// we do not send up because the message came from up
+				}
 			}
 
 #ifdef FABRIC_VERBOSE
-			std::cout << "[" << to << "," << from << "] " << contents << std::endl;
+			std::cout << "(" << name << ") Received [" << to << "," << from << "] " << contents << std::endl;
 #endif
 
 			updates++;
@@ -254,7 +260,7 @@ void PopFabric::send_up(std::string to, std::string from, std::string message)
 	if( pub_up )
 	{
 #ifdef FABRIC_VERBOSE
-	cout << "Send Up: [" << to << "," << from << "] " << message << std::endl;
+	cout << "(" << name << ") Send Up: [" << to << "," << from << "] " << message << std::endl;
 #endif
 		// sending an _ allows for messaging re-syncing (if subscriber doesn't pull each piece correctly)
 		s_sendmore(*pub_up, std::string("_"));
@@ -271,7 +277,7 @@ void PopFabric::send_up(std::string to, std::string from, std::string message)
 void PopFabric::send_down(std::string to, std::string from, std::string message)
 {
 #ifdef FABRIC_VERBOSE
-	cout << "Send Down: [" << to << "," << from << "] " << message << std::endl;
+	cout << "(" << name << ") Send Down: [" << to << "," << from << "] " << message << std::endl;
 #endif
 	s_sendmore(*pub_down, std::string("_"));
 	s_sendmore(*pub_down, to);
@@ -300,11 +306,19 @@ unsigned PopFabric::poll()
 {
 	if( router )
 	{
-		return router_poll();
+		unsigned count = 0;
+
+		if( router_has_up )
+		{
+			count += poll_upwards();
+		}
+		count += poll_downwards();
+
+		return count;
 	}
 	else
 	{
-		return node_poll();
+		return poll_upwards();
 	}
 }
 

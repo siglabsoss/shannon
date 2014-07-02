@@ -46,8 +46,8 @@ public:
 
 
 private:
-	unsigned router_poll();
-	unsigned node_poll();
+	unsigned poll_downwards();
+	unsigned poll_upwards();
 	boost::function<void(std::string, std::string, std::string)> fp;
 
 
