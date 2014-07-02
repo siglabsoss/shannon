@@ -31,11 +31,11 @@
 namespace pop
 {
 
-// Distributed In-memory store of basestation channel map
+// Broadcast messaging fabric with to/from fields.  Upgradable to routed fabric
 class PopFabric
 {
 public:
-	PopFabric(zmq::context_t& context, std::string name, bool r, std::string ip_up);
+	PopFabric(zmq::context_t& context, std::string name, bool r, std::string ip_up = "");
 	~PopFabric();
 
 	unsigned poll();
@@ -53,6 +53,7 @@ private:
 
 
 	bool router;
+	bool router_has_up;
 	zmq::socket_t* pub_up;
 	zmq::socket_t* sub_up;
 	zmq::socket_t* pub_down;

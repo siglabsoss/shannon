@@ -28,63 +28,56 @@ using std::vector;
 using namespace zmq;
 using namespace std;
 
-//#define POP_CHANNEL_MAP_TOKENS (12)
 
-#define FABRIC_VERBOSE
+//#define FABRIC_VERBOSE
 
-#define FABRIC_PORT_PUB_UP   "11528"
-#define FABRIC_PORT_SUB_UP   "11529"
-#define FABRIC_PORT_PUB_DOWN "11530"
-#define FABRIC_PORT_SUB_DOWN "11531"
+#define FABRIC_PORT_PUB   "11528"
+#define FABRIC_PORT_SUB   "11529"
 
 namespace pop
 {
 
-// FIXME: copy the logic of http://zguide.zeromq.org/php:chapter5#Reliable-Pub-Sub-Clone-Pattern
+//FIXME: up connection in router mode isn't tested
 
-
-PopFabric::PopFabric(zmq::context_t& context, std::string n, bool r, std::string ip_up) : fp(0), router(r), pub_up(0), sub_up(0), pub_down(0), sub_down(0), name(n)
+PopFabric::PopFabric(zmq::context_t& context, std::string n, bool r, std::string ip_up) : fp(0), router(r), router_has_up(0), pub_up(0), sub_up(0), pub_down(0), sub_down(0), name(n)
 {
+
+	// bind to ports
 	if( r )
 	{
-//		pub_down = new zmq::socket_t(context, ZMQ_PUB);
-//		pub_down->bind("tcp://*:" FABRIC_PORT_SUB_UP);
+		// this bool is only set if in router mode, and we've connected an up
+		if(ip_up.compare("null") == 0 || ip_up.compare("") == 0)
+		{
+			router_has_up = 0;
+		}
+		else
+		{
+			router_has_up = 1;
+		}
 
+
+		// listen for pubs on pub port
+		pub_down = new zmq::socket_t(context, ZMQ_PUB);
+		pub_down->bind("tcp://*:" FABRIC_PORT_PUB);
+
+		// listen for subs on sub port
 		sub_down = new zmq::socket_t(context, ZMQ_SUB);
-		sub_down->bind("tcp://*:" FABRIC_PORT_PUB_UP);
+		sub_down->bind("tcp://*:" FABRIC_PORT_SUB);
 		sub_down->setsockopt( ZMQ_SUBSCRIBE, "_", 1); // subscribe to every message
-
-//		sub_up = new zmq::socket_t(context, ZMQ_SUB);
-//		sub_up->connect(std::string("tcp://" + ip + ":" + FABRIC_PORT_SUB_UP).c_str());
 	}
-	else
+
+	// connect to up
+	if( !r || router_has_up )
 	{
+		// my pub connects to your sub (port)
 		pub_up = new zmq::socket_t(context, ZMQ_PUB);
-		pub_up->connect(std::string("tcp://" + ip_up + ":" + FABRIC_PORT_PUB_UP).c_str());
+		pub_up->connect(std::string("tcp://" + ip_up + ":" + FABRIC_PORT_SUB).c_str());
 
-//		sub_up = new zmq::socket_t(context, ZMQ_SUB);
-//		sub_up->connect(std::string("tcp://" + ip_up + ":" + FABRIC_PORT_SUB_UP).c_str());
+		// my sub connects to your pub (port)
+		sub_up = new zmq::socket_t(context, ZMQ_SUB);
+		sub_up->connect(std::string("tcp://" + ip_up + ":" + FABRIC_PORT_PUB).c_str());
+		sub_up->setsockopt( ZMQ_SUBSCRIBE, "_", 1); // subscribe to every message
 	}
-
-	cout << name << endl;
-
-	//	if( master )
-	//	{
-	//		publisher = new zmq::socket_t(context, ZMQ_PUB);
-	//		publisher->bind("tcp://*:11526");
-	//		collector = new zmq::socket_t(context, ZMQ_PULL);
-	//		collector->bind("tcp://*:11527");
-	//	}
-	//	else
-	//	{
-	//		subscriber = new zmq::socket_t(context, ZMQ_SUB);
-	//		subscriber->connect(std::string("tcp://" + ip + ":11526").c_str());
-	//		subscriber->setsockopt( ZMQ_SUBSCRIBE, "CHANNEL_MAP", 11);
-	//		pusher = new zmq::socket_t(context, ZMQ_PUSH);
-	//		pusher->connect(std::string("tcp://" + ip + ":11527").c_str());
-	//
-	//		request_sync();
-	//	}
 }
 
 
@@ -110,12 +103,6 @@ PopFabric::~PopFabric()
 //	if( pusher )
 //	{
 //		delete pusher;
-//	}
-
-	// Clean up the memory used by the map values.
-//	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end();
-//		 ++it) {
-//		delete it->second;
 //	}
 
 }
@@ -161,6 +148,12 @@ unsigned PopFabric::router_poll()
 			else
 			{
 				// route
+				send_down(to, from, contents);
+
+				if( router_has_up )
+				{
+					send_up(to, from, contents);
+				}
 			}
 
 #ifdef FABRIC_VERBOSE
@@ -176,13 +169,6 @@ unsigned PopFabric::router_poll()
 
 unsigned PopFabric::node_poll()
 {
-	unsigned updates = 0;
-
-
-
-
-
-
 	//	zmq::pollitem_t items [] = {
 	//				{ *collector, 0, ZMQ_POLLIN, 0 },
 	//				{ *subscriber, 0, ZMQ_POLLIN, 0 }
@@ -211,62 +197,91 @@ unsigned PopFabric::node_poll()
 
 
 
+	unsigned updates = 0;
+
+	zmq::pollitem_t items [] = {
+			{ *sub_up, 0, ZMQ_POLLIN, 0 }
+	};
+
+	zmq::message_t message;
+
+	do {
+		// items, number of items in array, timeout (-1 is block forever)
+		zmq::poll (items, 1, 0);
+
+		if (items[0].revents & ZMQ_POLLIN) {
+
+			//  Read message filter which is always _
+			std::string underscore = s_recv(*sub_up);
+			if( underscore.compare("_") != 0 )
+			{
+				// parsing for _ allows for messaging re-syncing
+				continue;
+			}
 
 
+			// read all parts, never abort early as this will cause sync issues in the stream
+			std::string to = s_recv(*sub_up);
+			std::string from = s_recv(*sub_up);
+			std::string contents = s_recv(*sub_up);
 
+			if( to.compare(name) == 0 )
+			{
+				// message is for us
+				if( this->fp )
+				{
+					this->fp(from, contents);
+				}
+			}
+			else
+			{
+				// ignore b/c we do not route
+			}
 
-//	zmq::pollitem_t items [] = {
-//			{ *subscriber, 0, ZMQ_POLLIN, 0 }
-//	};
-//
-//	zmq::message_t message;
-//
-//	do {
-//		// items, number of items in array, timeout (-1 is block forever)
-//		zmq::poll (items, 1, 0);
-//
-//		if (items[0].revents & ZMQ_POLLIN) {
-//			//  Read message filter
-//			std::string filter = s_recv(*subscriber);
-//
-//			//  Read message contents
-//			std::string contents = s_recv(*subscriber);
-//
-//#ifdef FABRIC_VERBOSE
-//			std::cout << "[" << filter << "] " << contents << std::endl;
-//#endif
-//
-//			patch_datastore(contents);
-//
-//			updates++;
-//		}
-//	} while(items[0].revents & ZMQ_POLLIN);
+#ifdef FABRIC_VERBOSE
+			std::cout << "[" << to << "," << from << "] " << contents << std::endl;
+#endif
+
+			updates++;
+		}
+	} while(items[0].revents & ZMQ_POLLIN);
 
 	return updates;
 }
 
 void PopFabric::send_up(std::string to, std::string from, std::string message)
 {
-	// sending an _ allows for messaging re-syncing (if subscriber doesn't pull each piece correctly)
-	s_sendmore(*pub_up, std::string("_"));
-	s_sendmore(*pub_up, to);
-	s_sendmore(*pub_up, from);
-	s_send(*pub_up,     message);
+	if( pub_up )
+	{
+		// sending an _ allows for messaging re-syncing (if subscriber doesn't pull each piece correctly)
+		s_sendmore(*pub_up, std::string("_"));
+		s_sendmore(*pub_up, to);
+		s_sendmore(*pub_up, from);
+		s_send(*pub_up,     message);
+	}
+	else
+	{
+		cout << "trying to send_up() when no upstream zmq connection exists" << endl;
+	}
 }
 
 void PopFabric::send_down(std::string to, std::string from, std::string message)
 {
-//	s_sendmore(*pub_up, std::string("_"));
-//	s_sendmore(*pub_up, to);
-//	s_sendmore(*pub_up, from);
-//	s_send(*pub_up,     message);
+	s_sendmore(*pub_down, std::string("_"));
+	s_sendmore(*pub_down, to);
+	s_sendmore(*pub_down, from);
+	s_send(*pub_down,     message);
 }
 
 void PopFabric::send(std::string to, std::string message)
 {
 	if(router)
 	{
-
+		if( router_has_up )
+		{
+			send_up(to, name, message);
+		}
+		send_down(to, name, message);
 	}
 	else
 	{
