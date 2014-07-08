@@ -55,14 +55,16 @@ PopFabric::PopFabric(zmq::context_t& context, std::string n, bool r, std::string
 			router_has_up = 1;
 		}
 
+		std::string bind_address("*");
+
 
 		// listen for pubs on pub port
 		pub_down = new zmq::socket_t(context, ZMQ_PUB);
-		pub_down->bind("tcp://*:" FABRIC_PORT_PUB);
+		pub_down->bind(std::string("tcp://" + bind_address + ":" + FABRIC_PORT_PUB).c_str());
 
 		// listen for subs on sub port
 		sub_down = new zmq::socket_t(context, ZMQ_SUB);
-		sub_down->bind("tcp://*:" FABRIC_PORT_SUB);
+		sub_down->bind(std::string("tcp://" + bind_address + ":" + FABRIC_PORT_SUB).c_str());
 		sub_down->setsockopt( ZMQ_SUBSCRIBE, "_", 1); // subscribe to every message
 	}
 

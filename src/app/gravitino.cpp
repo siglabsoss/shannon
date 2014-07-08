@@ -24,7 +24,6 @@
 #include "core/config.hpp"
 //#include "examples/popexamples.hpp"
 //#include "dsp/prota/popprotatdmabin.hpp"
-#include "net/popnetwork.hpp"
 //#include "mdl/poppeak.hpp"
 //#include "core/simulateartemis.hpp"
 #include "core/popserial.hpp"
@@ -35,6 +34,7 @@
 #include "core/poppackethandler.hpp"
 #include "core/popchannelmap.hpp"
 #include "core/popfabric.hpp"
+#include "core/popfabricbridge.hpp"
 #include "core/utilities.hpp"
 
 
@@ -70,6 +70,8 @@ int main(int argc, char *argv[])
 
 	cout << "  done!" << endl;
 
+	PopFabric basestation_fabric(context, pop_get_hostname(), true, Config::get<std::string>("basestation_s3p_ip"));
+
 	uint32_t target_slots = (POP_SLOT_COUNT/4);
 	uint32_t owned_slots = channel_map.allocated_count();
 	if( target_slots > owned_slots )
@@ -78,9 +80,11 @@ int main(int argc, char *argv[])
 		channel_map.request_block(target_slots-owned_slots);
 	}
 
+	std::string attached_uuid;
+
 	// reset device at baud 1000000
 	{
-		PopArtemisRPC rpc(1);
+		PopArtemisRPC rpc(NULL);
 		PopSerial uart0("/dev/ttyUSB0", 1000000, "one");
 		rpc.tx.connect(uart0);
 		rpc.send_reset();
@@ -89,7 +93,7 @@ int main(int argc, char *argv[])
 	// reset device at baud 115200
 	{
 		int j = 0;
-		PopArtemisRPC rpc(1);
+		PopArtemisRPC rpc(NULL);
 		PopSerial uart0("/dev/ttyUSB0", 115200, "two");
 		rpc.tx.connect(uart0);
 		uart0.rx.connect(rpc);
@@ -109,15 +113,17 @@ int main(int argc, char *argv[])
 			cout << endl << endl << "attached device did not startup in basestation mode!!!" << endl << endl;
 			boost::this_thread::sleep(one_second);
 		}
+		else
+		{
+			attached_uuid = rpc.attached_uuid;
+			cout << endl << endl << "Attached device started correctly with serial: " << attached_uuid << endl;
+		}
 	}
 
 
-
-
-	PopArtemisRPC rpc(1);
-
+	PopFabric attached_device_fabric(context, attached_uuid, false, "localhost");
 	PopSerial uart0("/dev/ttyUSB0", 1000000, "three");
-
+	PopArtemisRPC rpc(&attached_device_fabric);
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
 
@@ -140,10 +146,12 @@ int main(int argc, char *argv[])
 	gps.set_debug_on();
 	gps.hot_start();
 
-	PopFabric fabric(context, pop_get_hostname(), false, Config::get<std::string>("basestation_s3p_ip"));
+	PopFabricBridge bridge(&basestation_fabric, "s3p");
+	PopS3pRPC s3p(0);
+	bridge.tx.connect(s3p);
+	s3p.tx.connect(bridge);
 
-	PopS3pRPC s3p(&fabric);
-	handler.s3p = &s3p;
+//	handler.s3p = &s3p;
 	s3p.greet_s3p();
 
 
@@ -156,7 +164,8 @@ int main(int argc, char *argv[])
 	while(1)
 	{
 		channel_map.poll();
-		fabric.poll();
+		basestation_fabric.poll();
+		attached_device_fabric.poll();
 
 
 		boost::posix_time::milliseconds workTime(1000);

@@ -36,8 +36,12 @@ namespace pop
 
 
 
-PopArtemisRPC::PopArtemisRPC(unsigned notused) : PopJsonRPC(0), handler(0), basestation_boot(0)
+PopArtemisRPC::PopArtemisRPC(PopFabric *f) : PopJsonRPC(0), handler(0), basestation_boot(0), fabric(f)
 {
+	if( fabric )
+	{
+		fabric->set_receive_function(boost::bind(&PopArtemisRPC::fabric_rx, this, _1, _2, _3));
+	}
 }
 
 // call this from main() after all functions are setup to test data demodulation
@@ -53,6 +57,15 @@ void PopArtemisRPC::mock(void)
 		handler->process(values, ARRAY_LEN(values), 0, 0);
 	}
 }
+
+void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
+{
+	cout << "(PopArtemisRPC) to: " << to << " from: " << from << " msg: " << msg << endl;
+
+
+	send_rpc(msg.c_str(), msg.length());
+}
+
 
 void PopArtemisRPC::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
@@ -144,7 +157,12 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 
 	if( method.compare("basestation_boot") == 0 )
 	{
-		basestation_boot = 1;
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING)
+		{
+			attached_uuid = FROZEN_GET_STRING(p0);
+			basestation_boot = 1;
+		}
 	}
 }
 
