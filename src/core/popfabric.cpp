@@ -324,6 +324,27 @@ unsigned PopFabric::poll()
 	}
 }
 
+// Poll in a loop until poll reports that 0 messages were processed.
+unsigned PopFabric::poll_burst(unsigned max)
+{
+	unsigned ret = 0;
+	unsigned count = 0;
+	for(unsigned i = 0; i < max; i++)
+	{
+		count = poll();
+
+		// keep running tally
+		ret += count;
+
+		if(!count)
+		{
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
 void PopFabric::set_receive_function(boost::function<void(std::string, std::string, std::string)> in)
 {
 	this->fp = in;

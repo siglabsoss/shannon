@@ -39,6 +39,7 @@ public:
 	~PopFabric();
 
 	unsigned poll();
+	unsigned poll_burst(unsigned max = 1000);
 	void send(std::string to, std::string message);
 	void send_down(std::string to, std::string from, std::string message);
 	void send_up(std::string to, std::string from, std::string message);
