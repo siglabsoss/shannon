@@ -117,6 +117,10 @@ int main(int argc, char *argv[])
 		{
 			attached_uuid = rpc.attached_uuid;
 			cout << endl << endl << "Attached device started correctly with serial: " << attached_uuid << endl;
+
+			ostringstream os;
+			os << "{\"method\":\"log\",\"params\":[\"" << "Basestation: " << pop_get_hostname() << " started with attacehd device: " << attached_uuid << "\"]}";
+			basestation_fabric.send("s3p", os.str());
 		}
 	}
 
@@ -160,15 +164,20 @@ int main(int argc, char *argv[])
 
 	int i = 0;
 
+	int j = 0;
+
 	// Run Control Loop
 	while(1)
 	{
-		channel_map.poll();
-		basestation_fabric.poll();
-		attached_device_fabric.poll();
+		for(j=0; j < 3; j++)
+		{
+			channel_map.poll();
+			basestation_fabric.poll();
+			attached_device_fabric.poll();
+		}
 
 
-		boost::posix_time::milliseconds workTime(1000);
+		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);
 
 		i++;
