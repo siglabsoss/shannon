@@ -121,6 +121,11 @@ int main(int argc, char *argv[])
 			ostringstream os;
 			os << "{\"method\":\"log\",\"params\":[\"" << "Basestation: " << pop_get_hostname() << " started with attacehd device: " << attached_uuid << "\"]}";
 			basestation_fabric.send("s3p", os.str());
+
+			ostringstream os2;
+			os2 << "{\"method\":\"node_broadcast\",\"params\":[\"" << attached_uuid << "\", \"" << pop_get_hostname() << "\"]}";
+			basestation_fabric.send("noc", os2.str());
+
 		}
 	}
 
@@ -157,6 +162,11 @@ int main(int argc, char *argv[])
 
 //	handler.s3p = &s3p;
 	s3p.greet_s3p();
+
+	// greet NOC
+	ostringstream os3;
+	os3 << "{\"method\":\"node_broadcast\",\"params\":[\"" << pop_get_hostname() << "\", \"" << "s3p" << "\"]}";
+	basestation_fabric.send("noc", os3.str());
 
 
 
