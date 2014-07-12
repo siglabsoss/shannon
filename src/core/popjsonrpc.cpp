@@ -138,10 +138,12 @@ void PopJsonRPC::send_rpc(const char *rpc_string, size_t length)
 	// RPC was not terminated properly. It's safe to do this because if Artemis
 	// receives two null characters in a row, it will just ignore the empty RPC.
 	this->tx.process("\0", 1);
+	this->tx.process("\0", 1);
 
 	this->tx.process(rpc_string, length);
 
 	// Trailing null
+	this->tx.process("\0", 1);
 	this->tx.process("\0", 1);
 }
 

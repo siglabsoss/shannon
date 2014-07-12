@@ -88,6 +88,8 @@ int main(int argc, char *argv[])
 		PopSerial uart0("/dev/ttyUSB0", 1000000, "one");
 		rpc.tx.connect(uart0);
 		rpc.send_reset();
+		boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+		rpc.send_reset();
 	}
 
 	// reset device at baud 115200
