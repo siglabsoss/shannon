@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
 
 	PopFabric attached_device_fabric(context, attached_uuid, false, "localhost");
-	PopSerial uart0("/dev/ttyUSB0", 1000000, "three");
+	PopSerial uart0("/dev/ttyUSB0", 1000000, "three", true);
 	PopArtemisRPC rpc(&attached_device_fabric);
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
