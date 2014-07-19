@@ -22,8 +22,12 @@ PopS3pRPC::PopS3pRPC(unsigned notused) : PopJsonRPC(0)//, handler(0)
 {
 }
 
+void PopS3pRPC::execute_result(const struct json_token *resultTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
+{
 
-void PopS3pRPC::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
+}
+
+void PopS3pRPC::execute_rpc(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
 	cout << "got  " << str << endl;
 //	std::string method = FROZEN_GET_STRING(methodTok);

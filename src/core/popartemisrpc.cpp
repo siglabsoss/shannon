@@ -67,7 +67,7 @@ void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 }
 
 
-void PopArtemisRPC::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
+void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
 	std::string method = FROZEN_GET_STRING(methodTok);
 	const struct json_token *params, *p0, *p1, *p2;
@@ -166,6 +166,11 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 	}
 }
 
+void PopArtemisRPC::execute_result(const struct json_token *resultTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
+{
+//	cout << "got result" << str << endl;
+	fabric->send("noc", str);
+}
 
 //int b64_decode( const char *inbytes, unsigned count, char *outbytes, unsigned *countOut );
 

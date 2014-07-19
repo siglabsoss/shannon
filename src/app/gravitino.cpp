@@ -143,6 +143,9 @@ int main(int argc, char *argv[])
 	// base station mode.
 	rpc.set_role_base_station();
 
+	std::string rx_thresh = "{\"method\":\"set_rx_threshold\",\"params\":[0]}";
+	rpc.send_rpc(rx_thresh.c_str(), rx_thresh.length());
+
 	PopPacketHandler handler(1);
 	rpc.handler = &handler;
 	handler.rpc = &rpc;
