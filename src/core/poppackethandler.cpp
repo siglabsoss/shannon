@@ -195,6 +195,10 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 
 			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
 
+			//cout << "slot rq from " << FROZEN_GET_STRING(p0) << endl;
+
+			rpc->fabric->add_name(FROZEN_GET_STRING(p0));
+
 
 
 			// how many slots are we giving out?
@@ -202,7 +206,7 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			unsigned chosen = 0;
 			uint16_t slots[remaining];
 
-			// grab all slots avaliable to us
+			// grab all slots available to us
 			std::vector<PopChannelMap::PopChannelMapKey> keys;
 			std::vector<PopChannelMap::PopChannelMapValue> values;
 			map->find_by_basestation(pop_get_hostname(), keys, values);

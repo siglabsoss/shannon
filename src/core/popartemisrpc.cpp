@@ -36,7 +36,7 @@ namespace pop
 
 
 
-PopArtemisRPC::PopArtemisRPC(PopFabric *f) : PopJsonRPC(0), handler(0), basestation_boot(0), fabric(f)
+PopArtemisRPC::PopArtemisRPC(PopFabric *f, std::string a) : PopJsonRPC(0), handler(0), basestation_boot(0), attached_uuid(a), fabric(f)
 {
 	if( fabric )
 	{
@@ -63,7 +63,37 @@ void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 	cout << "(PopArtemisRPC) to: " << to << " from: " << from << " msg: " << msg << endl;
 
 
-	send_rpc(msg.c_str(), msg.length());
+	// The fabric that PopArtemisRPC uses handles the directly attached Artemis in basestation mode, as well as all of the OTA devices
+	if(to.compare(attached_uuid) == 0)
+	{
+		send_rpc(msg.c_str(), msg.length());
+	}
+	else
+	{
+		ota_packet_t packet;
+		ota_packet_zero_fill(&packet);
+
+//		ostringstream os;
+//		os << "{\"result\":[";
+//		for( unsigned i = 0; i < chosen; i++ )
+//		{
+//			if( i != 0 )
+//			{
+//				os << ",";
+//			}
+//			os << slots[i];
+//		}
+//		os << "],\"id\":" << original_id << "}";
+//
+		snprintf(packet.data, sizeof(packet.data), "%s", msg.c_str()); // lazy way to cap length
+		ota_packet_prepare_tx(&packet);
+//
+		puts(packet.data);
+//
+//		packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+	}
+
+
 }
 
 

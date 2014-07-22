@@ -19,7 +19,7 @@ namespace pop
 class PopArtemisRPC : public PopJsonRPC
 {
 public:
-	PopArtemisRPC(PopFabric*);
+	PopArtemisRPC(PopFabric*, std::string attached = "");
 	PopSource<boost::tuple<char[20], PopTimestamp>> packets;
 
 	void execute_rpc(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);

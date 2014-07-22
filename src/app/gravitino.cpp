@@ -133,8 +133,8 @@ int main(int argc, char *argv[])
 
 
 	PopFabric attached_device_fabric(context, attached_uuid, false, "localhost");
-	PopSerial uart0("/dev/ttyUSB0", 1000000, "three", true);
-	PopArtemisRPC rpc(&attached_device_fabric);
+	PopSerial uart0("/dev/ttyUSB0", 1000000, "three", false);
+	PopArtemisRPC rpc(&attached_device_fabric, attached_uuid);
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
 
@@ -143,8 +143,13 @@ int main(int argc, char *argv[])
 	// base station mode.
 	rpc.set_role_base_station();
 
-	std::string rx_thresh = "{\"method\":\"set_rx_threshold\",\"params\":[0]}";
-	rpc.send_rpc(rx_thresh.c_str(), rx_thresh.length());
+	ostringstream lna_setting;
+	lna_setting << "{\"method\":\"set_external_lna\",\"params\":[" << 3 << "]}";
+	rpc.send_rpc(lna_setting.str().c_str(), lna_setting.str().length());
+
+	ostringstream rx_thresh;
+	rx_thresh << "{\"method\":\"set_rx_threshold\",\"params\":[" << 120 << "]}";
+	rpc.send_rpc(rx_thresh.str().c_str(), rx_thresh.str().length());
 
 	PopPacketHandler handler(1);
 	rpc.handler = &handler;
