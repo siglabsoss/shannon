@@ -44,6 +44,7 @@ public:
 	void send_down(std::string to, std::string from, std::string message);
 	void send_up(std::string to, std::string from, std::string message);
 	void set_receive_function(boost::function<void(std::string, std::string, std::string)>);
+	void add_name(std::string name);
 
 
 private:
@@ -60,7 +61,7 @@ private:
 	zmq::socket_t* pub_down;
 	zmq::socket_t* sub_down;
 
-	std::string name; // name of this node
+	std::vector<std::string> names; // name(s) of this node
 
 	mutable boost::mutex mtx_;
 };

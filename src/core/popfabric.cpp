@@ -39,8 +39,9 @@ namespace pop
 
 //FIXME: add simple routing to not send messages back to sender during a send_down()
 
-PopFabric::PopFabric(zmq::context_t& context, std::string n, bool r, std::string ip_up) : fp(0), router(r), router_has_up(0), pub_up(0), sub_up(0), pub_down(0), sub_down(0), name(n)
+PopFabric::PopFabric(zmq::context_t& context, std::string name, bool r, std::string ip_up) : fp(0), router(r), router_has_up(0), pub_up(0), sub_up(0), pub_down(0), sub_down(0)
 {
+	names.push_back(name);
 
 	// bind to ports
 	if( router )
@@ -133,13 +134,13 @@ unsigned PopFabric::poll_downwards()
 				continue;
 			}
 
-
 			// read all parts, never abort early as this will cause sync issues in the stream
+
 			std::string to = s_recv(*sub_down);
 			std::string from = s_recv(*sub_down);
 			std::string contents = s_recv(*sub_down);
 
-			if( to.compare(name) == 0 )
+			if( std::find(names.begin(), names.end(), to) != names.end() )
 			{
 				// message is for us
 				if( this->fp )
@@ -159,7 +160,7 @@ unsigned PopFabric::poll_downwards()
 			}
 
 #ifdef FABRIC_VERBOSE
-			std::cout << "(" << name << ") Received [" << to << "," << from << "] " << contents << std::endl;
+			std::cout << "(" << names[0] << ") Received [" << to << "," << from << "] " << contents << std::endl;
 #endif
 
 			updates++;
@@ -227,7 +228,7 @@ unsigned PopFabric::poll_upwards()
 			std::string from = s_recv(*sub_up);
 			std::string contents = s_recv(*sub_up);
 
-			if( to.compare(name) == 0 )
+			if( std::find(names.begin(), names.end(), to) != names.end() )
 			{
 				// message is for us
 				if( this->fp )
@@ -247,7 +248,7 @@ unsigned PopFabric::poll_upwards()
 			}
 
 #ifdef FABRIC_VERBOSE
-			std::cout << "(" << name << ") Received [" << to << "," << from << "] " << contents << std::endl;
+			std::cout << "(" << name[0] << ") Received [" << to << "," << from << "] " << contents << std::endl;
 #endif
 
 			updates++;
@@ -262,7 +263,7 @@ void PopFabric::send_up(std::string to, std::string from, std::string message)
 	if( pub_up )
 	{
 #ifdef FABRIC_VERBOSE
-	cout << "(" << name << ") Send Up: [" << to << "," << from << "] " << message << std::endl;
+	cout << "(" << name[0] << ") Send Up: [" << to << "," << from << "] " << message << std::endl;
 #endif
 		// sending an _ allows for messaging re-syncing (if subscriber doesn't pull each piece correctly)
 		s_sendmore(*pub_up, std::string("_"));
@@ -279,7 +280,7 @@ void PopFabric::send_up(std::string to, std::string from, std::string message)
 void PopFabric::send_down(std::string to, std::string from, std::string message)
 {
 #ifdef FABRIC_VERBOSE
-	cout << "(" << name << ") Send Down: [" << to << "," << from << "] " << message << std::endl;
+	cout << "(" << name[0] << ") Send Down: [" << to << "," << from << "] " << message << std::endl;
 #endif
 	s_sendmore(*pub_down, std::string("_"));
 	s_sendmore(*pub_down, to);
@@ -293,13 +294,13 @@ void PopFabric::send(std::string to, std::string message)
 	{
 		if( router_has_up )
 		{
-			send_up(to, name, message);
+			send_up(to, names[0], message);
 		}
-		send_down(to, name, message);
+		send_down(to, names[0], message);
 	}
 	else
 	{
-		send_up(to, name, message); // send from us
+		send_up(to, names[0], message); // send from us
 	}
 }
 
@@ -348,6 +349,18 @@ unsigned PopFabric::poll_burst(unsigned max)
 void PopFabric::set_receive_function(boost::function<void(std::string, std::string, std::string)> in)
 {
 	this->fp = in;
+}
+
+void PopFabric::add_name(std::string name)
+{
+	if( std::find(names.begin(), names.end(), name) == names.end() )
+	{
+		names.push_back(name);
+
+		ostringstream os;
+		os << "{\"method\":\"node_broadcast\",\"params\":[\"" << name << "\", \"" << names[0] << "\"]}";
+		send("noc", os.str());
+	}
 }
 
 
