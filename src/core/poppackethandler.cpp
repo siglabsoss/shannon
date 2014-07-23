@@ -234,9 +234,6 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 				return;
 			}
 
-			cout << "REPLYING" << endl;
-
-
 
 			// Traditionally all ota packets are replied with a "tx" rpc here.
 			// but in this case we want the basestation to behave smart, so we actually send an rpc
@@ -265,8 +262,14 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 		p0 = find_json_token(arr, "params[0]");
 		if( p0 && p0->type == JSON_TYPE_STRING )
 		{
-
 			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
+
+			if( !basestation_should_respond(uuid) )
+			{
+				cout << "NOT REPLYING" << endl;
+				return;
+			}
+
 
 			//cout << "slot rq from " << FROZEN_GET_STRING(p0) << endl;
 
@@ -363,6 +366,13 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 		{
 			std::string uuid_string = FROZEN_GET_STRING(p0);
 			uuid_t uuid = b64_to_uuid(uuid_string);
+
+			if( !basestation_should_respond(uuid) )
+			{
+				cout << "NOT REPLYING" << endl;
+				return;
+			}
+
 
 			double pit_epoc = (double)pitPrnCodeStart/19200000.0;
 
