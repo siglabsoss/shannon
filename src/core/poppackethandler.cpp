@@ -405,8 +405,18 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			ota_packet_t packet;
 			ota_packet_zero_fill(&packet);
 
-			// do correction
-			if( abs(error_counts) > 0.05 * 19200000.0 )
+			ota_packet_t* queued_packet;
+
+			// check if there is anything queued up
+			queued_packet = peek_packet(uuid_string);
+
+
+			if( queued_packet )
+			{
+				memcpy(&packet, queued_packet, sizeof(ota_packet_t));
+				erase_packet(uuid_string, *queued_packet);
+			}
+			else if( abs(error_counts) > 0.05 * 19200000.0 )
 			{
 				ostringstream os;
 				os << "{\"method\":\"trim_utc\",\"params\":[" << -1*error_counts << "]}";
@@ -419,22 +429,14 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			}
 			else
 			{
-				ota_packet_t* queued_packet;
-
-				// check if there is anything queued up
-				queued_packet = peek_packet(uuid_string);
-
-				if( queued_packet )
-				{
-					memcpy(&packet, queued_packet, sizeof(ota_packet_t));
-					erase_packet(uuid_string, *queued_packet);
-				}
-				else
-				{
-					// do nothing
-					snprintf(packet.data, sizeof(packet.data), "{}");
-				}
+				// do nothing
+				snprintf(packet.data, sizeof(packet.data), "{}");
 			}
+
+
+
+
+
 
 			ota_packet_prepare_tx(&packet);
 
