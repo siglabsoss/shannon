@@ -4,6 +4,7 @@
 #include <string>
 #include <boost/tuple/tuple.hpp>
 #include <stdint.h>
+#include <vector>
 
 #include "core/popsink.hpp"
 #include "dsp/prota/popsparsecorrelate.h"
@@ -22,6 +23,14 @@ class PopChannelMap;
 class PopPacketHandler : public PopSink<uint64_t>
 {
 public:
+	struct PopPacketQueue
+	{
+		PopTimestamp time;
+		std::string uuid;
+		ota_packet_t packet;
+	};
+
+
 	PopPacketHandler(unsigned notused);
 	void process(const uint64_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size);
 	void process_ota_packet(ota_packet_t* p, uint32_t txTime, uint64_t pitTxTime, uint64_t pitPrnCodeStart);
@@ -33,6 +42,12 @@ public:
 	PopArtemisRPC* rpc;
 	PopS3pRPC* s3p;
 	PopChannelMap* map;
+	void enqueue_packet(std::string to, ota_packet_t& packet);
+	ota_packet_t* peek_packet(std::string uuid);
+	void erase_packet(std::string uuid, ota_packet_t& packet);
+
+private:
+	std::vector<PopPacketQueue> queue;
 
 };
 

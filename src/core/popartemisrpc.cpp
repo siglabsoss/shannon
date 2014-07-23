@@ -89,6 +89,11 @@ void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 		ota_packet_prepare_tx(&packet);
 //
 		puts(packet.data);
+
+		if( handler )
+		{
+			handler->enqueue_packet(to, packet);
+		}
 //
 //		packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
 	}
