@@ -9,6 +9,37 @@
 namespace pop
 {
 
+char* strtok_r_single(char *str, const char *delim, char **nextp)
+{
+	char *ret;
+
+	if (str == NULL)
+	{
+		str = *nextp;
+	}
+
+	// removing this line changes this from strtok_r to strtok_r_single
+	//    str += strspn(str, delim);
+
+	if (*str == '\0')
+	{
+		return NULL;
+	}
+
+	ret = str;
+
+	str += strcspn(str, delim);
+
+	if (*str)
+	{
+		*str++ = '\0';
+	}
+
+	*nextp = str;
+
+	return ret;
+}
+
 
 bool operator==(const uuid_t& lhs, const uuid_t& rhs)
 {

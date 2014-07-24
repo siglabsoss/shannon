@@ -19,6 +19,7 @@
 namespace pop
 {
 
+char* strtok_r_single(char *str, const char *delim, char **nextp);
 uuid_t b64_to_uuid(std::string b64_serial);
 std::string uuid_to_b64(uuid_t u);
 bool operator==(const uuid_t& lhs, const uuid_t& rhs);

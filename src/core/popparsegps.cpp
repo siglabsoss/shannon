@@ -18,37 +18,6 @@ using namespace boost::gregorian;
 namespace pop
 {
 
-char* strtok_r_single(char *str, const char *delim, char **nextp)
-{
-	char *ret;
-
-	if (str == NULL)
-	{
-		str = *nextp;
-	}
-
-	// removing this line changes this from strtok_r to strtok_r_single
-	//    str += strspn(str, delim);
-
-	if (*str == '\0')
-	{
-		return NULL;
-	}
-
-	ret = str;
-
-	str += strcspn(str, delim);
-
-	if (*str)
-	{
-		*str++ = '\0';
-	}
-
-	*nextp = str;
-
-	return ret;
-}
-
 PopParseGPS::PopParseGPS(unsigned notused) : PopSink<char>("PopParseGPS", 1), headValid(false), gpsFix(false), lat(0.0), lng(0.0), tx("PopParseGPStx")
 {
 
