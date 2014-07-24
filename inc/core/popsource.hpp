@@ -129,6 +129,12 @@ public:
 //        time_duration td;
 //        t1 = microsec_clock::local_time();
 
+    	// Do nothing if nothing is connected.
+    	// A crash that occurs if process is called from a different thread, and another thread connects a new sink.
+    	// PopSerial frequently causes this crash.  This if check mitigates the problem but a mutex would be better
+    	if( m_rgSinks.size() == 0 )
+    		return;
+
         typename std::vector<PopSink<OUT_TYPE>* >::iterator it;
         size_t uncopied_pts, timestamp_uncopied_pts;
         size_t req_samples_from_sink, timestamp_req_samples_from_sink;
