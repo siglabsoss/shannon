@@ -143,27 +143,28 @@ int main(int argc, char *argv[])
 	// base station mode.
 	rpc.set_role_base_station();
 
-	ostringstream lna_setting;
-	lna_setting << "{\"method\":\"set_external_lna\",\"params\":[" << 3 << "]}";
-	rpc.send_rpc(lna_setting.str().c_str(), lna_setting.str().length());
-
-	ostringstream rx_thresh;
-	rx_thresh << "{\"method\":\"set_rx_threshold\",\"params\":[" << 120 << "]}";
-	rpc.send_rpc(rx_thresh.str().c_str(), rx_thresh.str().length());
+//	ostringstream lna_setting;
+//	lna_setting << "{\"method\":\"set_external_lna\",\"params\":[" << 3 << "]}";
+//	rpc.send_rpc(lna_setting.str().c_str(), lna_setting.str().length());
+//
+//	ostringstream rx_thresh;
+//	rx_thresh << "{\"method\":\"set_rx_threshold\",\"params\":[" << 255 << "]}";
+//	rpc.send_rpc(rx_thresh.str().c_str(), rx_thresh.str().length());
 
 	PopPacketHandler handler(1);
 	rpc.handler = &handler;
 	handler.rpc = &rpc;
 	handler.map = &channel_map;
+	rpc.edges.connect(handler);
 
 
-	PopParseGPS gps(1);
-	PopSerial uart1("/dev/ttyUSB1", 4800, "gps");
-	uart1.rx.connect(gps);
-	gps.tx.connect(uart1);
-
-	gps.set_debug_on();
-	gps.hot_start();
+//	PopParseGPS gps(1);
+//	PopSerial uart1("/dev/ttyUSB1", 4800, "gps");
+//	uart1.rx.connect(gps);
+//	gps.tx.connect(uart1);
+//
+//	gps.set_debug_on();
+//	gps.hot_start();
 
 	PopFabricBridge bridge(&basestation_fabric, "s3p");
 	PopS3pRPC s3p(0);

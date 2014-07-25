@@ -201,5 +201,9 @@ void PopS3pRPC::greet_s3p(void)
 	send_rpc(message.c_str(), message.length());
 }
 
+void PopS3pRPC::execute_csv(std::string str)
+{
+	// do nothing
+}
 
 }

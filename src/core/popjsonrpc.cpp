@@ -64,7 +64,15 @@ void PopJsonRPC::process(const char* data, size_t size, const PopTimestamp* time
 
 		if( c == 0 )
 		{
-			parse();
+			if( command.size() >= 2 && command[0] == '{')
+			{
+				parse();
+			}
+			else
+			{
+				execute_csv(std::string(command.begin(),command.end()));
+			}
+
 			command.erase(command.begin(),command.end());
 		}
 		else

@@ -39,6 +39,16 @@ T parseNumber(const std::string& in)
 	return result;
 }
 
+template<typename T>
+T parseHexNumber(const char* in)
+{
+	T result;
+	std::stringstream ss;
+	ss << std::hex << in;
+	ss >> result;
+	return result;
+}
+
 
 // This macro is sugar for the std string constructor when using the frozen json library
 #define FROZEN_GET_STRING(token) std::string(token->ptr, token->len)

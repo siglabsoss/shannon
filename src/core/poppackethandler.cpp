@@ -18,7 +18,7 @@ namespace pop
 {
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint64_t>("PopPacketHandler", 1), rpc(0)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint64_t>("PopPacketHandler", 50000), rpc(0)
 {
 
 }
@@ -557,7 +557,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 {
 	cout << "got " << size << " samples" << endl;
 
-	uint64_t pitLastSampleTime = data[size-1];
+//	uint64_t pitLastSampleTime = data[size-1];
 
 
 	uint32_t comb[] = {0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 997920, 1003200, 1029600, 1135200, 1193280, 1240800, 1251360, 1383360, 1404480, 1483680, 1520640, 1647360, 1694880, 1800480, 1879680, 1921920, 1932480, 1958880, 2085600, 2122560, 2164800, 2180640, 2196480, 2244000, 2344320, 2428800, 2434080, 2476320, 2550240, 2872320, 3067680, 3278880, 3410880, 3669600, 3738240, 3806880, 3838560, 3944160, 3986400, 4134240, 4239840, 4297920, 4345440, 4414080, 4419360, 4593600, 4678080, 4736160, 4878720, 4894560, 5116320, 5221920, 5253600, 5290560, 5512320, 5639040, 5834400, 6019200, 6225120, 6383520, 6452160, 6494400, 6600000, 6668640, 6916800, 7138560, 7170240, 7186080, 7223040, 7275840, 7370880, 7571520, 7587360, 7597920, 7751040, 7898880, 7904160, 7930560, 8110080, 8310720, 8469120, 8500800, 8580000, 8748960, 8880960, 8954880, 8986560, 9086880, 9150240, 9176640, 9229440, 9451200, 9572640, 9625440, 9757440, 9884160, 10047840, 10142880, 10243200};
@@ -573,6 +573,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 	int32_t scorePrn, scoreBitSync;
 
+	size++; // offset size-1 FIXME
 
 	uint32_t data2[size-1];
 
@@ -646,25 +647,25 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 		// pit_last_sample_time this is approximately the time of the last sample from the dma
 
 		// this is approximately the pit time of start of frame
-		uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
+//		uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
 
-		double pit_epoc = (double)pitPrnCodeStart/19200000.0;
-		static double pit_epoc_last;
+//		double pit_epoc = (double)pitPrnCodeStart/19200000.0;
+//		static double pit_epoc_last;
 
-		printf("PIT start: %lf\r\n", pit_epoc);
-		printf("PIT delta: %lf\r\n", pit_epoc-pit_epoc_last);
+//		printf("PIT start: %lf\r\n", pit_epoc);
+//		printf("PIT delta: %lf\r\n", pit_epoc-pit_epoc_last);
 
 
-		pit_epoc_last = pit_epoc;
+//		pit_epoc_last = pit_epoc;
 
 		double txDelta = 0.75;
 
 
 
 		// add .75 seconds
-		uint32_t txTime = (prnCodeStart + (uint32_t)(ARTEMIS_CLOCK_SPEED_HZ*txDelta)) % ARTEMIS_CLOCK_SPEED_HZ;
-
-		uint64_t pitTxTime = pitPrnCodeStart + (uint32_t)(ARTEMIS_PIT_SPEED_HZ*txDelta);
+//		uint32_t txTime = (prnCodeStart + (uint32_t)(ARTEMIS_CLOCK_SPEED_HZ*txDelta)) % ARTEMIS_CLOCK_SPEED_HZ;
+//
+//		uint64_t pitTxTime = pitPrnCodeStart + (uint32_t)(ARTEMIS_PIT_SPEED_HZ*txDelta);
 
 
 
@@ -752,7 +753,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 		if( rpc )
 		{
-			process_ota_packet(&rx_packet, txTime, pitTxTime, pitPrnCodeStart);
+//			process_ota_packet(&rx_packet, txTime, pitTxTime, pitPrnCodeStart);
 		}
 		else
 		{

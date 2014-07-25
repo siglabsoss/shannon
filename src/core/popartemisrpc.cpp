@@ -307,4 +307,83 @@ int PopArtemisRPC::received_basestation_boot()
 	return basestation_boot;
 }
 
+void PopArtemisRPC::execute_csv(std::string str)
+{
+	unsigned len = str.length();
+	if( len == 0 )
+		return;
+
+	// nothing to call process on
+	if( !handler )
+		return;
+
+	static uint64_t accumulator = 0;
+
+	// make a mutable cstring from the std string because we are going to use strtok
+	// http://stackoverflow.com/questions/7352099/stdstring-to-char
+	char *csv = new char[str.length() + 1];
+	strcpy(csv, str.c_str());
+
+
+	uint32_t number;
+	char *state;
+	char *token;
+	char seps[] = ",";
+
+
+	token = strtok_r_single( csv, seps, &state );
+
+	while( token != NULL )
+	{
+		number = parseHexNumber<uint32_t>(token);
+//		printf("%s\r\n", token);
+
+		accumulator += number;
+
+		accumulator %= 0xffffffff;
+
+		edges.process(&accumulator, 1);
+
+		token = strtok_r_single( NULL, seps, &state );
+	}
+
+
+
+//	printf("\r\n");
+
+
+
+//	cout << "csv: " << str << endl;
+//
+//
+//	for(int i = 0; i < str.length(); i++)
+//	{
+//		char c = str.c_str()[i];
+//		if( c == '\n' || c == '\r' )
+//		{
+//			cout << "new line";
+//		}
+//
+//	}
+
+
+	delete [] csv;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
