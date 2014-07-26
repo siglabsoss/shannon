@@ -136,8 +136,6 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 	uint32_t ret = 0;
 
-	state = 0;
-
 	for(i = 0; i < matchOffsets.size(); ++i)
 	{
 

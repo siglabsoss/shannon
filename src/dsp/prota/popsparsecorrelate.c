@@ -199,8 +199,6 @@ FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, con
 		}
 	}
 
-	//printf("%d,%d\r\n", combOffset, xscore);
-
 	return xscore;
 }
 
