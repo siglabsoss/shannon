@@ -78,10 +78,12 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 	int count = 0;
 
+	uint32_t state = 0;
+
 	// quick search
 	for(; combOffset < iterations; combOffset += QUICK_SEARCH_STEPS)
 	{
-		score = do_comb(data, dataSize, comb, combSize, combOffset);
+		score = do_comb(data, dataSize, comb, combSize, combOffset, &state);
 
 		// if the score passes the threshold
 		if( abs(score) > threshold )
@@ -134,6 +136,8 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 	uint32_t ret = 0;
 
+	state = 0;
+
 	for(i = 0; i < matchOffsets.size(); ++i)
 	{
 
@@ -150,7 +154,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 		// warmup loop; we only need to do a single comb because the previous one was done in the quick search
-		scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1);
+		scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1, &state);
 
 		if( abs(maxScoreQuick) > abs(scoreRight) )
 		{
@@ -166,9 +170,9 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 		{
 			searchStep /= 2;
 
-			scoreLeft = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch);
+			scoreLeft = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch, &state);
 
-			scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1);
+			scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1, &state);
 
 			if( abs(scoreLeft) > abs(scoreRight) )
 			{

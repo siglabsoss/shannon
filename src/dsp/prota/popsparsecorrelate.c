@@ -105,7 +105,7 @@ uint32_t comb_dense_length(void)
 
 
 
-FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset)
+FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset, uint32_t* state)
 {
 	uint16_t j,k;
 	uint32_t diff;
@@ -121,9 +121,28 @@ FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, con
 	xscore = 0; // the "score" of this convolution
 	now = start = head = DATA_SAMPLE(0) + combOffset;
 	k = 0;
+	nextComb = comb[MIN(k+1, combSize-1)] + start;
+
+
+
 	j = 0;
 
-	nextComb = comb[MIN(k+1, combSize-1)] + start;
+	if( *state != 0 )
+	{
+		j = *state;
+
+		while( now <= DATA_SAMPLE(j) )
+		{
+			j--;
+
+			if( j <= 0 )
+			{
+				break;
+			}
+		}
+	}
+
+
 	nextSignal = DATA_SAMPLE(j+1);
 
 	// if comb_offset is large enough, we need to skip some edges in the data array, so this scans through edges
@@ -138,6 +157,9 @@ FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, con
 			return 0;
 		}
 	}
+
+	// save our position in the array for next time
+	*state = j;
 
 	while(j < dataSize && k < combSize )
 	{
@@ -176,6 +198,8 @@ FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, con
 			nextComb = comb[MIN(k+1, combSize-1)] + start;
 		}
 	}
+
+	//printf("%d,%d\r\n", combOffset, xscore);
 
 	return xscore;
 }
@@ -222,11 +246,12 @@ FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t d
 	combOffset = 0;
 #endif
 
+	uint32_t state = 0;
 
 	// quick search
 	for(; combOffset < iterations; combOffset += QUICK_SEARCH_STEPS)
 	{
-		score = do_comb(data, dataSize, comb, combSize, combOffset);
+		score = do_comb(data, dataSize, comb, combSize, combOffset, &state);
 
 		if( abs(score) > abs(maxScoreQuick) )
 		{
@@ -258,7 +283,7 @@ FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t d
 
 
 	// warmup loop; we only need to do a single comb because the previous one was done in the quick search
-	scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1);
+	scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1, &state);
 
 	if( abs(maxScoreQuick) > abs(scoreRight) )
 	{
@@ -274,9 +299,9 @@ FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t d
 	{
 		searchStep /= 2;
 
-		scoreLeft = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch);
+		scoreLeft = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch, &state);
 
-		scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1);
+		scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1, &state);
 
 		if( abs(scoreLeft) > abs(scoreRight) )
 		{
