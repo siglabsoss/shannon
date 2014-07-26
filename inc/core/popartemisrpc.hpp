@@ -31,6 +31,7 @@ public:
 	void send_reset();
 	void set_role_base_station();
 	void mock(void);
+	void mock_csv(void);
 	int received_basestation_boot();
 	void fabric_rx(std::string to, std::string from, std::string msg);
 
