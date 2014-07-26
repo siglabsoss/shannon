@@ -107,7 +107,7 @@ uint32_t comb_dense_length(void)
 
 FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset)
 {
-	int16_t j,k;
+	uint16_t j,k;
 	uint32_t diff;
 	int32_t xscore; //x(key)score
 	uint32_t start, head, now;
@@ -131,6 +131,12 @@ FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, con
 	{
 		j++;
 		nextSignal = DATA_SAMPLE(j+1);
+
+		if( (j+1) >= dataSize )
+		{
+			printf("impossible %d %d %d\r\n", combOffset, data[0], data[dataSize-1]);
+			return 0;
+		}
 	}
 
 	while(j < dataSize && k < combSize )
@@ -196,6 +202,9 @@ FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t d
 	if( denseDataLength < denseCombLength )
 	{
 		printf("dense data size %"PRIu32" must not be less than dense comb size %"PRIu32"\r\n", denseDataLength, denseCombLength);
+
+		*scoreOut = 0;
+
 		//FIXME: this is not an appropriate way of returning an error condition
 		return 0;
 	}
@@ -224,6 +233,18 @@ FN_ATTRIBUTES uint32_t core_pop_correlate(const uint32_t* data, const uint16_t d
 			maxScoreQuick = score;
 			maxScoreOffsetQuick = combOffset;
 		}
+	}
+
+	if( abs(maxScoreQuick) < 2500000 )
+	{
+		*scoreOut = maxScoreQuick;
+		printf("Signal too weak\r\n");
+		return 0;
+	}
+	else
+	{
+		int jas;
+		jas++;
 	}
 
 

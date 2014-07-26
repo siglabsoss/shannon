@@ -21,7 +21,7 @@ class PopArtemisRPC : public PopJsonRPC
 public:
 	PopArtemisRPC(PopFabric*, std::string attached = "");
 	PopSource<boost::tuple<char[20], PopTimestamp>> packets;
-	PopSource<uint64_t> edges;
+	PopSource<uint32_t> edges;
 
 	void execute_rpc(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);
 	void execute_result(const struct json_token *resultTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);

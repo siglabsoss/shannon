@@ -18,7 +18,234 @@ namespace pop
 {
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint64_t>("PopPacketHandler", 50000), rpc(0)
+
+#define QUICK_SEARCH_STEPS (1296)
+#define DATA_SAMPLE(x) data[x]
+
+// how good of a match is required to attempt demodulate
+#define COMB_COORELATION_FACTOR ((double)0.90)
+
+
+uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample)
+{
+	uint32_t denseCombLength = comb[combSize-1] - comb[0];
+	uint32_t denseDataLength = 0;
+
+	// the best score possible (100% correlation) is equal to the length of the comb
+	uint32_t threshold = COMB_COORELATION_FACTOR * denseCombLength;
+
+	uint32_t i;
+
+	// we are forced to scan through the input data to determine if any modulus events have occurred in order to get a real value for denseDataLength
+	for(i = 1; i < dataSize; i++)
+	{
+		if( DATA_SAMPLE(i) < DATA_SAMPLE(i-1) )
+		{
+			//denseDataLength += ARTEMIS_CLOCK_SPEED_HZ;
+			printf("bump (%d)\r\n", i);
+		}
+
+		denseDataLength += DATA_SAMPLE(i)-DATA_SAMPLE(i-1);
+	}
+
+	if( denseDataLength < denseCombLength )
+	{
+		printf("dense data size %"PRIu32" must not be less than dense comb size %"PRIu32"\r\n", denseDataLength, denseCombLength);
+
+		*scoreOut = 0;
+
+		//FIXME: this is not an appropriate way of returning an error condition
+		return 0;
+	}
+
+	int32_t score, scoreLeft, scoreRight, maxScoreQuick = 0, maxScore = 0; //x(key)score
+	uint32_t maxScoreOffsetQuick, maxScoreOffset, scoreOffsetBinSearch, iterations, combOffset;
+
+
+	// Artemis is given a "guess" of the start timer value when the start-of-frame should occur
+#ifdef POPWI_PLATFORM_ARTEMIS
+	iterations = guess - DATA_SAMPLE(0) + GUESS_ERROR + 1;
+	combOffset = guess - DATA_SAMPLE(0) - GUESS_ERROR;
+#else
+	iterations = denseDataLength - denseCombLength + 1;
+	combOffset = 0;
+#endif
+
+	std::vector<uint32_t> matchOffsets;
+	std::vector<int32_t> matchScores;
+
+	uint32_t lastOffset = -1;
+
+	int count = 0;
+
+	// quick search
+	for(; combOffset < iterations; combOffset += QUICK_SEARCH_STEPS)
+	{
+		score = do_comb(data, dataSize, comb, combSize, combOffset);
+
+		// if the score passes the threshold
+		if( abs(score) > threshold )
+		{
+			// if we found two consecutive matches (this must be the same packet)
+			if( combOffset == (lastOffset + QUICK_SEARCH_STEPS) )
+			{
+				// if this match is better than the last one
+				if( abs(score) > abs(matchScores.back()) )
+				{
+					// remove previous score, and use this one
+					matchOffsets.pop_back();
+					matchScores.pop_back();
+					matchOffsets.push_back(combOffset);
+					matchScores.push_back(score);
+				}
+			}
+			else
+			{
+				// this is the first match above the threshold in awhile, save it
+				matchOffsets.push_back(combOffset);
+				matchScores.push_back(score);
+			}
+
+
+			// remember the offset of the last match
+			lastOffset = combOffset;
+		}
+		count++;
+	}
+
+	// this is the dense value of the last "quick" search we tried
+	uint32_t finalDense = combOffset-QUICK_SEARCH_STEPS+data[0];
+
+	uint32_t samp=0;
+
+	for( i = 0; i < dataSize; i++ )
+	{
+		if( data[i] < finalDense )
+		{
+			samp = i;
+		}
+	}
+
+	*finalSample = samp;
+
+
+
+	cout << "got " << matchOffsets.size() << " thresholded combs (" << count << ")" << endl;
+
+	uint32_t ret = 0;
+
+	for(i = 0; i < matchOffsets.size(); ++i)
+	{
+
+		cout << "climbing match " << i <<  " offset: " << matchOffsets[i] << " score: " << matchScores[i] << endl;
+
+
+
+
+		// we've found a peak
+		uint32_t searchStep = QUICK_SEARCH_STEPS;
+
+		maxScoreOffset = scoreOffsetBinSearch = matchOffsets[i];
+		maxScore = matchScores[i];
+
+
+		// warmup loop; we only need to do a single comb because the previous one was done in the quick search
+		scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1);
+
+		if( abs(maxScoreQuick) > abs(scoreRight) )
+		{
+			scoreOffsetBinSearch -= searchStep/2;
+		}
+		else
+		{
+			scoreOffsetBinSearch += searchStep/2;
+		}
+
+
+		while( searchStep != 1 )
+		{
+			searchStep /= 2;
+
+			scoreLeft = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch);
+
+			scoreRight = do_comb(data, dataSize, comb, combSize, scoreOffsetBinSearch+1);
+
+			if( abs(scoreLeft) > abs(scoreRight) )
+			{
+				if( abs(scoreLeft) > abs(maxScore) )
+				{
+					maxScore = scoreLeft;
+					maxScoreOffset = scoreOffsetBinSearch;
+				}
+
+				scoreOffsetBinSearch -= searchStep/2;
+			}
+			else
+			{
+				if( abs(scoreRight) > abs(maxScore) )
+				{
+					maxScore = scoreRight;
+					maxScoreOffset = scoreOffsetBinSearch+1;
+				}
+
+				scoreOffsetBinSearch += searchStep/2;
+			}
+
+			if( searchStep == 1 && scoreLeft == scoreRight )
+			{
+				//FIXME: this condition can be fixed by curve fitting the searched spots
+				printf("Flat peak detected, start of frame will be slightly wrong\r\n");
+			}
+		}
+
+
+
+
+		printf("max scoreee: %d\r\n", maxScore);
+
+
+		if( i == 0 )
+		{
+			//FIXME
+			ret = DATA_SAMPLE(0) + maxScoreOffset;
+		}
+
+
+
+
+
+	}
+
+
+	return ret;
+
+
+//	printf("max: %u %d\r\n", maxScoreOffsetQuick, maxScoreQuick);
+
+
+
+//	printf("Max offset bin:   %u\r\n", maxScoreOffset);
+
+	//*scoreOut = maxScore;
+
+//	return DATA_SAMPLE(0) + maxScoreOffset;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 6000), rpc(0)
 {
 
 }
@@ -443,66 +670,6 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			rpc->packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
 		}
 	}
-
-
-
-//	if( method.compare("rx") == 0 )
-//	{
-//		p0 = find_json_token(arr, "params[0]");
-//		p1 = find_json_token(arr, "params[1]");
-//		p2 = find_json_token(arr, "params[2]");
-//		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_NUMBER && p2 && p2->type == JSON_TYPE_NUMBER )
-//		{
-//			cout << "got rx" << endl;
-//			cout << str << endl;
-//
-//			unsigned long offset;
-//			istringstream ( FROZEN_GET_STRING(p1) ) >> offset;
-//
-//			double clockCorrection;
-//
-//			istringstream ( FROZEN_GET_STRING(p2) ) >> clockCorrection;
-//
-//			packet_rx( FROZEN_GET_STRING(p0), (uint32_t)offset, clockCorrection );
-////			rcp_log(std::string(tok->ptr, tok->len));
-//			//			respond_int(0, methodId);
-//		}
-//	}
-//
-//	if( method.compare("raw") == 0 )
-//	{
-//		params = find_json_token(arr, "params");
-//
-//		int j;
-//		char buf[128];
-//		uint64_t values[params->num_desc];
-//		uint32_t modulusCorrection = 0; // corrects for modulus events in incoming signal
-//
-//		for(j=0;j<params->num_desc-1;j++)
-//		{
-//			snprintf(buf, 128, "params[%d]", j);
-//			values[j] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf))) + modulusCorrection;
-//
-//			if( values[j] < values[j-1] && j != 0)
-//			{
-//				modulusCorrection += ARTEMIS_CLOCK_SPEED_HZ;
-//
-//				// bump current sample as well
-//				values[j] += ARTEMIS_CLOCK_SPEED_HZ;
-//			}
-//
-////			printf("val = %u", values[j]);
-//		}
-//
-//		// last sample is different
-//		snprintf(buf, 128, "params[%d]", params->num_desc-1);
-//		values[params->num_desc-1] = parseUint64_t(FROZEN_GET_STRING(find_json_token(arr, buf)));
-//
-//		if( handler )
-//		{
-//			handler->process(values, params->num_desc, 0, 0);
-//		}
-//	}
 }
 
 // most of this was copied from popjsonrpc.cpp
@@ -552,20 +719,13 @@ void PopPacketHandler::process_ota_packet(ota_packet_t* p, uint32_t txTime, uint
 	execute(methodTok, paramsTok, idTok, arr, p->data, txTime, pitTxTime, pitPrnCodeStart);
 }
 
+uint32_t comb[] = {0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 997920, 1003200, 1029600, 1135200, 1193280, 1240800, 1251360, 1383360, 1404480, 1483680, 1520640, 1647360, 1694880, 1800480, 1879680, 1921920, 1932480, 1958880, 2085600, 2122560, 2164800, 2180640, 2196480, 2244000, 2344320, 2428800, 2434080, 2476320, 2550240, 2872320, 3067680, 3278880, 3410880, 3669600, 3738240, 3806880, 3838560, 3944160, 3986400, 4134240, 4239840, 4297920, 4345440, 4414080, 4419360, 4593600, 4678080, 4736160, 4878720, 4894560, 5116320, 5221920, 5253600, 5290560, 5512320, 5639040, 5834400, 6019200, 6225120, 6383520, 6452160, 6494400, 6600000, 6668640, 6916800, 7138560, 7170240, 7186080, 7223040, 7275840, 7370880, 7571520, 7587360, 7597920, 7751040, 7898880, 7904160, 7930560, 8110080, 8310720, 8469120, 8500800, 8580000, 8748960, 8880960, 8954880, 8986560, 9086880, 9150240, 9176640, 9229440, 9451200, 9572640, 9625440, 9757440, 9884160, 10047840, 10142880, 10243200};
 
-void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
+void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
 	cout << "got " << size << " samples" << endl;
 
-//	uint64_t pitLastSampleTime = data[size-1];
-
-
-	uint32_t comb[] = {0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 997920, 1003200, 1029600, 1135200, 1193280, 1240800, 1251360, 1383360, 1404480, 1483680, 1520640, 1647360, 1694880, 1800480, 1879680, 1921920, 1932480, 1958880, 2085600, 2122560, 2164800, 2180640, 2196480, 2244000, 2344320, 2428800, 2434080, 2476320, 2550240, 2872320, 3067680, 3278880, 3410880, 3669600, 3738240, 3806880, 3838560, 3944160, 3986400, 4134240, 4239840, 4297920, 4345440, 4414080, 4419360, 4593600, 4678080, 4736160, 4878720, 4894560, 5116320, 5221920, 5253600, 5290560, 5512320, 5639040, 5834400, 6019200, 6225120, 6383520, 6452160, 6494400, 6600000, 6668640, 6916800, 7138560, 7170240, 7186080, 7223040, 7275840, 7370880, 7571520, 7587360, 7597920, 7751040, 7898880, 7904160, 7930560, 8110080, 8310720, 8469120, 8500800, 8580000, 8748960, 8880960, 8954880, 8986560, 9086880, 9150240, 9176640, 9229440, 9451200, 9572640, 9625440, 9757440, 9884160, 10047840, 10142880, 10243200};
 	uint32_t combDenseLength = comb[ARRAY_LEN(comb)-1];
-
-	// Full comb + bitsync
-	// [0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 997920, 1003200, 1029600, 1135200, 1193280, 1240800, 1251360, 1383360, 1404480, 1483680, 1520640, 1647360, 1694880, 1800480, 1879680, 1921920, 1932480, 1958880, 2085600, 2122560, 2164800, 2180640, 2196480, 2244000, 2344320, 2428800, 2434080, 2476320, 2550240, 2872320, 3067680, 3278880, 3410880, 3669600, 3738240, 3806880, 3838560, 3944160, 3986400, 4134240, 4239840, 4297920, 4345440, 4414080, 4419360, 4593600, 4678080, 4736160, 4878720, 4894560, 5116320, 5221920, 5253600, 5290560, 5512320, 5639040, 5834400, 6019200, 6225120, 6383520, 6452160, 6494400, 6600000, 6668640, 6916800, 7138560, 7170240, 7186080, 7223040, 7275840, 7370880, 7571520, 7587360, 7597920, 7751040, 7898880, 7904160, 7930560, 8110080, 8310720, 8469120, 8500800, 8580000, 8748960, 8880960, 8954880, 8986560, 9086880, 9150240, 9176640, 9229440, 9451200, 9572640, 9625440, 9757440, 9884160, 10047840, 10142880, 10243200, 10264320, 10269600, 10274880, 10280160, 10285440, 10288080, 10290720, 10293360, 10296000, 10298640, 10301280, 10303920, 10306560]
-
 
 
 	size_t i,j;
@@ -573,52 +733,61 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 	int32_t scorePrn, scoreBitSync;
 
-	size++; // offset size-1 FIXME
-
-	uint32_t data2[size-1];
-
-//	printf("\r\n");
-	for(i=0;i<(size-1);i++)
-	{
-		data2[i] = (uint32_t)data[i];
-//		printf("%u, ", data2[i]);
-	}
-//	printf("\r\n\r\n");
-
-
 	boost::timer t; // start timing
 
-	prnCodeStart = shannon_pop_correlate(data2, size-1, comb, ARRAY_LEN(comb), &scorePrn);
+
+	static uint32_t previous_run_offset = 0;
+
+	// was was the # of the last sample we took
+	uint32_t final_sample;
+
+	data -= previous_run_offset;
+	size += previous_run_offset;
+
+	prnCodeStart = pop_correlate_spool(data, size, comb, ARRAY_LEN(comb), &scorePrn, &final_sample);
+
+	previous_run_offset = size - final_sample;
+
+	int temp = 0;
+
+	if( temp )
+	{
+		for(j = 0; j<size; j++)
+		{
+			printf("%u, ", data[j]);
+		}
+	}
 
 
-//	printf("Score: %d\r\n", scorePrn);
+
+	printf("Score: %d\r\n", scorePrn);
 //	printf("Start: %d\r\n", prnCodeStart);
 //	if( abs(scorePrn) < )
 
 	double elapsed_time = t.elapsed();
 
-	if( prnCodeStart == 0 || elapsed_time > 4.0 )
-	{
-		printf("\r\n");
+//	if( prnCodeStart == 0 || elapsed_time > 4.0 )
+//	{
+//		printf("\r\n");
+//
+//		for(j = 0; j<size-1;j++)
+//		{
+//			printf("%u, ", data2[j]);
+//		}
+//
+////		pop_correlate(data2, size-1, comb, ARRAY_LEN(comb), &scorePrn);
+//
+//	}
 
-		for(j = 0; j<size-1;j++)
-		{
-			printf("%u, ", data2[j]);
-		}
-
-//		pop_correlate(data2, size-1, comb, ARRAY_LEN(comb), &scorePrn);
-
-	}
-
-//	printf("\r\ntime %f\r\n", elapsed_time);
+	printf("time %f\r\n", elapsed_time);
 
 
 	if( prnCodeStart != 0 )
 	{
 		short flag1 = 0, flag2 = 0;
-		for(i = 1; i < size-1; i++)
+		for(i = 1; i < size; i++)
 		{
-			if( data2[i] > (prnCodeStart+combDenseLength) && !flag1 )
+			if( data[i] > (prnCodeStart+combDenseLength) && !flag1 )
 			{
 				flag1 = 1;
 			}
@@ -627,14 +796,14 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 		if( !flag1 )
 		{
 			printf("\r\n");
-			for(i=0;i<(size-1);i++)
+			for(i=0;i<(size);i++)
 			{
-				data2[i] = (uint32_t)data[i];
-				printf("%u, ", data2[i]);
+//				data[i] = (uint32_t)data[i];
+				printf("%u, ", data[i]);
 			}
 			printf("\r\n\r\n");
 
-			printf("data was not longer than comb %d %d\r\n", data2[size-1], (prnCodeStart+combDenseLength) );
+			printf("data was not longer than comb %d %d\r\n", data[size], (prnCodeStart+combDenseLength) );
 
 			return;
 		}
@@ -642,7 +811,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 
 
 
-		uint32_t lastTime = data2[size-2];
+		uint32_t lastTime = data[size-1];
 		//
 		// pit_last_sample_time this is approximately the time of the last sample from the dma
 
@@ -693,7 +862,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 		uint8_t data_rx[peek_length_encoded];
 
 
-		shannon_pop_data_demodulate(data2, size-1, prnCodeStart+combDenseLength, data_rx, peek_length_encoded, (scorePrn<0?1:0));
+		shannon_pop_data_demodulate(data, size, prnCodeStart+combDenseLength, data_rx, peek_length_encoded, (scorePrn<0?1:0));
 
 		uint8_t data_decode[peek_length];
 
@@ -721,7 +890,7 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 			uint16_t decode_remainig_size = MAX(0, packet_size);
 			unsigned remaining_length = ota_length_encoded(decode_remainig_size);
 			uint8_t data_rx_remaining[remaining_length];
-			shannon_pop_data_demodulate(data2, size-1, prnCodeStart+combDenseLength+j, data_rx_remaining, remaining_length, (scorePrn<0?1:0));
+			shannon_pop_data_demodulate(data, size, prnCodeStart+combDenseLength+j, data_rx_remaining, remaining_length, (scorePrn<0?1:0));
 			uint8_t data_decode_remaining[decode_remainig_size];
 			uint32_t data_decode_size_remaining;
 			decode_ota_bytes(data_rx_remaining, remaining_length, data_decode_remaining, &data_decode_size_remaining);
@@ -771,6 +940,10 @@ void PopPacketHandler::process(const uint64_t* data, size_t size, const PopTimes
 	}
 
 //	printf("\r\nMaxScore: %u\r\n", prnCodeStart);
+
+	printf("\r\n");
+	printf("\r\n");
+	printf("\r\n");
 
 }
 
