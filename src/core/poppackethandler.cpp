@@ -23,7 +23,7 @@ namespace pop
 #define DATA_SAMPLE(x) data[x]
 
 // how good of a match is required to attempt demodulate
-#define COMB_COORELATION_FACTOR ((double)0.90)
+#define COMB_COORELATION_FACTOR ((double)0.60)
 
 
 uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample)
@@ -42,7 +42,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 		if( DATA_SAMPLE(i) < DATA_SAMPLE(i-1) )
 		{
 			//denseDataLength += ARTEMIS_CLOCK_SPEED_HZ;
-			printf("bump (%d)\r\n", i);
+//			printf("bump (%d)\r\n", i);
 		}
 
 		denseDataLength += DATA_SAMPLE(i)-DATA_SAMPLE(i-1);
@@ -132,7 +132,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-	cout << "got " << matchOffsets.size() << " thresholded combs (" << count << ")" << endl;
+//	cout << "got " << matchOffsets.size() << " thresholded combs (" << count << ")" << endl;
 
 	uint32_t ret = 0;
 
@@ -247,7 +247,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 6000), rpc(0)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 3000), rpc(0)
 {
 
 }
@@ -725,7 +725,7 @@ uint32_t comb[] = {0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 99
 
 void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
-	cout << "got " << size << " samples" << endl;
+//	cout << "got " << size << " samples" << endl;
 
 	uint32_t combDenseLength = comb[ARRAY_LEN(comb)-1];
 
@@ -741,7 +741,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	static uint32_t previous_run_offset = 0;
 
 	// was was the # of the last sample we took
-	uint32_t final_sample;
+	uint32_t final_sample = 0;
 
 	data -= previous_run_offset;
 	size += previous_run_offset;
@@ -762,7 +762,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 
-	printf("Score: %d\r\n", scorePrn);
+//	printf("Score: %d\r\n", scorePrn);
 //	printf("Start: %d\r\n", prnCodeStart);
 //	if( abs(scorePrn) < )
 
@@ -781,11 +781,13 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //
 //	}
 
-	printf("time %f\r\n", elapsed_time);
+//	printf("time %f\r\n", elapsed_time);
 
 
 	if( prnCodeStart != 0 )
 	{
+		printf("Score: %d\r\n", scorePrn);
+
 		short flag1 = 0, flag2 = 0;
 		for(i = 1; i < size; i++)
 		{
@@ -938,14 +940,14 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	}
 	else
 	{
-		printf("prnCodeStart was 0!!\r\n");
+//		printf("prnCodeStart was 0!!\r\n");
 	}
 
 //	printf("\r\nMaxScore: %u\r\n", prnCodeStart);
 
-	printf("\r\n");
-	printf("\r\n");
-	printf("\r\n");
+//	printf("\r\n");
+//	printf("\r\n");
+//	printf("\r\n");
 
 }
 
