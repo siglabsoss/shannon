@@ -304,6 +304,14 @@ void PopFabric::send(std::string to, std::string message)
 	}
 }
 
+void PopFabric::keepalive()
+{
+	std::string msg = "{}";
+	std::string to = "KEEPALIVE";
+
+	send(to, msg);
+}
+
 // returns number of (valid or invalid) updates / messages received during poll
 unsigned PopFabric::poll()
 {

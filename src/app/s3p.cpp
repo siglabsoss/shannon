@@ -163,6 +163,11 @@ int main(int argc, char *argv[])
 			channel_map.checksum_dump();
 		}
 
+		if( i % 150 == 0 )
+		{
+			fabric.keepalive();
+		}
+
 		i++;
 	}
 
