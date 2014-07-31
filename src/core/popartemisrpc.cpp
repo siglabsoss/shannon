@@ -73,6 +73,10 @@ void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 	if(to.compare(attached_uuid) == 0)
 	{
 		send_rpc(msg.c_str(), msg.length());
+
+		// FIXME: use conditional delay based on message type
+		boost::posix_time::milliseconds workTime(6);
+		boost::this_thread::sleep(workTime);
 	}
 	else
 	{
