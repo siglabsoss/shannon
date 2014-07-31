@@ -101,14 +101,16 @@ int main(int argc, char *argv[])
 		uart0.rx.connect(rpc);
 		rpc.send_reset();
 		boost::posix_time::milliseconds one_second(1000);
-		for(j = 0; j < 4; j++)
+		for(j = 0; j < 5; j++)
 		{
 			boost::this_thread::sleep(one_second);
 			rpc.set_role_base_station();
-		}
 
-		boost::posix_time::milliseconds two_second(2000);
-		boost::this_thread::sleep(two_second);
+			if( rpc.received_basestation_boot() )
+			{
+				break;
+			}
+		}
 
 		if(!rpc.received_basestation_boot())
 		{
