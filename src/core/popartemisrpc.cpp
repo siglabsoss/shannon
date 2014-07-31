@@ -95,7 +95,7 @@ void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 						int rpcId = parseNumber<int>(FROZEN_GET_STRING(idTok));
 
 						int i;
-						for(int i = 0; i < 30; i++ )
+						for(int i = 0; i < 3000; i++ )
 						{
 							{
 								boost::mutex::scoped_lock lock(rpc_ids_mtx);
@@ -107,7 +107,7 @@ void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 								}
 							}
 
-							boost::posix_time::milliseconds workTime(1);
+							boost::posix_time::milliseconds workTime(3);
 							boost::this_thread::sleep(workTime);
 						}
 
