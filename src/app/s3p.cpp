@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);
 
-		if( i % 30 == 0 )
+		if( i % 300 == 0 )
 		{
 			channel_map.checksum_dump();
 		}
