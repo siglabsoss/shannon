@@ -2,8 +2,10 @@
 #define __POP_ARTEMIS_RPC_HPP_
 
 #include <stdint.h>
+#include <vector>
 
 #include <boost/tuple/tuple.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include "core/popjsonrpc.hpp"
 #include "core/poppackethandler.hpp"
@@ -39,6 +41,9 @@ public:
 	int basestation_boot;
 	std::string attached_uuid;
 	PopFabric *fabric;
+
+	std::vector<int32_t> rpc_ids;
+	mutable boost::mutex rpc_ids_mtx;
 };
 
 }

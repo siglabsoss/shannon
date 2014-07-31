@@ -72,11 +72,55 @@ void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 	// The fabric that PopArtemisRPC uses handles the directly attached Artemis in basestation mode, as well as all of the OTA devices
 	if(to.compare(attached_uuid) == 0)
 	{
+		// send message
 		send_rpc(msg.c_str(), msg.length());
 
-		// FIXME: use conditional delay based on message type
-		boost::posix_time::milliseconds workTime(6);
-		boost::this_thread::sleep(workTime);
+		struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS];
+		const struct json_token *methodTok = 0, *idTok = 0;
+		int returnValue;
+
+		// Tokenize json string, fill in tokens array
+		returnValue = parse_json(msg.c_str(), strlen(msg.c_str()), arr, POP_JSON_RPC_SUPPORTED_TOKENS);
+
+		if( returnValue != JSON_STRING_INVALID && returnValue != JSON_STRING_INCOMPLETE )
+		{
+			methodTok = find_json_token(arr, "method");
+			if( methodTok && methodTok->type == JSON_TYPE_STRING )
+			{
+				idTok = find_json_token(arr, "id");
+				if( idTok && idTok->type == JSON_TYPE_NUMBER )
+				{
+					if( FROZEN_GET_STRING(methodTok).compare("firmware_update") == 0)
+					{
+						int rpcId = parseNumber<int>(FROZEN_GET_STRING(idTok));
+
+						int i;
+						for(int i = 0; i < 30; i++ )
+						{
+							{
+								boost::mutex::scoped_lock lock(rpc_ids_mtx);
+
+								if( std::find(rpc_ids.begin(), rpc_ids.end(), rpcId) != rpc_ids.end() )
+								{
+									cout << "breaking: " << i << endl;
+									break;
+								}
+							}
+
+							boost::posix_time::milliseconds workTime(1);
+							boost::this_thread::sleep(workTime);
+						}
+
+					}
+				}
+			}
+		}
+
+
+
+
+
+
 	}
 	else
 	{
@@ -213,8 +257,24 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 
 void PopArtemisRPC::execute_result(const struct json_token *resultTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
-//	cout << "got result" << str << endl;
+	cout << "got result" << str << endl;
 	fabric->send("noc", str);
+
+
+	int32_t id = parseNumber<int>(FROZEN_GET_STRING(idTok));
+
+//	cout << "with id " << id << endl;
+	{
+		boost::mutex::scoped_lock lock(rpc_ids_mtx);
+
+		rpc_ids.push_back(id);
+
+		while(rpc_ids.size() > 50 )
+		{
+			rpc_ids.erase( rpc_ids.begin() ); // erase first element
+		}
+	}
+
 }
 
 //int b64_decode( const char *inbytes, unsigned count, char *outbytes, unsigned *countOut );
