@@ -1,0 +1,6 @@
+cd 3rd/PCIeAPI_Lib_Linux26/
+export LSC_PCIEAPI_DIR=/home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26/
+export LD_LIBRARY_PATH=:/usr/local/cuda-5.5/lib:/home/joel/ben/popwi_shannon/3rd/PCIeAPI_Lib_Linux26
+make clean
+make staticD
+cd ../../
