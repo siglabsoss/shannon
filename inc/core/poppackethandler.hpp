@@ -45,6 +45,9 @@ public:
 	void enqueue_packet(std::string to, ota_packet_t& packet);
 	ota_packet_t* peek_packet(std::string uuid);
 	void erase_packet(std::string uuid, ota_packet_t& packet);
+	uint32_t artemis_tpm;
+	uint64_t artemis_pit;
+	uint64_t new_timers;
 
 private:
 	std::vector<PopPacketQueue> queue;

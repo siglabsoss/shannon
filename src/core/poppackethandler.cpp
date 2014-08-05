@@ -247,7 +247,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 3000), rpc(0)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 3000), rpc(0), artemis_tpm(0), artemis_pit(0), new_timers(0)
 {
 
 }
@@ -725,6 +725,17 @@ uint32_t comb[] = {0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 99
 
 void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
+
+	static uint32_t total_samples = 0;
+	total_samples += size;
+
+	if( total_samples > 60000 )
+	{
+		total_samples = 0;
+		std::string msg = "{\"method\":\"tmr_sync\",\"params\":[]}";
+		rpc->send_rpc(msg);
+
+	}
 //	cout << "got " << size << " samples" << endl;
 
 	uint32_t combDenseLength = comb[ARRAY_LEN(comb)-1];
