@@ -35,7 +35,7 @@ void ppp(std::string p)
 }
 
 
-PopJsonRPC::PopJsonRPC(unsigned notused) : PopSink<char>("PopJsonRPCSink", 1), tx("PopJsonRPCResponse"), headValid(false)
+PopJsonRPC::PopJsonRPC(unsigned notused) : PopSink<char>("PopJsonRPCSink", 1), tx("PopJsonRPCResponse"), headValid(false), rawMode(false)
 {
 }
 
@@ -62,22 +62,22 @@ void PopJsonRPC::process(const char* data, size_t size, const PopTimestamp* time
 	else
 	{
 
-		if( c == 0 )
+		if(!rawMode)
 		{
-			if( command.size() >= 2 && command[0] == '{')
+			if( c == 0 )
 			{
 				parse();
+
+				command.erase(command.begin(),command.end());
 			}
 			else
 			{
-				execute_csv(std::string(command.begin(),command.end()));
+				command.push_back(c);
 			}
-
-			command.erase(command.begin(),command.end());
 		}
 		else
 		{
-			command.push_back(c);
+			execute_raw(c);
 		}
 	}
 }
