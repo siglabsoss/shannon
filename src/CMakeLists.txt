@@ -31,6 +31,7 @@ set(shared_SOURCES
 	core/popjsonrpc.cpp
 	core/popchannelmap.cpp
 	core/popfabric.cpp
+	core/ldpc.cpp
 	../3rd/boost_serial/AsyncSerial.cpp
 	core/geohelper.cpp
 )
@@ -123,6 +124,10 @@ target_link_libraries(s3p ${Boost_LIBRARIES} ${ZEROMQ_LIBRARY})
 # For target gravitino
 add_executable(gravitino ${gravatino_SOURCES} app/gravitino.cpp)
 target_link_libraries(gravitino ${Boost_LIBRARIES} ${ZEROMQ_LIBRARY})
+
+# For target ldpc
+add_executable(ldpc ${gravatino_SOURCES} app/ldpcmain.cpp)
+target_link_libraries(ldpc ${Boost_LIBRARIES} ${ZEROMQ_LIBRARY})
 	
 
 
