@@ -267,6 +267,8 @@ void LDPC::iteration()
 
 }
 
+// this example is was pulled from Dropbox\popwi-general\docs\resources\ldpc\LDPC Soft Message Passing Decoder - Module1 Flash Memory Summit 2014.pdf
+
 void LDPC::run()
 {
 	print_h();
