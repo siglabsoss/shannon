@@ -287,9 +287,9 @@ void LDPC::run()
 
 	// example 2 from slides
 	n[0].llr = -9;
-	n[1].llr = -4;
+	n[1].llr = -7;
 	n[2].llr = -12;
-	n[3].llr = +4;
+	n[3].llr = -4;
 	n[4].llr = +7;
 	n[5].llr = +10;
 	n[6].llr = -11;
