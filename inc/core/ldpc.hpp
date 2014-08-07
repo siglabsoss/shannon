@@ -27,42 +27,15 @@
 
 #include "dsp/prota/popsparsecorrelate.h"
 
+//FIXME: change to ints and dynamically allocate H http://www.eskimo.com/~scs/cclass/int/sx9b.html
+#define h_rows (3)
+#define h_cols (7)
+
+
+#define LARGER_THAN_COLS (10)
 
 namespace pop
 {
-
-// Broadcast messaging fabric with to/from fields.  Upgradable to routed fabric
-class LDPC
-{
-public:
-	LDPC(void);
-	~LDPC();
-//
-//	unsigned poll();
-//	unsigned poll_burst(unsigned max = 1000);
-//	void send(std::string to, std::string message);
-//	void send_down(std::string to, std::string from, std::string message);
-//	void send_up(std::string to, std::string from, std::string message);
-//	void set_receive_function(boost::function<void(std::string, std::string, std::string)>);
-//	void add_name(std::string name);
-//	void keepalive();
-
-	void run();
-private:
-
-//	unsigned poll_upwards();
-//	boost::function<void(std::string, std::string, std::string)> fp;
-
-
-
-	bool router;
-
-//	std::vector<std::string> names; // name(s) of this node
-//
-//	mutable boost::mutex mtx_;
-};
-
-#define LARGER_THAN_COLS (10)
 
 typedef struct
 {
@@ -81,7 +54,36 @@ typedef struct
 	// static defined for now
 	unsigned node_index[LARGER_THAN_COLS];
 
+	// 0 means that this check node is satisfied
+	short parity;
+
 } LDPC_M;
+
+
+
+// Broadcast messaging fabric with to/from fields.  Upgradable to routed fabric
+class LDPC
+{
+public:
+	LDPC(short** H, unsigned u1, unsigned u2);
+	~LDPC();
+
+	void print_h();
+	unsigned get_syndrome(void);
+	void calc_syndrome(void);
+	void run();
+private:
+
+	void prep_once();
+	unsigned check_equations(void);
+	void iteration();
+
+
+	short H[h_rows][h_cols];
+	LDPC_N n[h_cols];
+	LDPC_M m[h_rows];
+};
+
 
 
 

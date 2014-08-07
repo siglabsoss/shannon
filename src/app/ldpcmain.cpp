@@ -39,7 +39,12 @@ int main(int argc, char *argv[])
 
 	Config::loadFromDisk();
 
-	LDPC ldpc;
+	short array = 0;
+	unsigned rows = 3;
+	unsigned cols = 7;
+
+
+	LDPC ldpc( (short**)&array, rows, cols);
 
 
 	ldpc.run();
