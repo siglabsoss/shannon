@@ -62,6 +62,28 @@ private:
 //	mutable boost::mutex mtx_;
 };
 
+#define LARGER_THAN_COLS (10)
+
+typedef struct
+{
+	float llr;
+} LDPC_N;
+
+typedef struct
+{
+	float llr;
+	unsigned degree;
+
+	// index 0 is the smallest, 1 is the 2nd smallest
+	float min[2];
+	float min_index[2];
+
+	// static defined for now
+	unsigned node_index[LARGER_THAN_COLS];
+
+} LDPC_M;
+
+
 
 }
 
