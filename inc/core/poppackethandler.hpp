@@ -47,6 +47,7 @@ public:
 	void erase_packet(std::string uuid, ota_packet_t& packet);
 	uint32_t artemis_tpm;
 	uint64_t artemis_pit;
+	uint32_t artemis_pps;
 	uint64_t new_timers;
 
 private:

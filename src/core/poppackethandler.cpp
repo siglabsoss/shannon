@@ -247,7 +247,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 3000), rpc(0), artemis_tpm(0), artemis_pit(0), new_timers(0)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 2000), rpc(0), artemis_tpm(0), artemis_pit(0), new_timers(0)
 {
 
 }
@@ -826,12 +826,27 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 
-		uint32_t lastTime = data[size-1];
+//		uint32_t lastTime = data[size-1];
 		//
 		// pit_last_sample_time this is approximately the time of the last sample from the dma
 
 		// this is approximately the pit time of start of frame
 //		uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
+
+		if(prnCodeStart < artemis_tpm)
+		{
+			cout << "Negative problem" << endl;
+		}
+
+//		 artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps
+		// timers are syncronized which gives maching values at the same time
+		// (tpm start of frame - last synced tpm) over tpm period times pit period = delta pit counts
+		uint64_t pitPrnCodeStart = ( (prnCodeStart - artemis_tpm) / 48000000.0 ) * 19200000.0;
+
+		// offset to get absolute counts
+		pitPrnCodeStart += artemis_pit;
+
+		cout << "pitPrnCodeStart: " << pitPrnCodeStart << endl;
 
 //		double pit_epoc = (double)pitPrnCodeStart/19200000.0;
 //		static double pit_epoc_last;
@@ -847,9 +862,9 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 		// add .75 seconds
-//		uint32_t txTime = (prnCodeStart + (uint32_t)(ARTEMIS_CLOCK_SPEED_HZ*txDelta)) % ARTEMIS_CLOCK_SPEED_HZ;
-//
-//		uint64_t pitTxTime = pitPrnCodeStart + (uint32_t)(ARTEMIS_PIT_SPEED_HZ*txDelta);
+		uint32_t txTime = (prnCodeStart + (uint32_t)(ARTEMIS_CLOCK_SPEED_HZ*txDelta)) % ARTEMIS_CLOCK_SPEED_HZ;
+
+		uint64_t pitTxTime = pitPrnCodeStart + (uint32_t)(ARTEMIS_PIT_SPEED_HZ*txDelta);
 
 
 
@@ -857,7 +872,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 
-
+		//cout << "pit delta: " << ( pitTxTime - pitPrnCodeStart ) << endl;
 
 
 
@@ -935,9 +950,11 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		printf("Packet says: %s\r\n", rx_packet.data);
 
+		cout << "tpm: " << artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps << endl;
+
 		if( rpc )
 		{
-//			process_ota_packet(&rx_packet, txTime, pitTxTime, pitPrnCodeStart);
+			process_ota_packet(&rx_packet, txTime, pitTxTime, pitPrnCodeStart);
 		}
 		else
 		{

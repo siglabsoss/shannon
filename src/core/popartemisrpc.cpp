@@ -241,11 +241,13 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 		cout << str << endl;
 		p0 = find_json_token(arr, "params[0]");
 		p1 = find_json_token(arr, "params[1]");
+		p2 = find_json_token(arr, "params[2]");
 		if( p0 && p0->type == JSON_TYPE_NUMBER && p1 && p1->type == JSON_TYPE_NUMBER )
 		{
 			handler->new_timers++;
 			handler->artemis_tpm = parseNumber<uint32_t>(FROZEN_GET_STRING(p0));
 			handler->artemis_pit = parseNumber<uint64_t>(FROZEN_GET_STRING(p1));
+			handler->artemis_pps = parseNumber<uint32_t>(FROZEN_GET_STRING(p2));
 		}
 	}
 
