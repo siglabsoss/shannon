@@ -247,7 +247,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 2000), rpc(0), artemis_tpm(0), artemis_pit(0), new_timers(0)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), artemis_tpm(0), artemis_pit(0), new_timers(0)
 {
 
 }
@@ -915,7 +915,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		int j;
 
 		// search around a bit till the checksum matches up.  This is our "bit sync"
-		for(j = -2400; j < 2400; j+=300)
+		for(j = -5000; j < 5000; j+=100)
 		{
 			uint16_t decode_remainig_size = MAX(0, packet_size);
 			unsigned remaining_length = ota_length_encoded(decode_remainig_size);
@@ -948,7 +948,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 			return;
 		}
 
-		printf("Packet says: %s\r\n", rx_packet.data);
+		printf("Packet (offset %d) says: %s\r\n", j, rx_packet.data);
 
 		cout << "tpm: " << artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps << endl;
 
