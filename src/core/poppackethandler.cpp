@@ -763,6 +763,22 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	data -= previous_run_offset;
 	size += previous_run_offset;
 
+
+	for(i = 1; i<size;i++)
+	{
+		// the data wraps
+		if( data[i-1] > data[i] && ((((uint64_t) data[i] + 0xffffffff) - ((uint64_t) data[i-1])) < (ARTEMIS_CLOCK_SPEED_HZ*0.1) ) )
+		{
+			// nothing can handle a wrap yet, so just bail and try again
+			cout << "Data wrap edge condition" << endl;
+
+			previous_run_offset = size-i;
+			return;
+		}
+	}
+
+
+
 	prnCodeStart = pop_correlate_spool(data, size, comb, ARRAY_LEN(comb), &scorePrn, &final_sample);
 
 	previous_run_offset = size - final_sample;
