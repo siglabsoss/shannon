@@ -23,7 +23,7 @@ namespace pop
 #define DATA_SAMPLE(x) data[x]
 
 // how good of a match is required to attempt demodulate
-#define COMB_COORELATION_FACTOR ((double)0.60)
+#define COMB_COORELATION_FACTOR ((double)0.30)
 
 
 uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample)
@@ -50,7 +50,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 	if( denseDataLength < denseCombLength )
 	{
-		printf("dense data size %"PRIu32" must not be less than dense comb size %"PRIu32"\r\n", denseDataLength, denseCombLength);
+//		printf("dense data size %"PRIu32" must not be less than dense comb size %"PRIu32"\r\n", denseDataLength, denseCombLength);
 
 		*scoreOut = 0;
 
@@ -89,7 +89,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 		if( abs(score) > threshold )
 		{
 			// if we found two consecutive matches (this must be the same packet)
-			if( combOffset == (lastOffset + QUICK_SEARCH_STEPS) )
+			if( lastOffset != -1 )
 			{
 				// if this match is better than the last one
 				if( abs(score) > abs(matchScores.back()) )
@@ -136,10 +136,16 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 	uint32_t ret = 0;
 
+	if( matchOffsets.size() > 1 )
+	{
+		cout << "got MULTIPLE different packets" << endl;
+	}
+
 	for(i = 0; i < matchOffsets.size(); ++i)
 	{
 
-		cout << "climbing match " << i <<  " offset: " << matchOffsets[i] << " score: " << matchScores[i] << endl;
+//		cout << "climbing match " << i <<  " offset: " << matchOffsets[i] << " score: " << abs(matchScores[i]) << endl;
+//		cout << "thresh: " << threshold << endl;
 
 
 
@@ -729,7 +735,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	static uint32_t total_samples = 0;
 	total_samples += size;
 
-	if( total_samples > 60000 )
+	if( total_samples > 6000000 )
 	{
 		total_samples = 0;
 		std::string msg = "{\"method\":\"tmr_sync\",\"params\":[]}";
@@ -810,15 +816,15 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		if( !flag1 )
 		{
-			printf("\r\n");
-			for(i=0;i<(size);i++)
-			{
-//				data[i] = (uint32_t)data[i];
-				printf("%u, ", data[i]);
-			}
-			printf("\r\n\r\n");
-
-			printf("data was not longer than comb %d %d\r\n", data[size], (prnCodeStart+combDenseLength) );
+//			printf("\r\n");
+//			for(i=0;i<(size);i++)
+//			{
+////				data[i] = (uint32_t)data[i];
+//				printf("%u, ", data[i]);
+//			}
+//			printf("\r\n\r\n");
+//
+//			printf("data was not longer than comb %d %d\r\n", data[size], (prnCodeStart+combDenseLength) );
 
 			return;
 		}
@@ -915,7 +921,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		int j;
 
 		// search around a bit till the checksum matches up.  This is our "bit sync"
-		for(j = -5000; j < 5000; j+=100)
+		for(j = -5000; j < 5000; j+=50)
 		{
 			uint16_t decode_remainig_size = MAX(0, packet_size);
 			unsigned remaining_length = ota_length_encoded(decode_remainig_size);
@@ -949,6 +955,25 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		}
 
 		printf("Packet (offset %d) says: %s\r\n", j, rx_packet.data);
+
+//		printf("Packet (offset %d) says: ", j);
+//
+//		for(int k = 0; k < 40; k++ )
+//		{
+//			char c = rx_packet.data[k];
+//			if( isprint(c) )
+//			{
+//				cout << c;
+//			}
+//			else
+//			{
+//				cout << '0';
+//			}
+//		}
+//
+//		cout << endl;
+
+
 
 		cout << "tpm: " << artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps << endl;
 
