@@ -74,7 +74,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 	std::vector<uint32_t> matchOffsets;
 	std::vector<int32_t> matchScores;
 
-	uint32_t lastOffset = -1;
+	int64_t lastOffset = -1;
 
 	int count = 0;
 
@@ -216,6 +216,9 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 		{
 			//FIXME
 			ret = DATA_SAMPLE(0) + maxScoreOffset;
+
+			*scoreOut = maxScore;
+
 		}
 
 
@@ -253,7 +256,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), artemis_tpm(0), artemis_pit(0), new_timers(0)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), artemis_tpm(0), artemis_pit(0), new_timers(0), artemis_tpm_start(-1)
 {
 
 }
@@ -731,6 +734,9 @@ uint32_t comb[] = {0, 343200, 559680, 601920, 755040, 813120, 929280, 955680, 99
 
 void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
+	// from here below we are reading timer values
+	boost::mutex::scoped_lock lock(timer_mtx);
+
 
 	static uint32_t total_samples = 0;
 	total_samples += size;
@@ -740,7 +746,6 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		total_samples = 0;
 		std::string msg = "{\"method\":\"tmr_sync\",\"params\":[]}";
 		rpc->send_rpc(msg);
-
 	}
 //	cout << "got " << size << " samples" << endl;
 
@@ -762,6 +767,33 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 	data -= previous_run_offset;
 	size += previous_run_offset;
+
+
+
+
+	if( new_timers == 0 )
+	{
+		return;
+	} else if( artemis_tpm_start == -1 )
+	{
+		for(i = 0; i < size;i++)
+		{
+			if( data[i] > artemis_tpm )
+			{
+				artemis_tpm_start = 0;
+				previous_run_offset = size-i;
+				return;
+			}
+		}
+
+		// Havent hit start condition yet
+		artemis_tpm_start = 0;
+		previous_run_offset = 0;
+		return;
+	}
+
+
+
 
 
 	for(i = 1; i<size;i++)
@@ -817,6 +849,29 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //	printf("time %f\r\n", elapsed_time);
 
 
+
+	// keep the artemis_tpm, artemis_pit, artemis_pps counters no more than 2 seconds behind
+	for(i = 0; i < size; i++)
+	{
+		//uint32_t mod = data[i] - artemis_tpm;
+		if( ((uint32_t)(data[i] - artemis_tpm)) > (ARTEMIS_CLOCK_SPEED_HZ*2) )
+		{
+//			cout << "    bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << " to data[" << i << "]: " << data[i] << endl;
+			//cout << "  mod: " << mod << endl;
+
+			// bump all the counters
+			artemis_tpm += ARTEMIS_CLOCK_SPEED_HZ;
+			artemis_pit += ARTEMIS_PIT_SPEED_HZ;
+			artemis_pps += ARTEMIS_CLOCK_SPEED_HZ;
+		}
+
+	}
+
+
+
+
+
+
 	if( prnCodeStart != 0 )
 	{
 		printf("Score: %d\r\n", scorePrn);
@@ -840,11 +895,23 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //			}
 //			printf("\r\n\r\n");
 //
-//			printf("data was not longer than comb %d %d\r\n", data[size], (prnCodeStart+combDenseLength) );
+			printf("FIXME: matched comb in this chunk, but we need to wait till next process() to get everything...");
+			printf("data was not longer than comb %d %d\r\n", data[size], (prnCodeStart+combDenseLength) );
 
 			return;
 		}
 
+
+		// now that we have an actual start of frame, update these as aggressively as possible
+		while( ((uint32_t)(prnCodeStart - artemis_tpm)) > ARTEMIS_CLOCK_SPEED_HZ )
+		{
+//			cout << "JIT bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << endl;
+
+			// bump all the counters
+			artemis_tpm += ARTEMIS_CLOCK_SPEED_HZ;
+			artemis_pit += ARTEMIS_PIT_SPEED_HZ;
+			artemis_pps += ARTEMIS_CLOCK_SPEED_HZ;
+		}
 
 
 
@@ -855,15 +922,19 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		// this is approximately the pit time of start of frame
 //		uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
 
-		if(prnCodeStart < artemis_tpm)
+
+		uint32_t delta_counts = prnCodeStart - artemis_tpm;
+
+		if( delta_counts > ARTEMIS_CLOCK_SPEED_HZ )
 		{
-			cout << "Negative problem" << endl;
+			cout << "    delta_counts: " << delta_counts << endl;
 		}
+
 
 //		 artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps
 		// timers are syncronized which gives maching values at the same time
 		// (tpm start of frame - last synced tpm) over tpm period times pit period = delta pit counts
-		uint64_t pitPrnCodeStart = ( (prnCodeStart - artemis_tpm) / 48000000.0 ) * 19200000.0;
+		uint64_t pitPrnCodeStart = ( (delta_counts) / 48000000.0 ) * 19200000.0;
 
 		// offset to get absolute counts
 		pitPrnCodeStart += artemis_pit;
@@ -961,6 +1032,25 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		if( !packet_good )
 		{
 			printf("Bad packet checksum\r\n");
+
+
+//			printf("Packet (still) says: ");
+//
+//			for(int k = 0; k < 40; k++ )
+//			{
+//				char c = rx_packet.data[k];
+//				if( isprint(c) )
+//				{
+//					cout << c;
+//				}
+//				else
+//				{
+//					cout << '0';
+//				}
+//			}
+//
+//			cout << endl;
+
 			return;
 		}
 
@@ -1018,6 +1108,16 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //	printf("\r\n");
 //	printf("\r\n");
 
+}
+
+void PopPacketHandler::set_artimes_timers(uint32_t a_tpm, uint64_t a_pit, uint32_t a_pps)
+{
+	 boost::mutex::scoped_lock lock(timer_mtx);
+	 artemis_tpm = a_tpm;
+	 artemis_pit = a_pit;
+	 artemis_pps = a_pps;
+
+	 new_timers++;
 }
 
 

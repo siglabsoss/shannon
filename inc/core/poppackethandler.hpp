@@ -45,13 +45,16 @@ public:
 	void enqueue_packet(std::string to, ota_packet_t& packet);
 	ota_packet_t* peek_packet(std::string uuid);
 	void erase_packet(std::string uuid, ota_packet_t& packet);
+	void set_artimes_timers(uint32_t artemis_tpm, uint64_t artemis_pit, uint32_t artemis_pps);
 	uint32_t artemis_tpm;
 	uint64_t artemis_pit;
 	uint32_t artemis_pps;
 	uint64_t new_timers;
+	int64_t artemis_tpm_start;
 
 private:
 	std::vector<PopPacketQueue> queue;
+	mutable boost::mutex timer_mtx;
 
 };
 
