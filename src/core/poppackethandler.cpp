@@ -1118,6 +1118,9 @@ void PopPacketHandler::set_artimes_timers(uint32_t a_tpm, uint64_t a_pit, uint32
 	 artemis_pps = a_pps;
 
 	 new_timers++;
+
+	 artemis_tpm_start = -1;
+
 }
 
 
