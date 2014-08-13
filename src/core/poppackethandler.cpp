@@ -850,11 +850,11 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 
-	// keep the artemis_tpm, artemis_pit, artemis_pps counters no more than 2 seconds behind
+	// keep the artemis_tpm, artemis_pit, artemis_pps counters no more than 4 seconds behind
 	for(i = 0; i < size; i++)
 	{
 		//uint32_t mod = data[i] - artemis_tpm;
-		if( ((uint32_t)(data[i] - artemis_tpm)) > (ARTEMIS_CLOCK_SPEED_HZ*2) )
+		if( ((uint32_t)(data[i] - artemis_tpm)) > (ARTEMIS_CLOCK_SPEED_HZ*4) )
 		{
 //			cout << "    bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << " to data[" << i << "]: " << data[i] << endl;
 			//cout << "  mod: " << mod << endl;
@@ -875,6 +875,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	if( prnCodeStart != 0 )
 	{
 		printf("Score: %d\r\n", scorePrn);
+		cout << "prnCodeStart: " << prnCodeStart << endl;
 
 		short flag1 = 0, flag2 = 0;
 		for(i = 1; i < size; i++)
