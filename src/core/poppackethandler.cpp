@@ -256,7 +256,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), artemis_tpm(0), artemis_pit(0), new_timers(0), artemis_tpm_start(-1)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), artemis_tpm(0), artemis_pit(0), artemis_pps(0), artimes_pps_full_sec(0), new_timers(0), artemis_tpm_start(-1)
 {
 
 }
@@ -863,6 +863,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 			artemis_tpm += ARTEMIS_CLOCK_SPEED_HZ;
 			artemis_pit += ARTEMIS_PIT_SPEED_HZ;
 			artemis_pps += ARTEMIS_CLOCK_SPEED_HZ;
+			artimes_pps_full_sec++;
 		}
 
 	}
@@ -912,6 +913,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 			artemis_tpm += ARTEMIS_CLOCK_SPEED_HZ;
 			artemis_pit += ARTEMIS_PIT_SPEED_HZ;
 			artemis_pps += ARTEMIS_CLOCK_SPEED_HZ;
+			artimes_pps_full_sec++;
 		}
 
 
@@ -1052,62 +1054,67 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //
 //			cout << endl;
 
-			return;
-		}
-
-		if(rx_packet.data[ARRAY_LEN(rx_packet.data)-1] != '\0' )
-		{
-			printf("Packet c-string is not null terminated\r\n");
-			return;
-		}
-
-		printf("Packet (offset %d) says: %s\r\n", j, rx_packet.data);
-
-//		printf("Packet (offset %d) says: ", j);
-//
-//		for(int k = 0; k < 40; k++ )
-//		{
-//			char c = rx_packet.data[k];
-//			if( isprint(c) )
-//			{
-//				cout << c;
-//			}
-//			else
-//			{
-//				cout << '0';
-//			}
-//		}
-//
-//		cout << endl;
-
-
-
-		cout << "tpm: " << artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps << endl;
-
-		if( rpc )
-		{
-			process_ota_packet(&rx_packet, txTime, pitTxTime, pitPrnCodeStart);
+//			return;
 		}
 		else
 		{
-			printf("Rpc pointer not set, skipping json parse\r\n");
-		}
+
+			if(rx_packet.data[ARRAY_LEN(rx_packet.data)-1] != '\0' )
+			{
+				printf("Packet c-string is not null terminated\r\n");
+				return;
+			}
+
+			printf("Packet (offset %d) says: %s\r\n", j, rx_packet.data);
+
+			//		printf("Packet (offset %d) says: ", j);
+			//
+			//		for(int k = 0; k < 40; k++ )
+			//		{
+			//			char c = rx_packet.data[k];
+			//			if( isprint(c) )
+			//			{
+			//				cout << c;
+			//			}
+			//			else
+			//			{
+			//				cout << '0';
+			//			}
+			//		}
+			//
+			//		cout << endl;
 
 
 
-		printf("\r\n");
+			cout << "tpm: " << artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps << endl;
 
-	}
-	else
-	{
-//		printf("prnCodeStart was 0!!\r\n");
-	}
+			if( rpc )
+			{
+				process_ota_packet(&rx_packet, txTime, pitTxTime, pitPrnCodeStart);
+			}
+			else
+			{
+				printf("Rpc pointer not set, skipping json parse\r\n");
+			}
+			printf("\r\n");
 
-//	printf("\r\nMaxScore: %u\r\n", prnCodeStart);
+		} // packet good
 
-//	printf("\r\n");
-//	printf("\r\n");
-//	printf("\r\n");
+
+		// regardless if checksum was good or bad, we've got a comb here.  now time to do fabric stuff (which is blocking?) after transmitting reply which is time sensative
+
+		double rx_frac = ((double)(prnCodeStart - artemis_pps)) / ARTEMIS_CLOCK_SPEED_HZ;
+
+		ostringstream os;
+
+		os << "{\"method\":\"packet_rx\",\"params\":[" << "\"" << pop_get_hostname() << "\"" << "," << artimes_pps_full_sec << "," << rx_frac << "]}";
+
+		rpc->fabric->send("noc", os.str());
+
+
+
+	} // comb detected
+
 
 }
 
@@ -1119,8 +1126,30 @@ void PopPacketHandler::set_artimes_timers(uint32_t a_tpm, uint64_t a_pit, uint32
 	 artemis_pps = a_pps;
 
 	 new_timers++;
-
 	 artemis_tpm_start = -1;
+
+
+
+	 // "now" in system time
+	 PopTimestamp now = get_microsec_system_time();
+
+	 // artemis_tpm is the most recent timer value, sent to us over uart asap.  we assume this is pretty accurately "now"
+
+	 // this is how far we were into the second when we took a time reading.
+	 double frac_since_pps = ((double)(artemis_tpm - artemis_pps))/ARTEMIS_CLOCK_SPEED_HZ;
+
+	 // make timestamp
+	 PopTimestamp delta_since_pps(frac_since_pps);
+
+	 // offset as if we had taken system time reading at the edge of pps
+	 now -= delta_since_pps;
+
+	 // round
+	 artimes_pps_full_sec = round(now.get_real_secs());
+
+
+
+//	 cout << "time delta: " << artemis_tpm - artemis_pps << endl;
 
 }
 

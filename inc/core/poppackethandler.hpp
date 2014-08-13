@@ -49,6 +49,7 @@ public:
 	uint32_t artemis_tpm;
 	uint64_t artemis_pit;
 	uint32_t artemis_pps;
+	uint64_t artimes_pps_full_sec;
 	uint64_t new_timers;
 	int64_t artemis_tpm_start;
 
