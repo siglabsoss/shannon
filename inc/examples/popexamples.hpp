@@ -7,6 +7,9 @@
 *
 ******************************************************************************/
 
+#ifndef __POP_EXAMPLES_HPP__
+#define __POP_EXAMPLES_HPP__
+
 #include <fstream>
 #include <iostream>
 #include <inttypes.h>
@@ -116,24 +119,24 @@ public:
 };
 
 
-int64_t bost_to_posix64(const boost::posix_time::ptime& pt)
-{
-  using namespace boost::posix_time;
-  static ptime epoch(boost::gregorian::date(1970, 1, 1));
-  time_duration diff(pt - epoch);
-  return (diff.ticks() / diff.ticks_per_second());
-}
-
-int64_t bost_to_nanosecond(const boost::posix_time::ptime& pt)
-{
-  using namespace boost::posix_time;
-  static ptime epoch(boost::gregorian::date(1970, 1, 1));
-  time_duration diff(pt - epoch);
-//  std::cout << "t: " << diff.ticks_per_second() << std::endl;
-  size_t conversion = 1000000000 / diff.ticks_per_second();
-    std::cout << "conversion: " << conversion << std::endl;
-  return (diff.ticks() % diff.ticks_per_second());
-}
+//int64_t bost_to_posix64(const boost::posix_time::ptime& pt)
+//{
+//  using namespace boost::posix_time;
+//  static ptime epoch(boost::gregorian::date(1970, 1, 1));
+//  time_duration diff(pt - epoch);
+//  return (diff.ticks() / diff.ticks_per_second());
+//}
+//
+//int64_t bost_to_nanosecond(const boost::posix_time::ptime& pt)
+//{
+//  using namespace boost::posix_time;
+//  static ptime epoch(boost::gregorian::date(1970, 1, 1));
+//  time_duration diff(pt - epoch);
+////  std::cout << "t: " << diff.ticks_per_second() << std::endl;
+//  size_t conversion = 1000000000 / diff.ticks_per_second();
+//    std::cout << "conversion: " << conversion << std::endl;
+//  return (diff.ticks() % diff.ticks_per_second());
+//}
 
 
 class PopAlice : public PopSource<PopMsg>
@@ -307,18 +310,18 @@ public:
     }
 };
 
-void buildNFakePopRadios(ObjectStash &s, unsigned int n)
-{
-	double lat = 37;
-	double lon = -122;
-
-	for(unsigned int i = 0; i < n; i++)
-	{
-		PopRadio* r = s[i]; // find or create
-		r->setLat(lat + i/n);
-		r->setLng(lon + i/n);
-	}
-}
+//void buildNFakePopRadios(ObjectStash &s, unsigned int n)
+//{
+//	double lat = 37;
+//	double lon = -122;
+//
+//	for(unsigned int i = 0; i < n; i++)
+//	{
+//		PopRadio* r = s[i]; // find or create
+//		r->setLat(lat + i/n);
+//		r->setLng(lon + i/n);
+//	}
+//}
 
 class PopDummySink : public PopSink<>
 {
@@ -399,41 +402,43 @@ template <typename T>
 class PopDumpToFile : public PopSink<T>
 {
 public:
-	bool flush_immediately;
-    PopDumpToFile(const char* file_name = "dump.raw") : PopSink<T>("PopDumpToFile"),
-    	flush_immediately(false),
-        m_fileName(file_name)
-    {
-        printf("%s - created %s file\r\n", PopSink<T>::get_name(), m_fileName);
-        m_fs.open(m_fileName, std::ofstream::binary);
-    }
-    ~PopDumpToFile()
-    {
-        m_fs.close();
-    }
-private:
-    void init()
-    {
-    }
-    void process(const T* in, size_t size, const pop::PopTimestamp *t, size_t tt)
-    {
-        printf("+");
-        size_t bytes = size * sizeof(T);
-        m_fs.write((const char*)in, bytes);
+	PopDumpToFile(const char* file_name = "dump.raw") : PopSink<T>("PopDumpToFile"), flush_immediately(false), verbose(true), m_fileName(file_name)
+	{
+		printf("%s - created %s file\r\n", PopSink<T>::get_name(), m_fileName);
+		m_fs.open(m_fileName, std::ofstream::binary);
+	}
+	~PopDumpToFile()
+	{
+		m_fs.close();
+	}
 
-        if( flush_immediately )
-        	  flush(m_fs);
-    }
-    std::ofstream m_fs;
-    const char* m_fileName;
+	void init()
+	{
+	}
+	void process(const T* in, size_t size, const pop::PopTimestamp *t, size_t tt)
+	{
+		if( verbose )
+			printf("+");
+
+
+		size_t bytes = size * sizeof(T);
+		m_fs.write((const char*)in, bytes);
+
+		if( flush_immediately )
+			flush(m_fs);
+	}
+	bool flush_immediately;
+	bool verbose;
+private:
+	std::ofstream m_fs;
+	const char* m_fileName;
 };
 
 template <typename T>
 class PopReadFromFile : public PopSource<T>
 {
 public:
-	PopReadFromFile(const char* file_name = "dump.raw") : PopSource<T>("PopReadFromFile"),
-	m_fileName(file_name)
+	PopReadFromFile(const char* file_name = "dump.raw") : PopSource<T>("PopReadFromFile"), verbose(true), m_fileName(file_name)
 	{
 		printf("%s - opened %s file for reading\r\n", PopSource<T>::get_name(), m_fileName);
 		m_fs.open(m_fileName, std::ifstream::binary);
@@ -451,13 +456,20 @@ public:
 
 		if( m_fs.eof() )
 		{
-//			printf("END OF FILE \r\n");
+			if( verbose )
+				printf("END OF FILE \r\n");
+
 			return;
 		}
-		printf("~");
+
+		if( verbose )
+			printf("~");
 
 		PopSource<T>::process();  // because we just called get_buffer, we can use this overload with no params
 	}
+
+	bool verbose;
+private:
 	std::ifstream m_fs;
 	const char* m_fileName;
 };
@@ -652,3 +664,5 @@ private:
 };
 
 }
+
+#endif
