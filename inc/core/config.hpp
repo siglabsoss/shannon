@@ -9,7 +9,9 @@
 
 #define DEFAULT_CONFIG_FILE_PATH "node_config.json"
 
+// define only one at a time!
 //#define READ_MODE
+//#define WRITE_MODE
 
 
 namespace pop

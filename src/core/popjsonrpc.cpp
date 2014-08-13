@@ -42,7 +42,7 @@ void ppp(std::string p)
 
 PopJsonRPC::PopJsonRPC(unsigned notused) : PopSink<char>("PopJsonRPCSink", 1), tx("PopJsonRPCResponse"), headValid(false), rawMode(false)
 {
-#ifndef READ_MODE
+#ifdef WRITE_MODE
 	dump = new PopDumpToFile<char>("incoming_chars.raw");
 	dump->flush_immediately = true;
 	dump->verbose = false;
@@ -57,7 +57,7 @@ void PopJsonRPC::process(const char* data, size_t size, const PopTimestamp* time
 		cout << "Error " << this->get_name() << " may only accept 1 character at a time";
 		return;
 	}
-#ifndef READ_MODE
+#ifdef WRITE_MODE
 	dump->process(data, size, timestamp_data, timestamp_size);
 #endif
 
