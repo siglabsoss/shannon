@@ -9,6 +9,9 @@
 
 #define DEFAULT_CONFIG_FILE_PATH "node_config.json"
 
+//#define READ_MODE
+
+
 namespace pop
 {
 /// this class has its own internal singleton instead of using the Singleton

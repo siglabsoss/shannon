@@ -5,6 +5,11 @@
 #include <iostream>
 #include <string>
 
+#include "examples/popexamples.hpp"
+#include "core/config.hpp"
+
+
+
 
 using namespace std;
 
@@ -37,6 +42,11 @@ void ppp(std::string p)
 
 PopJsonRPC::PopJsonRPC(unsigned notused) : PopSink<char>("PopJsonRPCSink", 1), tx("PopJsonRPCResponse"), headValid(false), rawMode(false)
 {
+#ifndef READ_MODE
+	dump = new PopDumpToFile<char>("incoming_chars.raw");
+	dump->flush_immediately = true;
+	dump->verbose = false;
+#endif
 }
 
 void PopJsonRPC::init() {}
@@ -47,6 +57,9 @@ void PopJsonRPC::process(const char* data, size_t size, const PopTimestamp* time
 		cout << "Error " << this->get_name() << " may only accept 1 character at a time";
 		return;
 	}
+#ifndef READ_MODE
+	dump->process(data, size, timestamp_data, timestamp_size);
+#endif
 
 	char c = data[0];
 

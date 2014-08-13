@@ -137,8 +137,17 @@ int main(int argc, char *argv[])
 	PopFabric attached_device_fabric(context, attached_uuid, false, "localhost");
 	PopSerial uart0("/dev/ttyUSB0", 1000000, "three", false);
 	PopArtemisRPC rpc(&attached_device_fabric, attached_uuid);
+
+#ifdef READ_MODE
+	PopReadFromFile<char> file ("incoming_chars.raw");
+	file.verbose = false;
+	file.connect(rpc);
+#else
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
+#endif
+
+
 
 
 	// Send a "set_role_base_station" RPC to the Artemis board to force it into
@@ -204,6 +213,11 @@ int main(int argc, char *argv[])
 		boost::this_thread::sleep(workTime);
 
 		i++;
+
+
+#ifdef READ_MODE
+		file.read(1200*4 * 100);
+#endif
 	}
 
     return 0;

@@ -8,6 +8,10 @@
 #include "core/popsource.hpp"
 #include "frozen/frozen.h"
 #include "core/utilities.hpp"
+#include "examples/popexamples.hpp"
+
+
+
 
 // how many tokens do we support in messages
 #define POP_JSON_RPC_SUPPORTED_TOKENS (2000)
@@ -45,6 +49,7 @@ public:
 	void send_rpc(const char *rpc_string, size_t length);
 	void send_rpc(std::string& rpc);
 	uint16_t rpc_get_autoinc(void);
+	PopDumpToFile<char> *dump;
 };
 
 }
