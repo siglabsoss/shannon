@@ -854,7 +854,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	for(i = 0; i < size; i++)
 	{
 		//uint32_t mod = data[i] - artemis_tpm;
-		if( ((uint32_t)(data[i] - artemis_tpm)) > (ARTEMIS_CLOCK_SPEED_HZ*4) )
+		if( ((uint32_t)(data[i] - artemis_pps)) > (ARTEMIS_CLOCK_SPEED_HZ*4) )
 		{
 //			cout << "    bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << " to data[" << i << "]: " << data[i] << endl;
 			//cout << "  mod: " << mod << endl;
@@ -905,7 +905,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 		// now that we have an actual start of frame, update these as aggressively as possible
-		while( ((uint32_t)(prnCodeStart - artemis_tpm)) > ARTEMIS_CLOCK_SPEED_HZ )
+		while( ((uint32_t)(prnCodeStart - artemis_pps)) > ARTEMIS_CLOCK_SPEED_HZ )
 		{
 //			cout << "JIT bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << endl;
 
