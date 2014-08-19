@@ -48,7 +48,7 @@ void PopArtemisRPC::mock_csv()
 }
 
 
-PopArtemisRPC::PopArtemisRPC(PopFabric *f, std::string a) : PopJsonRPC(0), handler(0), basestation_boot(0), attached_uuid(a), fabric(f)
+PopArtemisRPC::PopArtemisRPC(PopFabric *f, std::string a) : PopJsonRPC(0), led(0), handler(0), basestation_boot(0), attached_uuid(a), fabric(f), last_pps(0.0)
 {
 	if( fabric )
 	{
@@ -161,6 +161,25 @@ void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 
 }
 
+void PopArtemisRPC::poll()
+{
+	boost::mutex::scoped_lock lock(poll_mtx);
+
+	PopTimestamp now = get_microsec_system_time();
+	now -= last_pps;
+	if( led )
+	{
+		if( now.get_real_secs() > 5 )
+		{
+			led->set_error(LED_STATUS_PPS_ERROR);
+		}
+		else
+		{
+			led->clear_error(LED_STATUS_PPS_ERROR);
+		}
+	}
+}
+
 
 void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
@@ -250,6 +269,18 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 					parseNumber<uint32_t>(FROZEN_GET_STRING(p2))   // pps
 			);
 		}
+	}
+
+	if( method.compare("pps_average") == 0 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+
+		if( p0 && p0->type == JSON_TYPE_NUMBER)
+		{
+			boost::mutex::scoped_lock lock(poll_mtx);
+			last_pps = get_microsec_system_time();
+		}
+
 	}
 
 	if( method.compare("mode") == 0 )
