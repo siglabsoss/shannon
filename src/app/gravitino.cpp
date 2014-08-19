@@ -35,6 +35,7 @@
 #include "core/popchannelmap.hpp"
 #include "core/popfabric.hpp"
 #include "core/popfabricbridge.hpp"
+#include "core/popled.hpp"
 #include "core/utilities.hpp"
 
 
