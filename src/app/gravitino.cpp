@@ -35,6 +35,7 @@
 #include "core/popchannelmap.hpp"
 #include "core/popfabric.hpp"
 #include "core/popfabricbridge.hpp"
+#include "core/popled.hpp"
 #include "core/utilities.hpp"
 
 
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
 
 
 	Config::loadFromDisk();
-
+	PopLED led;
 
 
 
@@ -138,6 +139,7 @@ int main(int argc, char *argv[])
 	PopFabric attached_device_fabric(context, attached_uuid, false, "localhost");
 	PopSerial uart0(artemis_uart_path, 1000000, "three", false);
 	PopArtemisRPC rpc(&attached_device_fabric, attached_uuid);
+	rpc.led = &led;
 
 #ifdef READ_MODE
 	PopReadFromFile<char> file ("incoming_chars.raw");
@@ -216,6 +218,8 @@ int main(int argc, char *argv[])
 			attached_device_fabric.poll();
 		}
 
+		led.poll();
+		rpc.poll();
 
 		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);

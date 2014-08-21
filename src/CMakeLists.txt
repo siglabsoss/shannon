@@ -64,6 +64,7 @@ set(gravatino_SOURCES
 	core/poppackethandler.cpp
 	core/popserial.cpp
 	core/popfabricbridge.cpp
+	core/popled.cpp
 	dsp/prota/popsparsecorrelate.c
 )
 

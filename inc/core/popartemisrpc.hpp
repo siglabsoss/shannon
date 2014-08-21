@@ -10,6 +10,7 @@
 #include "core/popjsonrpc.hpp"
 #include "core/poppackethandler.hpp"
 #include "core/popfabric.hpp"
+#include "core/popled.hpp"
 
 
 namespace pop
@@ -35,15 +36,19 @@ public:
 	void mock_csv(void);
 	int received_basestation_boot();
 	void fabric_rx(std::string to, std::string from, std::string msg);
+	void poll();
 
+	PopLED* led;
 	PopPacketHandler* handler;
 	int basestation_boot;
 	std::string attached_uuid;
 	PopFabric *fabric;
+	PopTimestamp last_pps;
 
 	std::vector<char> stream;
 	std::vector<int32_t> rpc_ids;
 	mutable boost::mutex rpc_ids_mtx;
+	mutable boost::mutex poll_mtx;
 };
 
 }
