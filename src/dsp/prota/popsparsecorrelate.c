@@ -153,7 +153,7 @@ FN_ATTRIBUTES int32_t do_comb(const uint32_t* data, const uint16_t dataSize, con
 
 		if( (j+1) >= dataSize )
 		{
-			printf("impossible %d %d %d\r\n", combOffset, data[0], data[dataSize-1]);
+			//printf("impossible %d %d %d\r\n", combOffset, data[0], data[dataSize-1]);
 			return 0;
 		}
 	}

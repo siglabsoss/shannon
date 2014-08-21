@@ -81,11 +81,12 @@ int main(int argc, char *argv[])
 	}
 
 	std::string attached_uuid;
+	std::string artemis_uart_path = Config::get<std::string>("artemis_uart");
 
 	// reset device at baud 1000000
 	{
 		PopArtemisRPC rpc(NULL);
-		PopSerial uart0("/dev/ttyUSB0", 1000000, "one");
+		PopSerial uart0(artemis_uart_path, 1000000, "one");
 		rpc.tx.connect(uart0);
 		rpc.send_reset();
 		boost::this_thread::sleep(boost::posix_time::milliseconds(10));
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
 	{
 		int j = 0;
 		PopArtemisRPC rpc(NULL);
-		PopSerial uart0("/dev/ttyUSB0", 115200, "two");
+		PopSerial uart0(artemis_uart_path, 115200, "two");
 		rpc.tx.connect(uart0);
 		uart0.rx.connect(rpc);
 		rpc.send_reset();
@@ -135,7 +136,7 @@ int main(int argc, char *argv[])
 
 
 	PopFabric attached_device_fabric(context, attached_uuid, false, "localhost");
-	PopSerial uart0("/dev/ttyUSB0", 1000000, "three", false);
+	PopSerial uart0(artemis_uart_path, 1000000, "three", false);
 	PopArtemisRPC rpc(&attached_device_fabric, attached_uuid);
 
 #ifdef READ_MODE
@@ -168,14 +169,21 @@ int main(int argc, char *argv[])
 	handler.map = &channel_map;
 	rpc.edges.connect(handler);
 
+	PopParseGPS gps(1);
+	PopSerial *uart1;
 
-//	PopParseGPS gps(1);
-//	PopSerial uart1("/dev/ttyUSB1", 4800, "gps");
-//	uart1.rx.connect(gps);
-//	gps.tx.connect(uart1);
-//
-//	gps.set_debug_on();
-//	gps.hot_start();
+	if( Config::get<bool>("enable_gps") )
+	{
+		std::string gps_path = Config::get<std::string>("gps_uart");
+
+
+		uart1 = new PopSerial(gps_path, 4800, "gps");
+		uart1->rx.connect(gps);
+		gps.tx.connect(*uart1);
+
+		gps.set_debug_on();
+		gps.hot_start();
+	}
 
 	PopFabricBridge bridge(&basestation_fabric, "s3p");
 	PopS3pRPC s3p(0);
