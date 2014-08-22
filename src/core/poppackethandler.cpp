@@ -1103,11 +1103,12 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		// regardless if checksum was good or bad, we've got a comb here.  now time to do fabric stuff (which is blocking?) after transmitting reply which is time sensative
 
-		double rx_frac = ((double)(prnCodeStart - artemis_pps)) / ARTEMIS_CLOCK_SPEED_HZ;
+
+		uint32_t rx_frac_int = (prnCodeStart - artemis_pps);
 
 		ostringstream os;
 
-		os << "{\"method\":\"packet_rx\",\"params\":[" << "\"" << pop_get_hostname() << "\"" << "," << artimes_pps_full_sec << "," << rx_frac << "]}";
+		os << "{\"method\":\"packet_rx\",\"params\":[" << "\"" << pop_get_hostname() << "\"" << "," << artimes_pps_full_sec << "," << rx_frac_int << "]}";
 
 		rpc->fabric->send("noc", os.str());
 
