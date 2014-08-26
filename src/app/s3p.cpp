@@ -137,6 +137,7 @@ int main(int argc, char *argv[])
 	PopGeoLocation geo_location(&geo_helper, &multilateration);
 	PopTrackerLocationStore tracker_location_store(&hook);
 	PopSightingStore sighting_store(&geo_location, &tracker_location_store);
+	sighting_store.start_thread();
 
 	// there is only one s3p.  name discovery is a problem we will solve later
 	PopFabric fabric(context, "s3p", true);
@@ -170,6 +171,8 @@ int main(int argc, char *argv[])
 
 		i++;
 	}
+
+	sighting_store.stop_thread();
 
     return ret;
 }

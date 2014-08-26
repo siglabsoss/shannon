@@ -18,7 +18,12 @@
 #include <utility>
 #include <vector>
 
+#include <boost/bind.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/condition_variable.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/thread/thread_time.hpp>
 
 #include "core/popbasestation.hpp"
 #include "core/popgeolocation.hpp"
@@ -26,7 +31,12 @@
 #include "core/popsightingstore.hpp"
 #include "core/poptrackerlocationstore.hpp"
 
+using boost::bind;
+using boost::get_system_time;
 using boost::mutex;
+using boost::posix_time::milliseconds;
+using boost::system_time;
+using boost::thread;
 using std::make_pair;
 using std::pair;
 using std::string;
@@ -36,11 +46,35 @@ using std::vector;
 namespace pop
 {
 
+// Number of seconds to wait before aggregating sighting data. The delay exists
+// to allow for network latency between the base stations and the S3P.
+const int PopSightingStore::PROCESSING_DELAY_SEC = 5;
+
+// Size of the time window, in milliseconds, that's used to group sightings from
+// the same tracker. Since light travels about 300 km in a millisecond,
+// multiplying this number by 300 km will yield the range of possible tracker
+// locations.
+const int PopSightingStore::AGGREGATION_WINDOW_MSEC = 100;
+
+namespace
+{
+
+int time_diff_msec(time_t a_full_secs, double a_frac_secs,
+				   time_t b_full_secs, double b_frac_secs)
+{
+	return static_cast<int>(a_full_secs - b_full_secs) * 1000 +
+		static_cast<int>((a_frac_secs - b_frac_secs) * 1000.0);
+}
+
+}  // namespace
+
 PopSightingStore::PopSightingStore(
 	const PopGeoLocation* geo_location,
 	PopTrackerLocationStore* tracker_location_store)
 	: geo_location_(geo_location),
-	  tracker_location_store_(tracker_location_store)
+	  tracker_location_store_(tracker_location_store),
+	  stopping_(false),
+	  aggregation_thread_(NULL)
 {
 	assert(geo_location != NULL);
 	assert(tracker_location_store != NULL);
@@ -48,150 +82,197 @@ PopSightingStore::PopSightingStore(
 
 PopSightingStore::~PopSightingStore()
 {
-	mutex::scoped_lock lock(mtx_);
+	{
+		mutex::scoped_lock lock(mtx_);
 
-	// Clean up the memory used by the map values.
-	for (MapType::const_iterator it = the_map_.begin(); it != the_map_.end();
-		 ++it) {
-		delete it->second;
+		// Clean up the memory used by the map values.
+		for (MapType::const_iterator it = the_map_.begin();
+			 it != the_map_.end(); ++it) {
+			delete it->second;
+		}
+
+		// Clean up the memory used by the PopBaseStation objects.
+		for (unordered_map<string, PopBaseStation*>::const_iterator it =
+				 base_stations_.begin();
+			 it != base_stations_.end(); ++it) {
+			delete it->second;
+		}
 	}
 
-	// Clean up the memory used by the PopBaseStation objects.
-	for (unordered_map<string, PopBaseStation*>::const_iterator it =
-			 base_stations_.begin();
-		 it != base_stations_.end(); ++it) {
-		delete it->second;
+	// Clean up the memory used by the boost::thread object.
+	if (aggregation_thread_ != NULL)
+		delete aggregation_thread_;
+}
+
+void PopSightingStore::start_thread()
+{
+	assert(aggregation_thread_ == NULL);
+
+	aggregation_thread_ = new thread(
+		bind(&PopSightingStore::aggregate_sightings, this));
+}
+
+void PopSightingStore::stop_thread()
+{
+	assert(aggregation_thread_ != NULL);
+
+	{
+		mutex::scoped_lock lock(mtx_);
+		assert(!stopping_);
+		stopping_ = true;
+		stopping_cond_.notify_all();
 	}
+
+	aggregation_thread_->join();
 }
 
 void PopSightingStore::add_sighting(const PopSighting& sighting)
 {
 	MapKey key;
 	key.full_secs = sighting.full_secs;
-	key.tracker_id = sighting.tracker_id;
-	key.base_station = get_base_station(sighting.hostname);
+	key.frac_secs = sighting.frac_secs;
 
 	MapValue* const value = new MapValue();
+	value->base_station = get_base_station(sighting.hostname);
+	value->tracker_id = sighting.tracker_id;
 	value->lat = sighting.lat;
 	value->lng = sighting.lng;
-	value->frac_secs = sighting.frac_secs;
 
-	bool inserted = false;
 	{
 		mutex::scoped_lock lock(mtx_);
-
-		// If multiple sightings are received with the same (full_secs, serial,
-		// base_station) key, only the first sighting will be recorded.
-		// TODO(snyderek): Is this the desired behavior?
-		inserted = the_map_.insert(make_pair(key, value)).second;
+		the_map_.insert(make_pair(key, value));
 	}
-
-	// If the key already exists in the map, delete the newly allocated map
-	// value to avoid a memory leak.
-	if (!inserted)
-		delete value;
-
-	aggregate_sightings(sighting.full_secs, sighting.tracker_id);
-
-	// TODO(snyderek): Delete old sightings.
 }
 
 bool PopSightingStore::MapKeyCompare::operator()(const MapKey& a,
 												 const MapKey& b) const
 {
-	if (a.full_secs != b.full_secs)
-		return a.full_secs < b.full_secs;
-	if (a.tracker_id != b.tracker_id)
-		return a.tracker_id < b.tracker_id;
-	if (a.base_station != b.base_station) {
-		return b.base_station != NULL &&
-			   (a.base_station == NULL ||
-			    a.base_station->hostname() < b.base_station->hostname());
-	}
-
-	return false;
+	return map_key_less_than(a, b);
 }
 
-// Builds a vector of all sightings for the given time and tracker, performs
-// multilateration, and stores the computed tracker location.
-void PopSightingStore::aggregate_sightings(time_t full_secs,
-										   uint64_t tracker_id)
+// This is the main method for the aggregation thread.
+void PopSightingStore::aggregate_sightings()
 {
-	vector<PopSighting> sightings;
+	// 'current_map_key' is the key for the sighting that's currently being
+	// processed. The combined value of (full_secs + frac_secs) will increase
+	// monotonically.
+	MapKey current_map_key;
+	current_map_key.full_secs = 0;
+	current_map_key.frac_secs = 0.0;
 
-	{
-		mutex::scoped_lock lock(mtx_);
+	mutex::scoped_lock lock(mtx_);
 
-		const pair<MapType::const_iterator, MapType::const_iterator> range =
-			get_sighting_range(full_secs, tracker_id);
+	for (;;) {
+		// Scan the current contents of the sighting map and group the sightings
+		// by tracker ID.
+		unordered_map<uint64_t, vector<PopSighting> > tracker_sightings;
+		scan_sighting_map(&current_map_key, &tracker_sightings);
 
-		for (MapType::const_iterator it = range.first; it != range.second;
-			 ++it) {
-			const MapKey& key = it->first;
-			const MapValue& value = *it->second;
+		// For each tracker, perform multilateration if enough base stations
+		// have reported.
+		for (unordered_map<uint64_t, vector<PopSighting> >::iterator it =
+				 tracker_sightings.begin();
+			 it != tracker_sightings.end(); ++it) {
+			flush_sighting_vector(&it->second);
+		}
 
-			assert(key.full_secs == full_secs);
-			assert(key.tracker_id == tracker_id);
-
-			sightings.resize(sightings.size() + 1);
-			PopSighting* const sighting = &sightings.back();
-
-			sighting->hostname = key.base_station->hostname();
-			sighting->tracker_id = tracker_id;
-			sighting->lat = value.lat;
-			sighting->lng = value.lng;
-			sighting->full_secs = full_secs;
-			sighting->frac_secs = value.frac_secs;
+		// Sleep for a while. If PopSightingStore::stop_thread() is called,
+		// return immediately.
+		const system_time timeout = get_system_time() + milliseconds(500);
+		if (stopping_cond_.timed_wait(
+				lock, timeout, bind(&PopSightingStore::is_stopping, this))) {
+		    return;
 		}
 	}
+}
+
+// This method iterates over the sightings in the sighting map, removes the
+// sightings from the map, and adds them to *tracker_sightings. The key in
+// *tracker_sightings is the tracker ID. Sightings that occurred within the past
+// PROCESSING_DELAY_SEC seconds are ignored and left in the sighting map.
+void PopSightingStore::scan_sighting_map(
+	MapKey* current_map_key,
+	unordered_map<uint64_t, vector<PopSighting> >* tracker_sightings)
+{
+	assert(current_map_key != NULL);
+	assert(tracker_sightings != NULL);
+
+	const time_t now = time(NULL);
+
+	for (;;) {
+		if (the_map_.empty())
+			return;
+
+		const MapType::iterator it = the_map_.begin();
+		const MapKey& map_key = it->first;
+		MapValue* const map_value = it->second;
+
+		// If the current sighting falls within the processing delay window,
+		// ignore it and all subsequent sightings.
+		if (map_key.full_secs >= now - PROCESSING_DELAY_SEC)
+			return;
+
+		// If the current sighting is older than *current_map_key, remove the
+		// sighting from the sighting map and throw it away. The sighting is too
+		// old to be useful. This can happen if network delays cause the
+		// sighting to reach the S3P after other sightings from around the same
+		// time have already been processed.
+		if (!map_key_less_than(map_key, *current_map_key)) {
+			*current_map_key = map_key;
+
+			vector<PopSighting>* const sightings =
+				&(*tracker_sightings)[map_value->tracker_id];
+
+			// If the range of sighting times for a given tracker is greater
+			// than the aggregation window, perform multilateration on the older
+			// sightings before adding the new one.
+			if (!sightings->empty()) {
+				const PopSighting& first_sighting = sightings->front();
+
+				if (time_diff_msec(
+						map_key.full_secs, map_key.frac_secs,
+						first_sighting.full_secs, first_sighting.frac_secs) >
+					AGGREGATION_WINDOW_MSEC) {
+					flush_sighting_vector(sightings);
+				}
+			}
+
+			// Add the sighting to *tracker_sightings.
+			sightings->resize(sightings->size() + 1);
+			PopSighting* const new_sighting = &sightings->back();
+
+			new_sighting->hostname = map_value->base_station->hostname();
+			new_sighting->tracker_id = map_value->tracker_id;
+			new_sighting->lat = map_value->lat;
+			new_sighting->lng = map_value->lng;
+			new_sighting->full_secs = map_key.full_secs;
+			new_sighting->frac_secs = map_key.frac_secs;
+		}
+
+		delete map_value;
+		the_map_.erase(it);
+	}
+}
+
+// Performs multilateration using the data in *sightings, and then clears
+// *sightings.
+void PopSightingStore::flush_sighting_vector(vector<PopSighting>* sightings)
+{
+	assert(sightings != NULL);
+
+	if (sightings->empty())
+		return;
+
+	const PopSighting& first_sighting = sightings->front();
 
 	double lat = 0.0;
 	double lng = 0.0;
-	if (geo_location_->calculate_location(sightings, &lat, &lng)) {
-		tracker_location_store_->report_tracker_location(tracker_id, full_secs,
-														 lat, lng);
-	}
-}
-
-// Returns a (begin, end) iterator pair for the range of map entries that match
-// the given (full_secs, tracker_id) partial key. You can use this range to
-// iterate over the subset of key-value pairs in 'the_map_'.
-//
-// The first iterator points to the first map entry that is greater than or
-// equal to the partial key. The second iterator points to the first map entry
-// that is strictly greater than the partial key [or end() if no such key
-// exists]. If no matching entries are found, the two returned iterators will be
-// equal.
-//
-// mtx_ must be locked when this function is called.
-pair<PopSightingStore::MapType::const_iterator,
-	 PopSightingStore::MapType::const_iterator>
-PopSightingStore::get_sighting_range(time_t full_secs,
-									 uint64_t tracker_id) const
-{
-	pair<MapType::const_iterator, MapType::const_iterator> range;
-
-	// TODO(snyderek): We should aggregate multiple sightings even if they fall
-	// on either side of a second boundary.
-	MapKey key;
-	key.full_secs = full_secs;
-	key.tracker_id = tracker_id;
-	key.base_station = NULL;
-
-	range.first = the_map_.lower_bound(key);
-
-	++key.tracker_id;
-	// Check for integer overflow.
-	if (key.tracker_id > 0) {
-		// Normal case.
-		range.second = the_map_.lower_bound(key);
-	} else {
-		// tracker_id was already the maximum uint64_t value. Use the_map_.end()
-		// as the end of the range.
-		range.second = the_map_.end();
+	if (geo_location_->calculate_location(*sightings, &lat, &lng)) {
+		tracker_location_store_->report_tracker_location(
+			first_sighting.tracker_id, first_sighting.full_secs, lat, lng);
 	}
 
-	return range;
+	sightings->clear();
 }
 
 // Returns a unique base station pointer for the given hostname.
@@ -211,6 +292,15 @@ const PopBaseStation* PopSightingStore::get_base_station(const string& hostname)
 		*base_station = new PopBaseStation(hostname);
 
 	return *base_station;
+}
+
+// static
+bool PopSightingStore::map_key_less_than(const MapKey& a, const MapKey& b)
+{
+	if (a.full_secs != b.full_secs)
+		return a.full_secs < b.full_secs;
+
+	return a.frac_secs < b.frac_secs;
 }
 
 }
