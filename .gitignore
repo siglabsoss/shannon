@@ -16,6 +16,10 @@ Doxyfile
 # all recorded sample data
 *.raw
 
+# matlab files
+*.asv
+*.mat
+
 # KDevelop
 .kdev4
 .kdev_include_paths

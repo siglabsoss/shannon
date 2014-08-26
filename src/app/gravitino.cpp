@@ -24,7 +24,6 @@
 #include "core/config.hpp"
 //#include "examples/popexamples.hpp"
 //#include "dsp/prota/popprotatdmabin.hpp"
-#include "net/popnetwork.hpp"
 //#include "mdl/poppeak.hpp"
 //#include "core/simulateartemis.hpp"
 #include "core/popserial.hpp"
@@ -34,6 +33,8 @@
 #include "core/popparsegps.hpp"
 #include "core/poppackethandler.hpp"
 #include "core/popchannelmap.hpp"
+#include "core/popfabric.hpp"
+#include "core/popfabricbridge.hpp"
 #include "core/utilities.hpp"
 
 
@@ -55,9 +56,9 @@ int main(int argc, char *argv[])
 
 
 	zmq::context_t context(1); // only 1 per thread
-	PopChannelMap channel_map("localhost", false, context);
+	PopChannelMap channel_map(Config::get<std::string>("basestation_s3p_ip"), false, context);
 
-	cout << "Waiting for Channel Map to sync";
+	cout << "Waiting for Channel Map to sync" << endl;
 
 	while(channel_map.dirty())
 	{
@@ -69,6 +70,8 @@ int main(int argc, char *argv[])
 
 	cout << "  done!" << endl;
 
+	PopFabric basestation_fabric(context, pop_get_hostname(), true, Config::get<std::string>("basestation_s3p_ip"));
+
 	uint32_t target_slots = (POP_SLOT_COUNT/4);
 	uint32_t owned_slots = channel_map.allocated_count();
 	if( target_slots > owned_slots )
@@ -77,18 +80,22 @@ int main(int argc, char *argv[])
 		channel_map.request_block(target_slots-owned_slots);
 	}
 
+	std::string attached_uuid;
+
 	// reset device at baud 1000000
 	{
-		PopArtemisRPC rpc(1);
+		PopArtemisRPC rpc(NULL);
 		PopSerial uart0("/dev/ttyUSB0", 1000000, "one");
 		rpc.tx.connect(uart0);
+		rpc.send_reset();
+		boost::this_thread::sleep(boost::posix_time::milliseconds(10));
 		rpc.send_reset();
 	}
 
 	// reset device at baud 115200
 	{
 		int j = 0;
-		PopArtemisRPC rpc(1);
+		PopArtemisRPC rpc(NULL);
 		PopSerial uart0("/dev/ttyUSB0", 115200, "two");
 		rpc.tx.connect(uart0);
 		uart0.rx.connect(rpc);
@@ -108,15 +115,26 @@ int main(int argc, char *argv[])
 			cout << endl << endl << "attached device did not startup in basestation mode!!!" << endl << endl;
 			boost::this_thread::sleep(one_second);
 		}
+		else
+		{
+			attached_uuid = rpc.attached_uuid;
+			cout << endl << endl << "Attached device started correctly with serial: " << attached_uuid << endl;
+
+			ostringstream os;
+			os << "{\"method\":\"log\",\"params\":[\"" << "Basestation: " << pop_get_hostname() << " started with attacehd device: " << attached_uuid << "\"]}";
+			basestation_fabric.send("s3p", os.str());
+
+			ostringstream os2;
+			os2 << "{\"method\":\"node_broadcast\",\"params\":[\"" << attached_uuid << "\", \"" << pop_get_hostname() << "\"]}";
+			basestation_fabric.send("noc", os2.str());
+
+		}
 	}
 
 
-
-
-	PopArtemisRPC rpc(1);
-
-	PopSerial uart0("/dev/ttyUSB0", 1000000, "three");
-
+	PopFabric attached_device_fabric(context, attached_uuid, false, "localhost");
+	PopSerial uart0("/dev/ttyUSB0", 1000000, "three", false);
+	PopArtemisRPC rpc(&attached_device_fabric, attached_uuid);
 	uart0.rx.connect(rpc);
 	rpc.tx.connect(uart0);
 
@@ -125,6 +143,14 @@ int main(int argc, char *argv[])
 	// base station mode.
 	rpc.set_role_base_station();
 
+	ostringstream lna_setting;
+	lna_setting << "{\"method\":\"set_external_lna\",\"params\":[" << 3 << "]}";
+	rpc.send_rpc(lna_setting.str().c_str(), lna_setting.str().length());
+
+	ostringstream rx_thresh;
+	rx_thresh << "{\"method\":\"set_rx_threshold\",\"params\":[" << 120 << "]}";
+	rpc.send_rpc(rx_thresh.str().c_str(), rx_thresh.str().length());
+
 	PopPacketHandler handler(1);
 	rpc.handler = &handler;
 	handler.rpc = &rpc;
@@ -132,56 +158,46 @@ int main(int argc, char *argv[])
 
 
 	PopParseGPS gps(1);
-//	PopSerial uart4("/dev/tty4", 4800);
-//	uart4.rx.connect(gps);
+	PopSerial uart1("/dev/ttyUSB1", 4800, "gps");
+	uart1.rx.connect(gps);
+	gps.tx.connect(uart1);
 
-	PopNetwork<char> json(0, Config::get<std::string>("basestation_s3p_ip"), Config::get<int>("basestation_s3p_port"), 0);
+	gps.set_debug_on();
+	gps.hot_start();
 
+	PopFabricBridge bridge(&basestation_fabric, "s3p");
 	PopS3pRPC s3p(0);
-	handler.s3p = &s3p;
+	bridge.tx.connect(s3p);
+	s3p.tx.connect(bridge);
 
-	s3p.tx.connect(json);
-	json.connect(s3p);
-
-//	PopGpsDevice updates(1);
-
-//	rpc.packets.connect(updates);
-//	updates.tx.connect(json);
-//	updates.gps = &gps;
-	json.wakeup();
-//	updates.tx.start_thread();
-//	handler.s3p = &updates;
-
+//	handler.s3p = &s3p;
 	s3p.greet_s3p();
 
-//	rpc.mock();
+	// greet NOC
+	ostringstream os3;
+	os3 << "{\"method\":\"node_broadcast\",\"params\":[\"" << pop_get_hostname() << "\", \"" << "s3p" << "\"]}";
+	basestation_fabric.send("noc", os3.str());
 
-
-
-
-//	SimulateArtemis simArt(0);
-//	simArt.rx.connect(rpc);
-//	rpc.rx.connect(simArt);
-
-//	simArt.rx.start_thread();
-	//channel_map.set(i%POP_SLOT_COUNT, 54, 0);
-
-//	sleep(1);
-//	channel_map.poll();
-//	channel_map.checksum_dump();
 
 
 	char c;
 
 	int i = 0;
 
+	int j = 0;
+
 	// Run Control Loop
 	while(1)
 	{
-		channel_map.poll();
+		for(j=0; j < 3; j++)
+		{
+			channel_map.poll();
+			basestation_fabric.poll();
+			attached_device_fabric.poll();
+		}
 
 
-		boost::posix_time::milliseconds workTime(1000);
+		boost::posix_time::milliseconds workTime(100);
 		boost::this_thread::sleep(workTime);
 
 		i++;

@@ -86,10 +86,13 @@ void PopJsonRPC::parse()
 	const char *json = str.c_str();
 
 	struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS];
-	const struct json_token *methodTok = 0, *paramsTok = 0, *idTok = 0;
+	const struct json_token *methodTok = 0, *paramsTok = 0, *resultTok = 0, *idTok = 0;
+
+	int returnValue;
+	int is_rpc = 1, is_result = 1;
 
 	// Tokenize json string, fill in tokens array
-	int returnValue = parse_json(json, strlen(json), arr, POP_JSON_RPC_SUPPORTED_TOKENS);
+	returnValue = parse_json(json, strlen(json), arr, POP_JSON_RPC_SUPPORTED_TOKENS);
 
 	if( returnValue == JSON_STRING_INVALID || returnValue == JSON_STRING_INCOMPLETE )
 	{
@@ -107,28 +110,43 @@ void PopJsonRPC::parse()
 		return;
 	}
 
-	// verify message has "method" key
 	methodTok = find_json_token(arr, "method");
 	if( !(methodTok && methodTok->type == JSON_TYPE_STRING) )
 	{
-		return;
+		is_rpc = 0;
 	}
 
-	// verify message has "params" key
 	paramsTok = find_json_token(arr, "params");
 	if( !(paramsTok && paramsTok->type == JSON_TYPE_ARRAY) )
 	{
-		return;
+		is_rpc = 0;
+	}
+
+	resultTok = find_json_token(arr, "result");
+	if( !resultTok )
+	{
+		is_result = 0;
 	}
 
 	// "id" key is optional.  It's absence means the message will not get a response
 	idTok = find_json_token(arr, "id");
 	if( !(idTok && idTok->type == JSON_TYPE_NUMBER) )
 	{
-		idTok = 0;
+		is_result = 0;
 	}
 
-	execute(methodTok, paramsTok, idTok, arr, str);
+
+	if( is_rpc )
+	{
+		execute_rpc(methodTok, paramsTok, idTok, arr, str);
+	} else if( is_result )
+	{
+		execute_result(resultTok, idTok, arr, str);
+	} else if( str.compare("{}") != 0 ) {
+		// An "empty" response to a poll message is just an empty json object, everything else should generate this error
+		cout << "Received valid json that doesn't look like JSON-RPC\r\n" << endl;
+	}
+
 }
 
 
@@ -138,10 +156,12 @@ void PopJsonRPC::send_rpc(const char *rpc_string, size_t length)
 	// RPC was not terminated properly. It's safe to do this because if Artemis
 	// receives two null characters in a row, it will just ignore the empty RPC.
 	this->tx.process("\0", 1);
+	this->tx.process("\0", 1);
 
 	this->tx.process(rpc_string, length);
 
 	// Trailing null
+	this->tx.process("\0", 1);
 	this->tx.process("\0", 1);
 }
 

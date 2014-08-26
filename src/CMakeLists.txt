@@ -26,12 +26,13 @@ set(shared_SOURCES
 	core/config.cpp
 	core/utilities.cpp
 	net/popnetwork.cpp
-	net/popnetworkwrapped.cpp
 	../3rd/frozen/frozen.c
 	../3rd/b64/b64.c
 	core/popjsonrpc.cpp
 	core/popchannelmap.cpp
+	core/popfabric.cpp
 	../3rd/boost_serial/AsyncSerial.cpp
+	core/geohelper.cpp
 )
 
 # S3P and Shannon sources
@@ -42,7 +43,6 @@ set(all_SOURCES
 	core/basestationfreq.c
 	net/popnetworkcomplex.cpp
 	net/popnetworkjson.cpp
-	core/geohelper.cpp
 	core/popbuchermultilateration.cpp
 	core/popcoordinatetransform.cpp
 	core/popfangmultilateration.cpp
@@ -63,6 +63,7 @@ set(gravatino_SOURCES
 	core/pops3prpc.cpp
 	core/poppackethandler.cpp
 	core/popserial.cpp
+	core/popfabricbridge.cpp
 	dsp/prota/popsparsecorrelate.c
 )
 

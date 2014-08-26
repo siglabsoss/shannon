@@ -1,5 +1,6 @@
 #include <iostream>
 #include <boost/timer.hpp>
+#include <algorithm>    // std::sort
 
 #include "core/poppackethandler.hpp"
 #include "core/util.h"
@@ -20,6 +21,78 @@ namespace pop
 PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint64_t>("PopPacketHandler", 1), rpc(0)
 {
 
+}
+
+// sort by uuid first, then by time
+bool PopPacketQueueCompare(const PopPacketHandler::PopPacketQueue& lhs, const PopPacketHandler::PopPacketQueue& rhs)
+{
+	int comparison;
+
+	comparison = lhs.uuid.compare(rhs.uuid);
+
+	if( comparison < 0 )
+	{
+		return true;
+	}
+	else if( comparison > 0 )
+	{
+		return false;
+	}
+	else
+	{
+		return lhs.time.get_real_secs() < rhs.time.get_real_secs();
+	}
+}
+
+void PopPacketHandler::enqueue_packet(std::string to, ota_packet_t& packet)
+{
+	cout << "enqueued packet to " << to << endl;
+	PopPacketQueue q;
+
+	q.time = get_microsec_system_time();
+	q.uuid = to;
+	q.packet = packet;
+
+	queue.push_back(q);
+
+	// this is very expensive but fun!
+	std::sort (queue.begin(), queue.end(), PopPacketQueueCompare);
+
+
+//	for (std::vector<PopPacketQueue>::iterator it = queue.begin(); it!=queue.end(); ++it)
+//	{
+//		std::cout << ' ' << it->time << ' ' << it->uuid << ' ' << it->packet.data << endl;
+//	}
+}
+
+// Next packet to be transmitted (requires queue to already be sorted)
+// Returns null if no packets are pending
+ota_packet_t* PopPacketHandler::peek_packet(std::string uuid)
+{
+	for (std::vector<PopPacketQueue>::iterator it = queue.begin(); it!=queue.end(); ++it)
+	{
+		if( uuid.compare(it->uuid) == 0 )
+		{
+			return &(it->packet);
+		}
+//		std::cout << ' ' << it->time << ' ' << it->uuid << ' ' << it->packet.data << endl;
+	}
+
+	// no packets waiting
+	return NULL;
+}
+
+// Deletes a packet from the queue
+void PopPacketHandler::erase_packet(std::string uuid, ota_packet_t& packet)
+{
+	for (std::vector<PopPacketQueue>::iterator it = queue.begin(); it!=queue.end(); ++it)
+	{
+		if( uuid.compare(it->uuid) == 0 && memcmp(&packet, &(it->packet), sizeof(ota_packet_t) ) == 0)
+		{
+			queue.erase(it);
+			return;
+		}
+	}
 }
 
 // returns the nearest slot for a tracker
@@ -161,9 +234,6 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 				return;
 			}
 
-			cout << "REPLYING" << endl;
-
-
 
 			// Traditionally all ota packets are replied with a "tx" rpc here.
 			// but in this case we want the basestation to behave smart, so we actually send an rpc
@@ -192,8 +262,18 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 		p0 = find_json_token(arr, "params[0]");
 		if( p0 && p0->type == JSON_TYPE_STRING )
 		{
-
 			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
+
+			if( !basestation_should_respond(uuid) )
+			{
+				cout << "NOT REPLYING" << endl;
+				return;
+			}
+
+
+			//cout << "slot rq from " << FROZEN_GET_STRING(p0) << endl;
+
+			rpc->fabric->add_name(FROZEN_GET_STRING(p0));
 
 
 
@@ -202,7 +282,7 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			unsigned chosen = 0;
 			uint16_t slots[remaining];
 
-			// grab all slots avaliable to us
+			// grab all slots available to us
 			std::vector<PopChannelMap::PopChannelMapKey> keys;
 			std::vector<PopChannelMap::PopChannelMapValue> values;
 			map->find_by_basestation(pop_get_hostname(), keys, values);
@@ -284,7 +364,15 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 		p1 = find_json_token(arr, "params[1]");
 		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_NUMBER )
 		{
-			uuid_t uuid = b64_to_uuid(FROZEN_GET_STRING(p0));
+			std::string uuid_string = FROZEN_GET_STRING(p0);
+			uuid_t uuid = b64_to_uuid(uuid_string);
+
+			if( !basestation_should_respond(uuid) )
+			{
+				cout << "NOT REPLYING" << endl;
+				return;
+			}
+
 
 			double pit_epoc = (double)pitPrnCodeStart/19200000.0;
 
@@ -317,8 +405,18 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 			ota_packet_t packet;
 			ota_packet_zero_fill(&packet);
 
-			// do correction
-			if( abs(error_counts) > 0.05 * 19200000.0 )
+			ota_packet_t* queued_packet;
+
+			// check if there is anything queued up
+			queued_packet = peek_packet(uuid_string);
+
+
+			if( queued_packet )
+			{
+				memcpy(&packet, queued_packet, sizeof(ota_packet_t));
+				erase_packet(uuid_string, *queued_packet);
+			}
+			else if( abs(error_counts) > 0.05 * 19200000.0 )
 			{
 				ostringstream os;
 				os << "{\"method\":\"trim_utc\",\"params\":[" << -1*error_counts << "]}";
@@ -334,6 +432,11 @@ void PopPacketHandler::execute(const struct json_token *methodTok, const struct 
 				// do nothing
 				snprintf(packet.data, sizeof(packet.data), "{}");
 			}
+
+
+
+
+
 
 			ota_packet_prepare_tx(&packet);
 

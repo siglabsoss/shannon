@@ -36,8 +36,12 @@ namespace pop
 
 
 
-PopArtemisRPC::PopArtemisRPC(unsigned notused) : PopJsonRPC(0), handler(0), basestation_boot(0)
+PopArtemisRPC::PopArtemisRPC(PopFabric *f, std::string a) : PopJsonRPC(0), handler(0), basestation_boot(0), attached_uuid(a), fabric(f)
 {
+	if( fabric )
+	{
+		fabric->set_receive_function(boost::bind(&PopArtemisRPC::fabric_rx, this, _1, _2, _3));
+	}
 }
 
 // call this from main() after all functions are setup to test data demodulation
@@ -54,7 +58,51 @@ void PopArtemisRPC::mock(void)
 	}
 }
 
-void PopArtemisRPC::execute(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
+void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
+{
+	cout << "(PopArtemisRPC) to: " << to << " from: " << from << " msg: " << msg << endl;
+
+
+	// The fabric that PopArtemisRPC uses handles the directly attached Artemis in basestation mode, as well as all of the OTA devices
+	if(to.compare(attached_uuid) == 0)
+	{
+		send_rpc(msg.c_str(), msg.length());
+	}
+	else
+	{
+		ota_packet_t packet;
+		ota_packet_zero_fill(&packet);
+
+//		ostringstream os;
+//		os << "{\"result\":[";
+//		for( unsigned i = 0; i < chosen; i++ )
+//		{
+//			if( i != 0 )
+//			{
+//				os << ",";
+//			}
+//			os << slots[i];
+//		}
+//		os << "],\"id\":" << original_id << "}";
+//
+		snprintf(packet.data, sizeof(packet.data), "%s", msg.c_str()); // lazy way to cap length
+		ota_packet_prepare_tx(&packet);
+//
+		puts(packet.data);
+
+		if( handler )
+		{
+			handler->enqueue_packet(to, packet);
+		}
+//
+//		packet_tx((char*)(void*)&packet, packet.size, txTime, pitTxTime);
+	}
+
+
+}
+
+
+void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
 {
 	std::string method = FROZEN_GET_STRING(methodTok);
 	const struct json_token *params, *p0, *p1, *p2;
@@ -144,10 +192,20 @@ void PopArtemisRPC::execute(const struct json_token *methodTok, const struct jso
 
 	if( method.compare("basestation_boot") == 0 )
 	{
-		basestation_boot = 1;
+		p0 = find_json_token(arr, "params[0]");
+		if( p0 && p0->type == JSON_TYPE_STRING)
+		{
+			attached_uuid = FROZEN_GET_STRING(p0);
+			basestation_boot = 1;
+		}
 	}
 }
 
+void PopArtemisRPC::execute_result(const struct json_token *resultTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)
+{
+//	cout << "got result" << str << endl;
+	fabric->send("noc", str);
+}
 
 //int b64_decode( const char *inbytes, unsigned count, char *outbytes, unsigned *countOut );
 
