@@ -33,6 +33,8 @@ public:
 	bool calculate_location(const std::vector<PopSighting>& sightings,
 							double* lat, double* lng) const;
 
+	static double spherical_distance_to_linear(double dist_light_seconds);
+
 private:
 	const GeoHelper* const geo_helper_;
 	const PopMultilateration* const multilateration_;

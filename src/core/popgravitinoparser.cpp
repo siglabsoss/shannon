@@ -53,7 +53,7 @@ void PopGravitinoParser::execute(const struct json_token *methodTok, const struc
 	}
 
 
-	if( method.compare("bx_rx") == 0 )
+	if( method.compare("bs_rx") == 0 )
 	{
 		// basestation name, lat, lng, tracker id, full seconds, frac seconds
 		p0 = find_json_token(arr, "params[0]");

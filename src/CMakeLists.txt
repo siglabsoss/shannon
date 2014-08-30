@@ -128,16 +128,16 @@ target_link_libraries(gravitino ${Boost_LIBRARIES} ${ZEROMQ_LIBRARY})
 
 # MORE TESTS
 add_executable(geohelper_test ${all_SOURCES} app/geohelper_test.cpp)
-target_link_libraries(geohelper_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+target_link_libraries(geohelper_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${ZEROMQ_LIBRARY})
 
 add_executable(popbuchermultilateration_test ${all_SOURCES} app/popbuchermultilateration_test.cpp)
-target_link_libraries(popbuchermultilateration_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+target_link_libraries(popbuchermultilateration_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${ZEROMQ_LIBRARY})
 
 add_executable(popcoordinatetransform_test ${all_SOURCES} app/popcoordinatetransform_test.cpp)
-target_link_libraries(popcoordinatetransform_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+target_link_libraries(popcoordinatetransform_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${ZEROMQ_LIBRARY})
 
 add_executable(popgeolocation_test ${all_SOURCES} app/popgeolocation_test.cpp)
-target_link_libraries(popgeolocation_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+target_link_libraries(popgeolocation_test ${Boost_LIBRARIES} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${ZEROMQ_LIBRARY})
 
 
 

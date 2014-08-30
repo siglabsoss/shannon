@@ -304,6 +304,15 @@ void PopFabric::send(std::string to, std::string message)
 	}
 }
 
+// debug function to simulate a message from elsewhere, "to" is forced to us
+void PopFabric::send_local(std::string from, std::string message)
+{
+	// us
+	std::string to = names[0];
+
+	this->fp(to, from, message);
+}
+
 void PopFabric::keepalive()
 {
 	std::string msg = "{}";

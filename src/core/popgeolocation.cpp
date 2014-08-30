@@ -28,13 +28,12 @@ using std::vector;
 namespace pop
 {
 
-namespace
-{
+
 
 // Given a distance measured along a great circle between two points on the
 // Earth's surface, returns the straight-line distance between the two points in
 // Euclidean space. This function assumes that the Earth is spherical.
-double spherical_distance_to_linear(double dist_light_seconds)
+double PopGeoLocation::spherical_distance_to_linear(double dist_light_seconds)
 {
 	static const double EARTH_DIAMETER_LIGHT_SECONDS =
 		GeoHelper::EARTH_RADIUS_M * 2.0 / GeoHelper::SPEED_OF_LIGHT_M_PER_S;
@@ -43,7 +42,7 @@ double spherical_distance_to_linear(double dist_light_seconds)
 		EARTH_DIAMETER_LIGHT_SECONDS;
 }
 
-}  // namespace
+
 
 PopGeoLocation::PopGeoLocation(const GeoHelper* geo_helper,
 							   const PopMultilateration* multilateration)

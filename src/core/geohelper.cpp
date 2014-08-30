@@ -44,6 +44,15 @@ const double GeoHelper::EARTH_RADIUS_M = 6371000.0;
 GeoHelper::GeoHelper()
 {
 	// For each co-ordinate system we do, what are the A, B and E2 values?
+
+	// Oblate Spheroid equation is:
+	// (x^2 + y^2) / a^2  + z^2 / c^2 = 1
+
+	// "B" as used in this file is "C" in the equation above.
+	// http://en.wikipedia.org/wiki/Ellipsoid
+	// http://en.wikipedia.org/wiki/Spheroid
+
+
 	// List is A, B, E^2 (E^2 calculated after)
 	abe_values_["wgs84"] = make_tuple(6378137.0, 6356752.3141, -1.0);
 	abe_values_["osgb"] = make_tuple(6377563.396, 6356256.91, -1.0);

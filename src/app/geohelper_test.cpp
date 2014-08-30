@@ -19,6 +19,7 @@
 #include <boost/test/floating_point_comparison.hpp>
 #include <boost/tuple/tuple.hpp>
 
+#include <boost/lexical_cast.hpp>
 #include "core/geohelper.hpp"
 
 using boost::tie;
@@ -37,6 +38,8 @@ BOOST_AUTO_TEST_CASE(turn_llh_into_xyz)
 	double x = 0.0, y = 0.0, z = 0.0;
 	tie(x, y, z) = geo_helper.turn_llh_into_xyz(lat_dec, long_dec, height,
 												coord_system);
+
+	//std::cout << "llh: " <<boost::lexical_cast<string>( x) <<", "<<boost::lexical_cast<string>(y)<<", "<<boost::lexical_cast<string>(z)<<std::endl;
 
 	BOOST_CHECK_CLOSE(x, -2699861.0, 0.0001);
 	BOOST_CHECK_CLOSE(y, -4286555.0, 0.0001);
