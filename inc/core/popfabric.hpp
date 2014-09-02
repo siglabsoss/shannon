@@ -45,6 +45,7 @@ public:
 	void send_up(std::string to, std::string from, std::string message);
 	void set_receive_function(boost::function<void(std::string, std::string, std::string)>);
 	void add_name(std::string name);
+	void keepalive();
 
 
 private:

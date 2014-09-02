@@ -29,7 +29,7 @@ using namespace zmq;
 using namespace std;
 
 
-//#define FABRIC_VERBOSE
+#define FABRIC_VERBOSE
 
 #define FABRIC_PORT_PUB   "11528"
 #define FABRIC_PORT_SUB   "11529"
@@ -248,7 +248,7 @@ unsigned PopFabric::poll_upwards()
 			}
 
 #ifdef FABRIC_VERBOSE
-			std::cout << "(" << name[0] << ") Received [" << to << "," << from << "] " << contents << std::endl;
+			std::cout << "(" << names[0] << ") Received [" << to << "," << from << "] " << contents << std::endl;
 #endif
 
 			updates++;
@@ -263,7 +263,7 @@ void PopFabric::send_up(std::string to, std::string from, std::string message)
 	if( pub_up )
 	{
 #ifdef FABRIC_VERBOSE
-	cout << "(" << name[0] << ") Send Up: [" << to << "," << from << "] " << message << std::endl;
+	cout << "(" << names[0] << ") Send Up: [" << to << "," << from << "] " << message << std::endl;
 #endif
 		// sending an _ allows for messaging re-syncing (if subscriber doesn't pull each piece correctly)
 		s_sendmore(*pub_up, std::string("_"));
@@ -280,7 +280,7 @@ void PopFabric::send_up(std::string to, std::string from, std::string message)
 void PopFabric::send_down(std::string to, std::string from, std::string message)
 {
 #ifdef FABRIC_VERBOSE
-	cout << "(" << name[0] << ") Send Down: [" << to << "," << from << "] " << message << std::endl;
+	cout << "(" << names[0] << ") Send Down: [" << to << "," << from << "] " << message << std::endl;
 #endif
 	s_sendmore(*pub_down, std::string("_"));
 	s_sendmore(*pub_down, to);
@@ -302,6 +302,14 @@ void PopFabric::send(std::string to, std::string message)
 	{
 		send_up(to, names[0], message); // send from us
 	}
+}
+
+void PopFabric::keepalive()
+{
+	std::string msg = "{}";
+	std::string to = "KEEPALIVE";
+
+	send(to, msg);
 }
 
 // returns number of (valid or invalid) updates / messages received during poll
