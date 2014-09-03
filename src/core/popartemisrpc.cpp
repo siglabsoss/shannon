@@ -48,7 +48,7 @@ void PopArtemisRPC::mock_csv()
 }
 
 
-PopArtemisRPC::PopArtemisRPC(PopFabric *f, std::string a) : PopJsonRPC(0), led(0), handler(0), basestation_boot(0), attached_uuid(a), fabric(f), last_pps(0.0)
+PopArtemisRPC::PopArtemisRPC(PopFabric *f, std::string a) : PopJsonRPC(0), led(0), handler(0), basestation_boot(0), attached_uuid(a), fabric(f), last_pps(0.0), last_pong(0.0)
 {
 	if( fabric )
 	{
@@ -186,6 +186,8 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 	std::string method = FROZEN_GET_STRING(methodTok);
 	const struct json_token *params, *p0, *p1, *p2;
 
+	cout << method << endl;
+
 	if( method.compare("log") == 0 )
 	{
 		p0 = find_json_token(arr, "params[0]");
@@ -283,6 +285,20 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 
 	}
 
+
+	if( method.compare("pong") == 0 )
+	{
+		p0 = find_json_token(arr, "params[0]");
+		p1 = find_json_token(arr, "params[1]");
+
+		if( p0 && p0->type == JSON_TYPE_STRING && p1 && p1->type == JSON_TYPE_STRING)
+		{
+			last_pong = get_microsec_system_time();
+			attached_uuid = FROZEN_GET_STRING(p0);
+			//				cout << "got pong at " << last_pong.get_real_secs() << endl;
+		}
+	}
+
 	if( method.compare("mode") == 0 )
 	{
 		p0 = find_json_token(arr, "params[0]");
@@ -356,6 +372,14 @@ void PopArtemisRPC::set_role_base_station()
 void PopArtemisRPC::send_reset()
 {
 	static const char RPC_STRING[] = "{ \"method\": \"cpu_reset\", \"params\": [] }";
+
+	// Subtract one from the string size to exclude the trailing '\0' character.
+	send_rpc(RPC_STRING, sizeof(RPC_STRING) - 1);
+}
+
+void PopArtemisRPC::send_ping()
+{
+	static const char RPC_STRING[] = "{ \"method\": \"ping\", \"params\": [] }";
 
 	// Subtract one from the string size to exclude the trailing '\0' character.
 	send_rpc(RPC_STRING, sizeof(RPC_STRING) - 1);

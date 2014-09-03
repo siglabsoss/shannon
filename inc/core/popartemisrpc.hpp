@@ -31,6 +31,7 @@ public:
 	void execute_raw(char c);
 	void packet_tx(char* data, uint32_t size, uint32_t txTime, uint64_t pitTxTime);
 	void send_reset();
+	void send_ping();
 	void set_role_base_station();
 	void mock(void);
 	void mock_csv(void);
@@ -44,6 +45,7 @@ public:
 	std::string attached_uuid;
 	PopFabric *fabric;
 	PopTimestamp last_pps;
+	PopTimestamp last_pong;
 
 	std::vector<char> stream;
 	std::vector<int32_t> rpc_ids;

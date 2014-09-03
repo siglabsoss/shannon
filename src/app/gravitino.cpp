@@ -84,7 +84,32 @@ int main(int argc, char *argv[])
 	std::string attached_uuid;
 	std::string artemis_uart_path = Config::get<std::string>("artemis_uart");
 
+	bool restart_artemis = true;
+
+	// check if device is already in booted and in basestation mode
+	{
+		PopArtemisRPC rpc(NULL);
+		PopSerial uart0(artemis_uart_path, 1000000, "pinger");
+		rpc.tx.connect(uart0);
+		uart0.rx.connect(rpc);
+		rpc.send_ping();
+		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+		if( rpc.last_pong.get_real_secs() != 0.0 )
+		{
+			restart_artemis = false;
+			attached_uuid = rpc.attached_uuid;
+		}
+	}
+
+	// read from config file, with a default value
+	{
+	bool force_restart = Config::get<bool>("force_attached_artemis_restart", true);
+	restart_artemis |= force_restart;
+	}
+
+
 	// reset device at baud 1000000
+	if( restart_artemis )
 	{
 		PopArtemisRPC rpc(NULL);
 		PopSerial uart0(artemis_uart_path, 1000000, "one");
@@ -94,7 +119,8 @@ int main(int argc, char *argv[])
 		rpc.send_reset();
 	}
 
-	// reset device at baud 115200
+	// reset device at baud 115200  (double if() is intentional to create scoped PopSerial objects)
+	if( restart_artemis )
 	{
 		int j = 0;
 		PopArtemisRPC rpc(NULL);
@@ -134,11 +160,24 @@ int main(int argc, char *argv[])
 
 		}
 	}
+	else
+	{
+		cout << endl << endl << "Attached device left running with serial: " << attached_uuid << endl;
+
+		ostringstream os;
+		os << "{\"method\":\"log\",\"params\":[\"" << "Basestation: " << pop_get_hostname() << " started with attacehd device: " << attached_uuid << "\"]}";
+		basestation_fabric.send("s3p", os.str());
+
+		ostringstream os2;
+		os2 << "{\"method\":\"node_broadcast\",\"params\":[\"" << attached_uuid << "\", \"" << pop_get_hostname() << "\"]}";
+		basestation_fabric.send("noc", os2.str());
+	}
 
 
 	PopFabric attached_device_fabric(context, attached_uuid, false, "localhost");
 	PopSerial uart0(artemis_uart_path, 1000000, "three", false);
 	PopArtemisRPC rpc(&attached_device_fabric, attached_uuid);
+	rpc.send_ping();
 	rpc.led = &led;
 
 #ifdef READ_MODE
