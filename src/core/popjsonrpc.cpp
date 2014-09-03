@@ -170,7 +170,7 @@ void PopJsonRPC::parse()
 
 }
 
-void PopJsonRPC::send_rpc(std::string& rpc)
+void PopJsonRPC::send_rpc(const std::string& rpc)
 {
 	send_rpc(rpc.c_str(), rpc.length());
 }
