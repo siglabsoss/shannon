@@ -82,7 +82,25 @@ bool Config::get<bool>( std::string const& key )
 	init();
 	return json::to_bool(instance->mJsonStorage[key]);
 }
+
+//FIXME: add default value templates for other datatypes
+template<>
+bool Config::get<bool>( std::string const& key, bool defaultValue )
+{
+	init();
+	bool val;
+	try {
+		val = json::to_bool(instance->mJsonStorage[key]);
+	}
+	catch(std::exception const& e)
+	{
+		val = defaultValue;
+	}
+	return val;
 }
+
+
+} // namespace
 
 
 

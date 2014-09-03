@@ -27,8 +27,13 @@ public:
 	// load the default config for shannon or s3p or whatever we are
 	static void loadFromDisk( void );
 
+	// getter, which throws exception if key is not found in config file
 	template<class T>
 	static T get( std::string const& key );
+
+	// returns default if key is not found
+	template<class T>
+	static T get( std::string const& key, T defaultValue );
 
 	/// public destructor
 	~Config() {}
