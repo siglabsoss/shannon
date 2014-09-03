@@ -368,6 +368,13 @@ void PopArtemisRPC::set_role_base_station()
 	send_rpc(RPC_STRING, sizeof(RPC_STRING) - 1);
 }
 
+void PopArtemisRPC::send_enable_dma_spool(uint16_t val)
+{
+	ostringstream os;
+	os << "{\"method\":\"enable_dma_spool\",\"params\":[" << val << "]}";
+	send_rpc(os.str());
+}
+
 
 void PopArtemisRPC::send_reset()
 {

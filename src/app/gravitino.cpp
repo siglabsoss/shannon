@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
 		PopArtemisRPC rpc(NULL);
 		PopSerial uart0(artemis_uart_path, 1000000, "pinger");
 		rpc.tx.connect(uart0);
+		rpc.send_enable_dma_spool(0);
 		uart0.rx.connect(rpc);
 		rpc.send_ping();
 		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
@@ -150,10 +151,6 @@ int main(int argc, char *argv[])
 			attached_uuid = rpc.attached_uuid;
 			cout << endl << endl << "Attached device started correctly with serial: " << attached_uuid << endl;
 
-			ostringstream os;
-			os << "{\"method\":\"log\",\"params\":[\"" << "Basestation: " << pop_get_hostname() << " started with attacehd device: " << attached_uuid << "\"]}";
-			basestation_fabric.send("s3p", os.str());
-
 			ostringstream os2;
 			os2 << "{\"method\":\"node_broadcast\",\"params\":[\"" << attached_uuid << "\", \"" << pop_get_hostname() << "\"]}";
 			basestation_fabric.send("noc", os2.str());
@@ -163,10 +160,6 @@ int main(int argc, char *argv[])
 	else
 	{
 		cout << endl << endl << "Attached device left running with serial: " << attached_uuid << endl;
-
-		ostringstream os;
-		os << "{\"method\":\"log\",\"params\":[\"" << "Basestation: " << pop_get_hostname() << " started with attacehd device: " << attached_uuid << "\"]}";
-		basestation_fabric.send("s3p", os.str());
 
 		ostringstream os2;
 		os2 << "{\"method\":\"node_broadcast\",\"params\":[\"" << attached_uuid << "\", \"" << pop_get_hostname() << "\"]}";
@@ -178,6 +171,7 @@ int main(int argc, char *argv[])
 	PopSerial uart0(artemis_uart_path, 1000000, "three", false);
 	PopArtemisRPC rpc(&attached_device_fabric, attached_uuid);
 	rpc.send_ping();
+	rpc.send_enable_dma_spool(1);
 	rpc.led = &led;
 
 #ifdef READ_MODE

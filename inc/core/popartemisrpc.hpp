@@ -32,6 +32,7 @@ public:
 	void packet_tx(char* data, uint32_t size, uint32_t txTime, uint64_t pitTxTime);
 	void send_reset();
 	void send_ping();
+	void send_enable_dma_spool(uint16_t val);
 	void set_role_base_station();
 	void mock(void);
 	void mock_csv(void);
