@@ -186,8 +186,6 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 	std::string method = FROZEN_GET_STRING(methodTok);
 	const struct json_token *params, *p0, *p1, *p2;
 
-	cout << method << endl;
-
 	if( method.compare("log") == 0 )
 	{
 		p0 = find_json_token(arr, "params[0]");
