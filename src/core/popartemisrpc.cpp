@@ -194,10 +194,11 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 			rcp_log(FROZEN_GET_STRING(p0));
 //			respond_int(0, methodId);
 		}
+		return;
 	}
 
-	if( method.compare("raw") == 0 )
-	{
+//	if( method.compare("raw") == 0 )
+//	{
 //		params = find_json_token(arr, "params");
 //
 //		int j;
@@ -229,7 +230,7 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 //		{
 //			handler->process(values, params->num_desc, 0, 0);
 //		}
-	}
+//	}
 
 	if( method.compare("bs_rq_utc") == 0 )
 	{
@@ -243,6 +244,7 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 			buf[127] = '\0';
 			send_rpc(buf, strlen(buf));
 		}
+		return;
 	}
 
 	if( method.compare("basestation_boot") == 0 )
@@ -253,6 +255,7 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 			attached_uuid = FROZEN_GET_STRING(p0);
 			basestation_boot = 1;
 		}
+		return;
 	}
 
 	if( method.compare("tmr_sync") == 0 )
@@ -269,6 +272,7 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 					parseNumber<uint32_t>(FROZEN_GET_STRING(p2))   // pps
 			);
 		}
+		return;
 	}
 
 	if( method.compare("pps_average") == 0 )
@@ -280,7 +284,7 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 			boost::mutex::scoped_lock lock(poll_mtx);
 			last_pps = get_microsec_system_time();
 		}
-
+		return;
 	}
 
 
@@ -295,6 +299,27 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 			attached_uuid = FROZEN_GET_STRING(p0);
 			//				cout << "got pong at " << last_pong.get_real_secs() << endl;
 		}
+		return;
+	}
+
+	if( method.compare("fabric_send") == 0 )
+	{
+		// param 0 is the "to" of fabric send
+		// param 1 is a full json object, or array or string that is passed as raw characters
+		p0 = find_json_token(arr, "params[0]");
+		p1 = find_json_token(arr, "params[1]");
+
+		if( p0 && p0->type == JSON_TYPE_STRING && p1 )
+		{
+			string to = FROZEN_GET_STRING(p0);
+			string raw = FROZEN_GET_STRING(p1);
+
+			if( fabric )
+			{
+				fabric->send(to, raw);
+			}
+		}
+		return;
 	}
 
 	if( method.compare("mode") == 0 )
@@ -314,7 +339,10 @@ void PopArtemisRPC::execute_rpc(const struct json_token *methodTok, const struct
 				cout << "impossible mode switch" << endl;
 			}
 		}
+		return;
 	}
+
+	cout << "command: '" << method << "' not recognized" << endl;
 }
 
 void PopArtemisRPC::execute_result(const struct json_token *resultTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str)

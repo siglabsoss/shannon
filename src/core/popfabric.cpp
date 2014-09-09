@@ -29,7 +29,7 @@ using namespace zmq;
 using namespace std;
 
 
-#define FABRIC_VERBOSE
+//#define FABRIC_VERBOSE
 
 #define FABRIC_PORT_PUB   "11528"
 #define FABRIC_PORT_SUB   "11529"
