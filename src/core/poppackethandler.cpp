@@ -29,6 +29,7 @@ namespace pop
 uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample)
 {
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
+	denseCombLength += 2000000;
 	uint32_t denseDataLength = 0;
 
 	// the best score possible (100% correlation) is equal to the length of the comb
@@ -859,6 +860,8 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //			cout << "    bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << " to data[" << i << "]: " << data[i] << endl;
 			//cout << "  mod: " << mod << endl;
 
+			//cout << "bump with: " << data[i] << endl;
+
 			// bump all the counters
 			artemis_tpm += ARTEMIS_CLOCK_SPEED_HZ;
 			artemis_pit += ARTEMIS_PIT_SPEED_HZ;
@@ -868,6 +871,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 	}
 
+	//cout << "sec: " << artimes_pps_full_sec << endl;
 
 
 
@@ -904,16 +908,21 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		}
 
 
+		uint32_t artemis_tpm2 = artemis_tpm;
+		uint64_t artemis_pit2 = artemis_pit;
+		uint32_t artemis_pps2 = artemis_pps;
+		uint64_t artimes_pps_full_sec2 = artimes_pps_full_sec;
+
 		// now that we have an actual start of frame, update these as aggressively as possible
-		while( ((uint32_t)(prnCodeStart - artemis_pps)) > ARTEMIS_CLOCK_SPEED_HZ )
+		while( ((uint32_t)(prnCodeStart - artemis_pps2)) > ARTEMIS_CLOCK_SPEED_HZ )
 		{
 //			cout << "JIT bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << endl;
 
 			// bump all the counters
-			artemis_tpm += ARTEMIS_CLOCK_SPEED_HZ;
-			artemis_pit += ARTEMIS_PIT_SPEED_HZ;
-			artemis_pps += ARTEMIS_CLOCK_SPEED_HZ;
-			artimes_pps_full_sec++;
+			artemis_tpm2 += ARTEMIS_CLOCK_SPEED_HZ;
+			artemis_pit2 += ARTEMIS_PIT_SPEED_HZ;
+			artemis_pps2 += ARTEMIS_CLOCK_SPEED_HZ;
+			artimes_pps_full_sec2++;
 		}
 
 
@@ -926,7 +935,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //		uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
 
 
-		uint32_t delta_counts = prnCodeStart - artemis_tpm;
+		uint32_t delta_counts = prnCodeStart - artemis_tpm2;
 
 		if( delta_counts > ARTEMIS_CLOCK_SPEED_HZ )
 		{
@@ -940,7 +949,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		uint64_t pitPrnCodeStart = ( (delta_counts) / 48000000.0 ) * 19200000.0;
 
 		// offset to get absolute counts
-		pitPrnCodeStart += artemis_pit;
+		pitPrnCodeStart += artemis_pit2;
 
 		cout << "pitPrnCodeStart: " << pitPrnCodeStart << endl;
 
@@ -1086,7 +1095,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 
-			cout << "tpm: " << artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps << endl;
+			cout << "tpm: " << artemis_tpm2 << " pit: " << artemis_pit2 << " pps: " << artemis_pps2 << endl;
 
 			if( rpc )
 			{
@@ -1104,11 +1113,11 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		// regardless if checksum was good or bad, we've got a comb here.  now time to do fabric stuff (which is blocking?) after transmitting reply which is time sensative
 
 
-		uint32_t rx_frac_int = (prnCodeStart - artemis_pps);
+		uint32_t rx_frac_int = (prnCodeStart - artemis_pps2);
 
 		ostringstream os;
 
-		os << "{\"method\":\"packet_rx\",\"params\":[" << "\"" << pop_get_hostname() << "\"" << "," << artimes_pps_full_sec << "," << rx_frac_int << "]}";
+		os << "{\"method\":\"packet_rx\",\"params\":[" << "\"" << pop_get_hostname() << "\"" << "," << artimes_pps_full_sec2 << "," << rx_frac_int << "]}";
 
 		rpc->fabric->send("noc", os.str());
 

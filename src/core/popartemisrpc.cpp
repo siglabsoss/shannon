@@ -72,7 +72,7 @@ void PopArtemisRPC::mock(void)
 
 void PopArtemisRPC::fabric_rx(std::string to, std::string from, std::string msg)
 {
-	cout << "(PopArtemisRPC) to: " << to << " from: " << from << " msg: " << msg << endl;
+//	cout << "(PopArtemisRPC) to: " << to << " from: " << from << " msg: " << msg << endl;
 
 
 	// The fabric that PopArtemisRPC uses handles the directly attached Artemis in basestation mode, as well as all of the OTA devices
