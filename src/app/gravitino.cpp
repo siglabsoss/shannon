@@ -171,7 +171,6 @@ int main(int argc, char *argv[])
 	PopSerial uart0(artemis_uart_path, 1000000, "three", false);
 	PopArtemisRPC rpc(&attached_device_fabric, attached_uuid);
 	rpc.send_ping();
-	rpc.send_enable_dma_spool(1);
 	rpc.led = &led;
 
 #ifdef READ_MODE
@@ -183,6 +182,7 @@ int main(int argc, char *argv[])
 	rpc.tx.connect(uart0);
 #endif
 
+	rpc.send_enable_dma_spool(1);
 
 
 
