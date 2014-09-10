@@ -257,7 +257,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), artemis_tpm(0), artemis_pit(0), artemis_pps(0), artimes_pps_full_sec(0), new_timers(0), artemis_tpm_start(-1)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), new_timers(0), artemis_tpm_start(-1)
 {
 
 }
@@ -742,12 +742,12 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	static uint32_t total_samples = 0;
 	total_samples += size;
 
-	if( total_samples > 6000000 )
-	{
-		total_samples = 0;
-		std::string msg = "{\"method\":\"tmr_sync\",\"params\":[]}";
-		rpc->send_rpc(msg);
-	}
+//	if( total_samples > 6000000 )
+//	{
+//		total_samples = 0;
+//		std::string msg = "{\"method\":\"tmr_sync\",\"params\":[]}";
+//		rpc->send_rpc(msg);
+//	}
 //	cout << "got " << size << " samples" << endl;
 
 	uint32_t combDenseLength = comb[ARRAY_LEN(comb)-1];
@@ -777,20 +777,20 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		return;
 	} else if( artemis_tpm_start == -1 )
 	{
-		for(i = 0; i < size;i++)
-		{
-			if( data[i] > artemis_tpm )
-			{
-				artemis_tpm_start = 0;
-				previous_run_offset = size-i;
-				return;
-			}
-		}
-
-		// Havent hit start condition yet
-		artemis_tpm_start = 0;
-		previous_run_offset = 0;
-		return;
+//		for(i = 0; i < size;i++)
+//		{
+//			if( data[i] > artemis_tpm )
+//			{
+//				artemis_tpm_start = 0;
+//				previous_run_offset = size-i;
+//				return;
+//			}
+//		}
+//
+//		// Havent hit start condition yet
+//		artemis_tpm_start = 0;
+//		previous_run_offset = 0;
+//		return;
 	}
 
 
@@ -852,24 +852,24 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 	// keep the artemis_tpm, artemis_pit, artemis_pps counters no more than 4 seconds behind
-	for(i = 0; i < size; i++)
-	{
-		//uint32_t mod = data[i] - artemis_tpm;
-		if( ((uint32_t)(data[i] - artemis_pps)) > (ARTEMIS_CLOCK_SPEED_HZ*4) )
-		{
-//			cout << "    bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << " to data[" << i << "]: " << data[i] << endl;
-			//cout << "  mod: " << mod << endl;
-
-			//cout << "bump with: " << data[i] << endl;
-
-			// bump all the counters
-			artemis_tpm += ARTEMIS_CLOCK_SPEED_HZ;
-			artemis_pit += ARTEMIS_PIT_SPEED_HZ;
-			artemis_pps += ARTEMIS_CLOCK_SPEED_HZ;
-			artimes_pps_full_sec++;
-		}
-
-	}
+//	for(i = 0; i < size; i++)
+//	{
+//		//uint32_t mod = data[i] - artemis_tpm;
+//		if( ((uint32_t)(data[i] - artemis_pps)) > (ARTEMIS_CLOCK_SPEED_HZ*4) )
+//		{
+////			cout << "    bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << " to data[" << i << "]: " << data[i] << endl;
+//			//cout << "  mod: " << mod << endl;
+//
+//			//cout << "bump with: " << data[i] << endl;
+//
+//			// bump all the counters
+//			artemis_tpm += ARTEMIS_CLOCK_SPEED_HZ;
+//			artemis_pit += ARTEMIS_PIT_SPEED_HZ;
+//			artemis_pps += ARTEMIS_CLOCK_SPEED_HZ;
+//			artimes_pps_full_sec++;
+//		}
+//
+//	}
 
 	//cout << "sec: " << artimes_pps_full_sec << endl;
 
@@ -907,23 +907,51 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 			return;
 		}
 
+		uint32_t artemis_tpm;
+		uint64_t artemis_pit;
+		uint32_t artemis_pps;
+		uint64_t artimes_pps_full_sec;
+
+		int flag = 0;
+		for (auto timer = artemis_timers.rbegin(); timer != artemis_timers.rend(); ++timer)
+		{
+			boost::tie(artemis_tpm, artemis_pit, artemis_pps, artimes_pps_full_sec) = *timer;
+//			cout << "pps: " << prnCodeStart - artemis_pps << endl;
+			if( (prnCodeStart - artemis_pps) < 48000000 )
+			{
+//				cout << "yes";
+				flag = 1;
+				break;
+			}
+		}
+
+		if( flag == 0 )
+		{
+			cout << "couldn't find pps near enough!!" << endl;
+		}
+
+
+
+
+
+
 
 		uint32_t artemis_tpm2 = artemis_tpm;
 		uint64_t artemis_pit2 = artemis_pit;
 		uint32_t artemis_pps2 = artemis_pps;
 		uint64_t artimes_pps_full_sec2 = artimes_pps_full_sec;
 
-		// now that we have an actual start of frame, update these as aggressively as possible
-		while( ((uint32_t)(prnCodeStart - artemis_pps2)) > ARTEMIS_CLOCK_SPEED_HZ )
-		{
-//			cout << "JIT bump from: " << artemis_tpm << " to " << (artemis_tpm + ARTEMIS_CLOCK_SPEED_HZ) << endl;
-
-			// bump all the counters
-			artemis_tpm2 += ARTEMIS_CLOCK_SPEED_HZ;
-			artemis_pit2 += ARTEMIS_PIT_SPEED_HZ;
-			artemis_pps2 += ARTEMIS_CLOCK_SPEED_HZ;
-			artimes_pps_full_sec2++;
-		}
+//		// now that we have an actual start of frame, update these as aggressively as possible
+//		while( ((uint32_t)(prnCodeStart - artemis_pps2)) > ARTEMIS_CLOCK_SPEED_HZ )
+//		{
+//			cout << "JIT bump from: " << artemis_tpm2 << " to " << (artemis_tpm2 + ARTEMIS_CLOCK_SPEED_HZ) << endl;
+//
+//			// bump all the counters
+//			artemis_tpm2 += ARTEMIS_CLOCK_SPEED_HZ;
+//			artemis_pit2 += ARTEMIS_PIT_SPEED_HZ;
+//			artemis_pps2 += ARTEMIS_CLOCK_SPEED_HZ;
+//			artimes_pps_full_sec2++;
+//		}
 
 
 
@@ -1131,6 +1159,12 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 void PopPacketHandler::set_artimes_timers(uint32_t a_tpm, uint64_t a_pit, uint32_t a_pps)
 {
 	 boost::mutex::scoped_lock lock(timer_mtx);
+
+	 uint32_t artemis_tpm;
+	 uint64_t artemis_pit;
+	 uint32_t artemis_pps;
+	 uint64_t artimes_pps_full_sec;
+
 	 artemis_tpm = a_tpm;
 	 artemis_pit = a_pit;
 	 artemis_pps = a_pps;
@@ -1156,6 +1190,9 @@ void PopPacketHandler::set_artimes_timers(uint32_t a_tpm, uint64_t a_pit, uint32
 
 	 // round
 	 artimes_pps_full_sec = round(now.get_real_secs());
+
+
+	 artemis_timers.push_back(boost::make_tuple(artemis_tpm, artemis_pit, artemis_pps, artimes_pps_full_sec));
 
 
 
