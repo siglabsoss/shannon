@@ -28,11 +28,11 @@
 #include "dsp/prota/popsparsecorrelate.h"
 
 //FIXME: change to ints and dynamically allocate H http://www.eskimo.com/~scs/cclass/int/sx9b.html
-#define h_rows (3)
-#define h_cols (7)
+#define h_rows (16)
+#define h_cols (24)
 
 
-#define LARGER_THAN_COLS (10)
+#define LARGER_THAN_COLS (25)
 
 namespace pop
 {
@@ -72,6 +72,7 @@ public:
 	unsigned get_syndrome(void);
 	void calc_syndrome(void);
 	void run();
+	void get_message();
 private:
 
 	void prep_once();
@@ -79,7 +80,7 @@ private:
 	void iteration();
 
 
-	short H[h_rows][h_cols];
+	int H[h_rows][h_cols];
 	LDPC_N n[h_cols];
 	LDPC_M m[h_rows];
 };
