@@ -41,6 +41,7 @@ uint32_t artemis_pop_data_demodulate(const uint32_t startSample, uint8_t* dataOu
 
 uint32_t shannon_pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut);
 uint32_t shannon_pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert);
+uint32_t core_pop_llr_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, int16_t* dataOut, const uint16_t dataOutSize, const short invert);
 
 int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset, uint32_t* state);
 
@@ -69,6 +70,9 @@ double pop_get_slot_pit_float(uint64_t pit);
 #define POP_SLOT_LENGTH (2)
 #define POP_PERIOD_LENGTH (60)
 #define POP_SLOT_COUNT (POP_PERIOD_LENGTH/POP_SLOT_LENGTH)
+// chosen so that if P(0) = 0.00001 and P(1) = 0.99999 the LLR will still have some headroom on an int16_t
+#define LLR_SCALE (3600)
+#define CALC_LLR_P0(xscore) (((xscore)+2640)/5280.0)  // chance that bit is a 0
 
 
 

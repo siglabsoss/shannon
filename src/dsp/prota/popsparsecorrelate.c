@@ -430,6 +430,100 @@ FN_ATTRIBUTES uint32_t core_pop_data_demodulate(const uint32_t* data, const uint
 	return 0;
 }
 
+int16_t calc_llr(int32_t xscore)
+{
+	double p0 = CALC_LLR_P0(xscore);
+	double p1 = 1 - p0;
+	return LLR_SCALE * log(p0/p1);
+}
+
+
+FN_ATTRIBUTES uint32_t core_pop_llr_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, int16_t* dataOut, const uint16_t dataOutSize, const short invert)
+{
+	// should return an LLR int_16
+	size_t j,k,jp,kp;
+	int32_t xscore; //x(key)score
+	uint32_t start, head, now;
+	uint32_t nextSignal, nextComb;
+	const size_t counts_per_bit = counts_per_bits(1);
+
+
+	uint32_t combSize = dataOutSize + 1;
+
+
+	xscore = 0; // the "score" of this convolution
+	now = start = head = startSample;
+	kp = k = 0;
+	j = 0; // don't set jp, we are about to modify j
+
+	nextComb = counts_per_bits(MIN(k+1, combSize-1)) + start;
+	nextSignal = DATA_SAMPLE(j+1);
+
+	// if comb_offset is large enough, we need to skip some edges in the data array, so this scans through edges
+	while (now > nextSignal)
+	{
+		j++;
+		nextSignal = DATA_SAMPLE(j+1);
+	}
+
+	jp = j;
+
+	while(j < dataSize && k < combSize )
+	{
+		if(jp&1)
+		{
+			xscore -= now - head;
+		}
+		else
+		{
+			xscore += now - head;
+		}
+
+		// if the previous loop set 'now' to a comb edge, we are ready to record a bit
+		if( kp != k )
+		{
+
+			double llr = calc_llr(xscore);
+
+			if( !invert )
+			{
+				llr *= -1;
+			}
+
+			dataOut[kp] = llr;
+
+			xscore = 0;
+		}
+
+		kp = k;
+		jp = j;
+
+		// bump this number to the current edge
+		head = now;
+
+		if( nextComb > nextSignal )
+		{
+			// next event is a signal edge
+			j++;
+			now = nextSignal;
+
+			// prep for next comparison
+			nextSignal = DATA_SAMPLE(j+1);
+		}
+		else
+		{
+
+			// next event is a comb edge
+			k++;
+			now = nextComb;
+
+			// prep for next comparison
+			nextComb += counts_per_bit;
+		}
+	} // while
+	return 0;
+}
+
 unsigned ota_length_encoded(unsigned len)
 {
 	return len*4;
