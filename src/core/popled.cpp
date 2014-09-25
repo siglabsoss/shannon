@@ -40,12 +40,12 @@ void PopLED::poll(void)
 
 //	silent = "";
 
-	ostringstream os;
+//	ostringstream os;
 
 	// this should take about 0.5 seconds
 	unsigned count = 200;
 
-	os << "sudo dd if=/dev/sda of=/dev/null bs=1024k count=" << count << " iflag=direct " << silent << " &";
+//	os << "sudo dd if=/dev/sda of=/dev/null bs=1024k count=" << count << " iflag=direct " << silent << " &";
 
 
 	// handle "ok" bit
@@ -72,13 +72,13 @@ void PopLED::poll(void)
 		cout << endl;
 	}
 
-	for( uint16_t i = 0; i < codeword; i++ )
-	{
-		system(os.str().c_str());
-		boost::posix_time::milliseconds workTime(500);
-		boost::this_thread::sleep(workTime);
-		boost::this_thread::sleep(workTime);
-	}
+//	for( uint16_t i = 0; i < codeword; i++ )
+//	{
+//		system(os.str().c_str());
+//		boost::posix_time::milliseconds workTime(500);
+//		boost::this_thread::sleep(workTime);
+//		boost::this_thread::sleep(workTime);
+//	}
 
 
 	// update this
