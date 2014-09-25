@@ -31,6 +31,7 @@ set(shared_SOURCES
 	core/popjsonrpc.cpp
 	core/popchannelmap.cpp
 	core/popfabric.cpp
+	core/ldpc.cpp
 	../3rd/boost_serial/AsyncSerial.cpp
 	core/geohelper.cpp
 )
