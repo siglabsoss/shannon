@@ -434,7 +434,19 @@ int16_t calc_llr(int32_t xscore)
 {
 	double p0 = CALC_LLR_P0(xscore);
 	double p1 = 1 - p0;
-	return LLR_SCALE * log(p0/p1);
+	double lg = log(p0/p1);
+
+	if( lg == -INFINITY )
+	{
+		return -32767;  // this one larger than int16_t min
+	}
+
+	if( lg == INFINITY )
+	{
+		return 32767; // int16_t max
+	}
+
+	return LLR_SCALE * lg;
 }
 
 
@@ -483,7 +495,7 @@ FN_ATTRIBUTES uint32_t core_pop_llr_demodulate(const uint32_t* data, const uint1
 		if( kp != k )
 		{
 
-			double llr = calc_llr(xscore);
+			int16_t llr = calc_llr(xscore);
 
 			if( !invert )
 			{

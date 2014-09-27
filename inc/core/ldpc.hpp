@@ -71,8 +71,9 @@ public:
 	void print_h();
 	unsigned get_syndrome(void);
 	void calc_syndrome(void);
-	void run();
+	void run(int16_t* data, size_t data_size);
 	void get_message();
+	void parse_mat2str(void);
 private:
 
 	void prep_once();
