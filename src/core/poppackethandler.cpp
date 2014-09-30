@@ -48,7 +48,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 		denseDataLength += DATA_SAMPLE(i)-DATA_SAMPLE(i-1);
 	}
 
-	uint32_t end_padding = 200;
+	uint32_t end_padding = 52000000;
 
 	if( denseDataLength < (denseCombLength+end_padding) )
 	{
@@ -733,6 +733,7 @@ void PopPacketHandler::process_ota_packet(ota_packet_t* p, uint32_t txTime, uint
 }
 
 uint32_t comb[] = {0, 58080, 92400, 100320, 126720, 134640, 155760, 158400, 166320, 168960, 171600, 190080, 198000, 205920, 208560, 229680, 234960, 248160, 253440, 274560, 282480, 300960, 314160, 319440, 322080, 327360, 348480, 353760, 361680, 364320, 366960, 374880, 390720, 403920, 406560, 411840, 425040, 477840, 512160, 546480, 567600, 612480, 623040, 633600, 638880, 657360, 665280, 689040, 707520, 715440, 723360, 733920, 736560, 765600, 778800, 789360, 813120, 815760, 852720, 871200, 876480, 881760, 918720, 939840, 971520, 1003200, 1037520, 1063920, 1074480, 1082400, 1100880, 1111440, 1153680, 1190640, 1195920, 1198560, 1203840, 1211760, 1227600, 1261920, 1264560, 1267200, 1290960, 1314720, 1317360, 1322640, 1351680, 1386000, 1412400, 1417680, 1430880, 1457280, 1481040, 1491600, 1496880, 1515360, 1525920, 1528560, 1539120, 1576080, 1594560, 1605120, 1626240, 1647360, 1673760, 1689600, 1710720};
+uint32_t comb_end[] = {0,7920,15840,23760,29040,31680,36960,42240,52800,60720,73920,84480,87120,100320,102960,113520,124080,137280,147840,150480,161040,171600,179520,190080,203280,216480,229680,234960,242880,256080,264000,277200,287760,300960,311520,316800,327360,332640,337920,343200,353760,361680,369600,372240,374880,374880,385440,388080,390720,396000,409200,411840,422400,430320,438240,446160,451440,456720,459360,464640,469920,483120,483120,496320,501600,506880,520080,520080,528000};
 
 void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
@@ -1003,12 +1004,12 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 //		pit_epoc_last = pit_epoc;
 
-		double txDelta = 0.75;
+		double txDelta = 1.5;
 
 
 
-		// add .75 seconds
-		uint32_t txTime = (prnCodeStart + (uint32_t)(ARTEMIS_CLOCK_SPEED_HZ*txDelta)) % ARTEMIS_CLOCK_SPEED_HZ;
+		// add delta seconds
+		uint32_t txTime = (prnCodeStart + (uint32_t)(ARTEMIS_CLOCK_SPEED_HZ*txDelta));
 
 		uint64_t pitTxTime = pitPrnCodeStart + (uint32_t)(ARTEMIS_PIT_SPEED_HZ*txDelta);
 
@@ -1085,6 +1086,12 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		if( !packet_good )
 		{
 			printf("Bad packet checksum\r\n");
+
+			printf("Transmitting code only\r\n");
+			char buf[128];
+			snprintf(buf, 128, "{}");
+			rpc->packet_tx(buf, strlen(buf), txTime, pitTxTime);
+
 
 
 //			printf("Packet (still) says: ");
