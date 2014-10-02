@@ -32,7 +32,7 @@ namespace pop
 
 /* Guaranteed minimum number of buffers for both sink and source. May be much
    larger than this due to memory page alignment. */
-#define POPSOURCE_NUM_BUFFERS 20
+#define POPSOURCE_NUM_BUFFERS 50
 
 /**
  * Data Source Class

@@ -923,6 +923,13 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		// do end once outside of loop (because we already did beginning once outside of loop)
 		prnEndCodeStartUnscaled = prnEndCodeStart = pop_correlate_spool(data, size, comb_end, ARRAY_LEN(comb_end), &scorePrnEnd, &final_sample_burn, 0);
 
+		if( prnEndCodeStartUnscaled == 0 )
+		{
+			previous_run_offset = size - final_sample_burn;
+			return;
+		}
+
+
 		uint32_t ldpcDataStart, ldpcDataLength, expected_length;
 
 		cout << "scaled prnCodeStart: " << prnCodeStart << endl;
