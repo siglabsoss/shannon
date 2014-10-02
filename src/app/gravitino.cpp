@@ -204,6 +204,8 @@ int main(int argc, char *argv[])
 	handler.map = &channel_map;
 	rpc.edges.connect(handler);
 
+//	rpc.mock();
+
 	PopParseGPS gps(1);
 	PopSerial *uart1;
 

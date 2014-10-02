@@ -11,6 +11,7 @@
 #include "popjsonrpc.hpp"
 #include "core/pops3prpc.hpp"
 #include "core/popchannelmap.hpp"
+#include "core/ldpc.hpp"
 
 
 namespace pop
@@ -57,6 +58,7 @@ private:
 	std::vector<PopPacketQueue> queue;
 	mutable boost::mutex timer_mtx;
 	std::vector<boost::tuple<uint32_t, uint64_t, uint32_t, uint64_t>> artemis_timers;
+	LDPC *ldpc;
 
 };
 

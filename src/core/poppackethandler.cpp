@@ -1,6 +1,7 @@
 #include <iostream>
 #include <boost/timer.hpp>
 #include <algorithm>    // std::sort
+#include <boost/lexical_cast.hpp>
 
 #include "core/poppackethandler.hpp"
 #include "core/util.h"
@@ -26,7 +27,7 @@ namespace pop
 #define COMB_COORELATION_FACTOR ((double)0.30)
 
 
-uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample)
+uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample, uint32_t endPadding)
 {
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
 	uint32_t denseDataLength = 0;
@@ -42,15 +43,13 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 		if( DATA_SAMPLE(i) < DATA_SAMPLE(i-1) )
 		{
 			//denseDataLength += ARTEMIS_CLOCK_SPEED_HZ;
-//			printf("bump (%d)\r\n", i);
+			printf("bump (%d)\r\n", i);
 		}
 
 		denseDataLength += DATA_SAMPLE(i)-DATA_SAMPLE(i-1);
 	}
 
-	uint32_t end_padding = 52000000;
-
-	if( denseDataLength < (denseCombLength+end_padding) )
+	if( denseDataLength < (denseCombLength+endPadding) )
 	{
 //		printf("dense data size %"PRIu32" must not be less than dense comb size %"PRIu32"\r\n", denseDataLength, denseCombLength);
 
@@ -211,7 +210,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-		printf("max scoreee: %d\r\n", maxScore);
+//		printf("max scoreee: %d\r\n", maxScore);
 
 
 		if( i == 0 )
@@ -260,7 +259,8 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), new_timers(0), artemis_tpm_start(-1)
 {
-
+	ldpc = new LDPC();
+	ldpc->parse_mat2str();
 }
 
 // sort by uuid first, then by time
@@ -760,7 +760,8 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 	size_t i,j;
-	uint32_t prnCodeStart, bitSyncStart;
+	uint32_t prnCodeStart, prnCodeStartUnscaled;
+	uint32_t prnEndCodeStart;
 
 	int32_t scorePrn, scoreBitSync;
 
@@ -806,7 +807,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	for(i = 1; i<size;i++)
 	{
 		// the data wraps
-		if( data[i-1] > data[i] && ((((uint64_t) data[i] + 0xffffffff) - ((uint64_t) data[i-1])) < (ARTEMIS_CLOCK_SPEED_HZ*0.1) ) )
+		if( data[i-1] > data[i] )
 		{
 			// nothing can handle a wrap yet, so just bail and try again
 			cout << "Data wrap edge condition" << endl;
@@ -817,10 +818,11 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	}
 
 
+	uint32_t end_padding = 0;
 
-	prnCodeStart = pop_correlate_spool(data, size, comb, ARRAY_LEN(comb), &scorePrn, &final_sample);
+	prnCodeStartUnscaled = prnCodeStart = pop_correlate_spool(data, size, comb, ARRAY_LEN(comb), &scorePrn, &final_sample, end_padding);
 
-	previous_run_offset = size - final_sample;
+
 
 	int temp = 0;
 
@@ -885,33 +887,94 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 	if( prnCodeStart != 0 )
 	{
+
+		uint32_t end_padding_tight = 49000000;
+		uint32_t first_sample_padding = 8*2640;
+
+		// if we've found a comb, but there aren't enough samples ahead of us to represent the entire message
+		if( (data[size-1] - prnCodeStart) < end_padding_tight )
+		{
+			uint32_t samp=0;
+
+			// find the edge right before the comb
+			for(i = 0; i < size; i++)
+			{
+				if( data[i] < (prnCodeStart - first_sample_padding) )
+				{
+					samp = i;
+				}
+			}
+
+			previous_run_offset = size - samp;
+			return;
+
+		}
+
 		printf("Score: %d\r\n", scorePrn);
 		cout << "prnCodeStart: " << prnCodeStart << endl;
 
-		short flag1 = 0, flag2 = 0;
-		for(i = 1; i < size; i++)
+
+		int32_t scorePrnEnd, prnEndCodeStartUnscaled;
+		uint32_t final_sample_burn = 0;
+		uint32_t data_scaled[size];
+
+		double scale_factor = 1;//(double)expected_length / (double)ldpcDataLength;
+
+		// do end once outside of loop (because we already did beginning once outside of loop)
+		prnEndCodeStartUnscaled = prnEndCodeStart = pop_correlate_spool(data, size, comb_end, ARRAY_LEN(comb_end), &scorePrnEnd, &final_sample_burn, 0);
+
+		uint32_t ldpcDataStart, ldpcDataLength, expected_length;
+
+		cout << "scaled prnCodeStart: " << prnCodeStart << endl;
+		cout << "scaled prnEndCodeStart: " << prnEndCodeStart << endl;
+		ldpcDataStart = prnCodeStart+combDenseLength;
+		ldpcDataLength = prnEndCodeStart - ldpcDataStart;
+		cout << "scaled ldpcDataLength: " << ldpcDataLength << endl;
+
+
+		// prep
+		//		memcpy( data_scaled, data, sizeof(uint32_t) * size);
+
+		for( i = 0; i < 1; i++ )
 		{
-			if( data[i] > (prnCodeStart+combDenseLength) && !flag1 )
+
+			expected_length = counts_per_bits(17600);
+
+			scale_factor *= (double)expected_length / (double)ldpcDataLength;
+
+			cout << "factor: " << boost::lexical_cast<string>(scale_factor) << endl;
+
+			//		memcpy( data_scaled, data, sizeof(uint32_t) * size);
+			for(j = 0; j < size; j++)
 			{
-				flag1 = 1;
+				data_scaled[j] = round(data[j] * scale_factor);
 			}
+
+
+			prnCodeStart = pop_correlate_spool(data_scaled, size, comb, ARRAY_LEN(comb), &scorePrn, &final_sample, end_padding);
+			prnEndCodeStart = pop_correlate_spool(data_scaled, size, comb_end, ARRAY_LEN(comb_end), &scorePrnEnd, &final_sample_burn, 0);
+
+
+			cout << "scaled prnCodeStart: " << prnCodeStart << endl;
+			cout << "scaled prnEndCodeStart: " << prnEndCodeStart << endl;
+			ldpcDataStart = prnCodeStart+combDenseLength;
+			ldpcDataLength = prnEndCodeStart - ldpcDataStart;
+			cout << "scaled ldpcDataLength: " << ldpcDataLength << endl;
+
+			cout << endl;
+			cout << endl;
+
 		}
 
-		if( !flag1 )
-		{
-//			printf("\r\n");
-//			for(i=0;i<(size);i++)
-//			{
-////				data[i] = (uint32_t)data[i];
-//				printf("%u, ", data[i]);
-//			}
-//			printf("\r\n\r\n");
-//
-			printf("FIXME: matched comb in this chunk, but we need to wait till next process() to get everything...");
-			printf("data was not longer than comb %d %d\r\n", data[size], (prnCodeStart+combDenseLength) );
 
-			return;
-		}
+
+
+
+		uint32_t alc = ARRAY_LEN(comb);
+		uint32_t comb2[alc];
+
+
+
 
 		uint32_t artemis_tpm;
 		uint64_t artemis_pit;
@@ -938,46 +1001,19 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 
-		cout << endl;
-
-		for(i = 0; i < size; i++)
-		{
-			cout << data[i] << ",";
-		}
-
-		cout << endl;
-
-
-
-
-		uint32_t artemis_tpm2 = artemis_tpm;
-		uint64_t artemis_pit2 = artemis_pit;
-		uint32_t artemis_pps2 = artemis_pps;
-		uint64_t artimes_pps_full_sec2 = artimes_pps_full_sec;
-
-//		// now that we have an actual start of frame, update these as aggressively as possible
-//		while( ((uint32_t)(prnCodeStart - artemis_pps2)) > ARTEMIS_CLOCK_SPEED_HZ )
-//		{
-//			cout << "JIT bump from: " << artemis_tpm2 << " to " << (artemis_tpm2 + ARTEMIS_CLOCK_SPEED_HZ) << endl;
+//		cout << endl;
 //
-//			// bump all the counters
-//			artemis_tpm2 += ARTEMIS_CLOCK_SPEED_HZ;
-//			artemis_pit2 += ARTEMIS_PIT_SPEED_HZ;
-//			artemis_pps2 += ARTEMIS_CLOCK_SPEED_HZ;
-//			artimes_pps_full_sec2++;
+//		for(i = 0; i < size; i++)
+//		{
+//			cout << data[i] << ",";
 //		}
+//
+//		cout << endl;
 
 
 
-//		uint32_t lastTime = data[size-1];
-		//
-		// pit_last_sample_time this is approximately the time of the last sample from the dma
 
-		// this is approximately the pit time of start of frame
-//		uint64_t pitPrnCodeStart = pitLastSampleTime - ((lastTime - prnCodeStart)*(double)ARTEMIS_PIT_SPEED_HZ/(double)ARTEMIS_CLOCK_SPEED_HZ);
-
-
-		uint32_t delta_counts = prnCodeStart - artemis_tpm2;
+		uint32_t delta_counts = prnCodeStartUnscaled - artemis_tpm;
 
 		if( delta_counts > ARTEMIS_CLOCK_SPEED_HZ )
 		{
@@ -991,7 +1027,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		uint64_t pitPrnCodeStart = ( (delta_counts) / 48000000.0 ) * 19200000.0;
 
 		// offset to get absolute counts
-		pitPrnCodeStart += artemis_pit2;
+		pitPrnCodeStart += artemis_pit;
 
 		cout << "pitPrnCodeStart: " << pitPrnCodeStart << endl;
 
@@ -1038,59 +1074,127 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		uint8_t data_rx[peek_length_encoded];
 
-
-		shannon_pop_data_demodulate(data, size, prnCodeStart+combDenseLength, data_rx, peek_length_encoded, (scorePrn<0?1:0));
-
-		uint8_t data_decode[peek_length];
-
-		uint32_t data_decode_size;
-
-		decode_ota_bytes(data_rx, peek_length_encoded, data_decode, &data_decode_size);
+		int p = 0;
+		size_t n = 17600;
+		size_t k = 176;
 
 
-		//	printf("data: %02x\r\n", data_decode[0]);
-		//	printf("data: %02x\r\n", data_decode[1]);
-		//	printf("data: %02x\r\n", data_decode[2]);
-		//	printf("data: %02x\r\n", data_decode[3]);
-		//
 
-		ota_packet_zero_fill(&rx_packet);
-		memcpy(&rx_packet, data_decode, peek_length);
-		uint16_t packet_size = MIN(rx_packet.size, ARRAY_LEN(rx_packet.data)-1);
+		size_t ldpc_ota_bytes = n/8;
 
+		uint8_t data_ldpc[ldpc_ota_bytes];
+
+		int bpered = 2640;
+		bpered /= 3;
+
+		uint32_t guess_start = prnCodeStart+combDenseLength;
+
+		cout << endl << "Guess start:  " << guess_start << endl;
+//		guess_start = 2509215548;
+
+
+
+//		for( p = -2*bpered; p < 2*bpered; p+=bpered/16 )
+//		{
+//			if( p == 0 )
+//			{
+//				cout << " " << endl;
+//			}
+//			shannon_pop_data_demodulate(data, size, guess_start + p, data_ldpc, peek_length_encoded, (scorePrn<0?1:0));
+//
+//			ostringstream os;
+//			os << hex << (int)data_ldpc[0] << ", " << (int)data_ldpc[1] << ", " << (int)data_ldpc[2] << "  (" << guess_start+p << ")"  << endl;
+//
+//			cout << os.str();
+//		}
+
+//		shannon_pop_data_demodulate(data, size, guess_start, data_ldpc, peek_length_encoded, (scorePrn<0?1:0));
+//
+//		{
+//		ostringstream os;
+//		os << hex << (int)data_ldpc[0] << ", " << (int)data_ldpc[1] << ", " << (int)data_ldpc[2] << "  (" << guess_start+p << ")"  << endl;
+//		cout << os.str();
+//		}
+
+
+
+		uint16_t llr_data_size = n;
+		int16_t llr_data[llr_data_size];
+
+		core_pop_llr_demodulate(data_scaled, size, guess_start, llr_data, llr_data_size, (scorePrn<0?1:0));
+
+//		for( i = 0; i < llr_data_size; i++ )
+//		{
+//			cout << llr_data[i] << endl;
+//		}
+
+//		cout << endl;
+
+
+
+		ldpc->run(llr_data, llr_data_size);
+
+
+
+
+
+
+//		while(1) {}
+
+
+
+//		uint8_t data_decode[peek_length];
+//
+//		uint32_t data_decode_size;
+//
+//		decode_ota_bytes(data_rx, peek_length_encoded, data_decode, &data_decode_size);
+//
+//
+//		//	printf("data: %02x\r\n", data_decode[0]);
+//		//	printf("data: %02x\r\n", data_decode[1]);
+//		//	printf("data: %02x\r\n", data_decode[2]);
+//		//	printf("data: %02x\r\n", data_decode[3]);
+//		//
+//
+//		ota_packet_zero_fill(&rx_packet);
+//		memcpy(&rx_packet, data_decode, peek_length);
+//		uint16_t packet_size = MIN(rx_packet.size, ARRAY_LEN(rx_packet.data)-1);
+//
 		int packet_good = 0;
-		int j;
-
-		// search around a bit till the checksum matches up.  This is our "bit sync"
-		for(j = -5000; j < 5000; j+=50)
-		{
-			uint16_t decode_remainig_size = MAX(0, packet_size);
-			unsigned remaining_length = ota_length_encoded(decode_remainig_size);
-			uint8_t data_rx_remaining[remaining_length];
-			shannon_pop_data_demodulate(data, size, prnCodeStart+combDenseLength+j, data_rx_remaining, remaining_length, (scorePrn<0?1:0));
-			uint8_t data_decode_remaining[decode_remainig_size];
-			uint32_t data_decode_size_remaining;
-			decode_ota_bytes(data_rx_remaining, remaining_length, data_decode_remaining, &data_decode_size_remaining);
-
-			// the null terminated character is not transmitted
-			ota_packet_zero_fill_data(&rx_packet);
-			memcpy(((uint8_t*)&rx_packet), data_decode_remaining, decode_remainig_size);
-
-			if(ota_packet_checksum_good(&rx_packet))
-			{
-				packet_good = 1;
-				break;
-			}
-		}
+//		int j;
+//
+//		// search around a bit till the checksum matches up.  This is our "bit sync"
+//		for(j = -5000; j < 5000; j+=50)
+//		{
+//			uint16_t decode_remainig_size = MAX(0, packet_size);
+//			unsigned remaining_length = ota_length_encoded(decode_remainig_size);
+//			uint8_t data_rx_remaining[remaining_length];
+//			shannon_pop_data_demodulate(data, size, prnCodeStart+combDenseLength+j, data_rx_remaining, remaining_length, (scorePrn<0?1:0));
+//			uint8_t data_decode_remaining[decode_remainig_size];
+//			uint32_t data_decode_size_remaining;
+//			decode_ota_bytes(data_rx_remaining, remaining_length, data_decode_remaining, &data_decode_size_remaining);
+//
+//			// the null terminated character is not transmitted
+//			ota_packet_zero_fill_data(&rx_packet);
+//			memcpy(((uint8_t*)&rx_packet), data_decode_remaining, decode_remainig_size);
+//
+//			if(ota_packet_checksum_good(&rx_packet))
+//			{
+//				packet_good = 1;
+//				break;
+//			}
+//		}
 
 		if( !packet_good )
 		{
-			printf("Bad packet checksum\r\n");
+//			printf("Bad packet checksum\r\n");
 
-			printf("Transmitting code only\r\n");
+
+			printf("Transmitting code only (testing ldpc rn)\r\n");
 			char buf[128];
 			snprintf(buf, 128, "{}");
 			rpc->packet_tx(buf, strlen(buf), txTime, pitTxTime);
+
 
 
 
@@ -1143,7 +1247,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 
 
-			cout << "tpm: " << artemis_tpm2 << " pit: " << artemis_pit2 << " pps: " << artemis_pps2 << endl;
+			cout << "tpm: " << artemis_tpm << " pit: " << artemis_pit << " pps: " << artemis_pps << endl;
 
 			if( rpc )
 			{
@@ -1161,17 +1265,43 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		// regardless if checksum was good or bad, we've got a comb here.  now time to do fabric stuff (which is blocking?) after transmitting reply which is time sensative
 
 
-		uint32_t rx_frac_int = (prnCodeStart - artemis_pps2);
+		uint32_t rx_frac_int = (prnCodeStart - artemis_pps);
 
 		ostringstream os;
 
-		os << "{\"method\":\"packet_rx\",\"params\":[" << "\"" << pop_get_hostname() << "\"" << "," << artimes_pps_full_sec2 << "," << rx_frac_int << "]}";
+		os << "{\"method\":\"packet_rx\",\"params\":[" << "\"" << pop_get_hostname() << "\"" << "," << artimes_pps_full_sec << "," << rx_frac_int << "]}";
 
 		rpc->fabric->send("noc", os.str());
 
 
 
+		;
+
+
+
+		// if we've found a comb, but there aren't enough samples ahead of us to represent the entire message
+
+		uint32_t sampend=0;
+		uint32_t end_comb_dense_length = comb_end[ARRAY_LEN(comb_end)-1];
+
+		// find the edge right before the comb
+		for(i = 0; i < size; i++)
+		{
+			if( data[i] < (end_comb_dense_length + prnEndCodeStartUnscaled) )
+			{
+				sampend = i;
+			}
+		}
+
+		previous_run_offset = size - sampend;
+
+
 	} // comb detected
+	else
+	{
+		// nothing detected, throw away all of those samples
+		previous_run_offset = size - final_sample;
+	}
 
 
 }
@@ -1223,3 +1353,44 @@ void PopPacketHandler::set_artimes_timers(uint32_t a_tpm, uint64_t a_pit, uint32
 
 } //namespace
 
+
+
+#ifdef ZOMG_FALSE
+
+		double fdev = 0.0008;
+		double f;
+
+		for( f = 1-fdev; f <= 1+fdev; f += fdev/100)
+		{
+			for(i = 0; i < alc; i++)
+			{
+				comb2[i] = round(comb[i] * f);
+			}
+
+			uint32_t prnCodeStartScale;
+			int32_t scorePrnScale;
+			uint32_t finalSampleShort = 0;
+
+			prnCodeStartScale = pop_correlate_spool(data, size, comb2, alc, &scorePrnScale, &finalSampleShort);
+
+			cout << "prnCodeScale: " << prnCodeStartScale << endl;
+			cout << "ScoreScale: " << scorePrnScale << endl;
+
+			if( abs(scorePrnScale) > abs(scorePrn) )
+			{
+				cout << "Better " << endl;
+			}
+			else
+			{
+				cout << "Worse " << endl;
+			}
+
+			cout << "delta: " << abs(scorePrnScale) - abs(scorePrn) << " " << f <<  endl;
+		}
+
+
+
+
+		while(1) {}
+
+#endif

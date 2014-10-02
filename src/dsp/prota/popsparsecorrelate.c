@@ -438,11 +438,13 @@ int16_t calc_llr(int32_t xscore)
 
 	if( lg == -INFINITY )
 	{
+//		return -30000;
 		return -32767;  // this one larger than int16_t min
 	}
 
 	if( lg == INFINITY )
 	{
+//		return 30000;
 		return 32767; // int16_t max
 	}
 

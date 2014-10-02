@@ -28,11 +28,10 @@
 #include "dsp/prota/popsparsecorrelate.h"
 
 //FIXME: change to ints and dynamically allocate H http://www.eskimo.com/~scs/cclass/int/sx9b.html
-#define h_rows (16)
-#define h_cols (24)
 
 
-#define LARGER_THAN_COLS (25)
+
+#define LARGER_THAN_ONES_PER_ROW (4)
 
 namespace pop
 {
@@ -52,7 +51,7 @@ typedef struct
 	float min_index[2];
 
 	// static defined for now
-	unsigned node_index[LARGER_THAN_COLS];
+	unsigned node_index[LARGER_THAN_ONES_PER_ROW];
 
 	// 0 means that this check node is satisfied
 	short parity;
@@ -65,7 +64,7 @@ typedef struct
 class LDPC
 {
 public:
-	LDPC(short** H, unsigned u1, unsigned u2);
+	LDPC();
 	~LDPC();
 
 	void print_h();
@@ -73,6 +72,7 @@ public:
 	void calc_syndrome(void);
 	void run(int16_t* data, size_t data_size);
 	void get_message();
+	void get_codeword();
 	void parse_mat2str(void);
 private:
 
@@ -81,9 +81,14 @@ private:
 	void iteration();
 
 
-	int H[h_rows][h_cols];
-	LDPC_N n[h_cols];
-	LDPC_M m[h_rows];
+	bool** H;
+	uint32_t h_rows;
+	uint32_t h_cols;
+	LDPC_N *n;  // array of bit nodes (ie codeword bits)
+	LDPC_M *m;  // array of parity check constraints
+
+	uint32_t code_k;
+	uint32_t code_n;
 };
 
 
