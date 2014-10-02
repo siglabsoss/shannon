@@ -257,7 +257,7 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1500), rpc(0), new_timers(0), artemis_tpm_start(-1)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1300), rpc(0), new_timers(0), artemis_tpm_start(-1)
 {
 	ldpc = new LDPC();
 	ldpc->parse_mat2str();
@@ -1040,7 +1040,7 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 //		pit_epoc_last = pit_epoc;
 
-		double txDelta = 1.5;
+		double txDelta = 1.7;
 
 
 
