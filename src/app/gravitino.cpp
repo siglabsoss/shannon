@@ -202,6 +202,7 @@ int main(int argc, char *argv[])
 	rpc.handler = &handler;
 	handler.rpc = &rpc;
 	handler.map = &channel_map;
+	handler.start_thread();
 	rpc.edges.connect(handler);
 
 //	rpc.mock();
