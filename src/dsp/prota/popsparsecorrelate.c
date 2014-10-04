@@ -89,7 +89,7 @@ uint32_t shannon_pop_data_demodulate(const uint32_t* data, const uint16_t dataSi
 
 uint32_t counts_per_bits(uint16_t bits)
 {
-	const double baud = 18181.81818;
+	const double baud = BAUD_RATE;
 	uint16_t counts = (1.0/baud) * ARTEMIS_CLOCK_SPEED_HZ;
 	return counts*bits;
 }
@@ -452,7 +452,7 @@ int16_t calc_llr(int32_t xscore)
 }
 
 
-FN_ATTRIBUTES uint32_t core_pop_llr_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, int16_t* dataOut, const uint16_t dataOutSize, const short invert)
+FN_ATTRIBUTES uint32_t core_pop_llr_demodulate(const uint32_t* data, const size_t dataSize, const uint32_t startSample, int16_t* dataOut, const uint16_t dataOutSize, const short invert)
 {
 	// should return an LLR int_16
 	size_t j,k,jp,kp;
