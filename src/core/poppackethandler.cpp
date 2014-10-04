@@ -1196,8 +1196,8 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		uint8_t data_ldpc[ldpc_ota_bytes];
 
-		int bpered = 2640;
-		bpered /= 3;
+//		int bpered = 2640;
+//		bpered /= 3;
 
 		uint32_t guess_start = prnCodeStart+combDenseLength;
 

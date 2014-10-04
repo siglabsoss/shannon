@@ -56,7 +56,7 @@ void ota_packet_zero_fill(ota_packet_t* p);
 short ota_packet_checksum_good(ota_packet_t* p);
 void ota_packet_prepare_tx(ota_packet_t* p);
 void ota_packet_set_size(ota_packet_t* p);
-uint32_t counts_per_bits(uint16_t bits);
+uint32_t counts_per_bits(uint32_t bits);
 void ota_packet_zero_fill_data(ota_packet_t* p);
 uint32_t pop_get_now_slot(void);
 uint64_t pop_get_next_slot_pit(uint32_t slot);
@@ -73,8 +73,8 @@ double pop_get_slot_pit_float(uint64_t pit);
 // chosen so that if P(0) = 0.00001 and P(1) = 0.99999 the LLR will still have some headroom on an int16_t
 #define LLR_SCALE (3600)
 
-#define BAUD_RATE (9090.90909090909000)
-#define COUNTS_PER_BIT ((uint32_t)(48e6/BAUD_RATE))
+#define BAUD_RATE (13888.88888888890000)
+#define COUNTS_PER_BIT lround(((48e6/BAUD_RATE)))
 #define CALC_LLR_P0(xscore) (((xscore)+COUNTS_PER_BIT)/((double)COUNTS_PER_BIT*2))  // chance that bit is a 0
 
 

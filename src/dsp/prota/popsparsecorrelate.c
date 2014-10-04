@@ -87,11 +87,11 @@ uint32_t shannon_pop_data_demodulate(const uint32_t* data, const uint16_t dataSi
 #endif
 
 
-uint32_t counts_per_bits(uint16_t bits)
+uint32_t counts_per_bits(uint32_t bits)
 {
-	const double baud = BAUD_RATE;
-	uint16_t counts = (1.0/baud) * ARTEMIS_CLOCK_SPEED_HZ;
-	return counts*bits;
+//	const double baud = BAUD_RATE;
+//	uint32_t counts = (1.0/baud) * ARTEMIS_CLOCK_SPEED_HZ;
+	return COUNTS_PER_BIT*bits;
 }
 
 uint32_t comb_dense_length(void)
