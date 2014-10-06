@@ -41,7 +41,7 @@ uint32_t artemis_pop_data_demodulate(const uint32_t startSample, uint8_t* dataOu
 
 uint32_t shannon_pop_correlate(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut);
 uint32_t shannon_pop_data_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, uint8_t* dataOut, const uint16_t dataOutSize, const short invert);
-uint32_t core_pop_llr_demodulate(const uint32_t* data, const uint16_t dataSize, const uint32_t startSample, int16_t* dataOut, const uint16_t dataOutSize, const short invert);
+uint32_t core_pop_llr_demodulate(const uint32_t* data, const size_t dataSize, const uint32_t startSample, int16_t* dataOut, const uint16_t dataOutSize, const short invert);
 
 int32_t do_comb(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, uint32_t combOffset, uint32_t* state);
 
@@ -56,7 +56,7 @@ void ota_packet_zero_fill(ota_packet_t* p);
 short ota_packet_checksum_good(ota_packet_t* p);
 void ota_packet_prepare_tx(ota_packet_t* p);
 void ota_packet_set_size(ota_packet_t* p);
-uint32_t counts_per_bits(uint16_t bits);
+uint32_t counts_per_bits(uint32_t bits);
 void ota_packet_zero_fill_data(ota_packet_t* p);
 uint32_t pop_get_now_slot(void);
 uint64_t pop_get_next_slot_pit(uint32_t slot);
@@ -72,7 +72,10 @@ double pop_get_slot_pit_float(uint64_t pit);
 #define POP_SLOT_COUNT (POP_PERIOD_LENGTH/POP_SLOT_LENGTH)
 // chosen so that if P(0) = 0.00001 and P(1) = 0.99999 the LLR will still have some headroom on an int16_t
 #define LLR_SCALE (3600)
-#define CALC_LLR_P0(xscore) (((xscore)+2640)/5280.0)  // chance that bit is a 0
+
+#define BAUD_RATE (18181.818181818181818181818181818)
+#define COUNTS_PER_BIT lround(((48e6/BAUD_RATE)))
+#define CALC_LLR_P0(xscore) (((xscore)+COUNTS_PER_BIT)/((double)COUNTS_PER_BIT*2))  // chance that bit is a 0
 
 
 

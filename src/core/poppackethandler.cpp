@@ -27,7 +27,7 @@ namespace pop
 #define COMB_COORELATION_FACTOR ((double)0.30)
 
 
-uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample, uint32_t endPadding)
+uint32_t pop_correlate_spool(const uint32_t* data, const size_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample, uint32_t endPadding)
 {
 	uint32_t denseCombLength = comb[combSize-1] - comb[0];
 	uint32_t denseDataLength = 0;
@@ -251,16 +251,27 @@ uint32_t pop_correlate_spool(const uint32_t* data, const uint16_t dataSize, cons
 
 
 
+uint32_t comb[] = {0, 22, 35, 38, 48, 51, 59, 60, 63, 64, 65, 72, 75, 78, 79, 87, 89, 94, 96, 104, 107, 114, 119, 121, 122, 124, 132, 134, 137, 138, 139, 142, 148, 153, 154, 156, 161, 181, 194, 207, 215, 232, 236, 240, 242, 249, 252, 261, 268, 271, 274, 278, 279, 290, 295, 299, 308, 309, 323, 330, 332, 334, 348, 356, 368, 380, 393, 403, 407, 410, 417, 421, 437, 451, 453, 454, 456, 459, 465, 478, 479, 480, 489, 498, 499, 501, 512, 525, 535, 537, 542, 552, 561, 565, 567, 574, 578, 579, 583, 597, 604, 608, 616, 624, 634, 640, 648};
+uint32_t comb_end[] = {0, 3, 6, 9, 11, 12, 14, 16, 20, 23, 28, 32, 33, 38, 39, 43, 47, 52, 56, 57, 61, 65, 68, 72, 77, 82, 87, 89, 92, 97, 100, 105, 109, 114, 118, 120, 124, 126, 128, 130, 134, 137, 140, 141, 142, 142, 146, 147, 148, 150, 155, 156, 160, 163, 166, 169, 171, 173, 174, 176, 178, 183, 183, 188, 190, 192, 197, 197, 200};
 
 
 
 
 
-
-PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 1300), rpc(0), new_timers(0), artemis_tpm_start(-1)
+PopPacketHandler::PopPacketHandler(unsigned notused) : PopSink<uint32_t>("PopPacketHandler", 3000), rpc(0), new_timers(0), artemis_tpm_start(-1)
 {
 	ldpc = new LDPC();
 	ldpc->parse_mat2str();
+
+	size_t i;
+	for(i = 0; i < ARRAY_LEN(comb); i++)
+	{
+		comb[i] = comb[i] * COUNTS_PER_BIT;
+	}
+	for(i = 0; i < ARRAY_LEN(comb_end); i++)
+	{
+		comb_end[i] = comb_end[i] * COUNTS_PER_BIT;
+	}
 }
 
 // sort by uuid first, then by time
@@ -732,8 +743,6 @@ void PopPacketHandler::process_ota_packet(ota_packet_t* p, uint32_t txTime, uint
 	execute(methodTok, paramsTok, idTok, arr, p->data, txTime, pitTxTime, pitPrnCodeStart);
 }
 
-uint32_t comb[] = {0, 58080, 92400, 100320, 126720, 134640, 155760, 158400, 166320, 168960, 171600, 190080, 198000, 205920, 208560, 229680, 234960, 248160, 253440, 274560, 282480, 300960, 314160, 319440, 322080, 327360, 348480, 353760, 361680, 364320, 366960, 374880, 390720, 403920, 406560, 411840, 425040, 477840, 512160, 546480, 567600, 612480, 623040, 633600, 638880, 657360, 665280, 689040, 707520, 715440, 723360, 733920, 736560, 765600, 778800, 789360, 813120, 815760, 852720, 871200, 876480, 881760, 918720, 939840, 971520, 1003200, 1037520, 1063920, 1074480, 1082400, 1100880, 1111440, 1153680, 1190640, 1195920, 1198560, 1203840, 1211760, 1227600, 1261920, 1264560, 1267200, 1290960, 1314720, 1317360, 1322640, 1351680, 1386000, 1412400, 1417680, 1430880, 1457280, 1481040, 1491600, 1496880, 1515360, 1525920, 1528560, 1539120, 1576080, 1594560, 1605120, 1626240, 1647360, 1673760, 1689600, 1710720};
-uint32_t comb_end[] = {0,7920,15840,23760,29040,31680,36960,42240,52800,60720,73920,84480,87120,100320,102960,113520,124080,137280,147840,150480,161040,171600,179520,190080,203280,216480,229680,234960,242880,256080,264000,277200,287760,300960,311520,316800,327360,332640,337920,343200,353760,361680,369600,372240,374880,374880,385440,388080,390720,396000,409200,411840,422400,430320,438240,446160,451440,456720,459360,464640,469920,483120,483120,496320,501600,506880,520080,520080,528000};
 
 void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimestamp* timestamp_data, size_t timestamp_size)
 {
@@ -891,26 +900,34 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		uint32_t end_padding_tight = 49000000;
 		uint32_t first_sample_padding = 8*2640;
 
+
+		uint32_t message_bits = 176 * 100;
+		uint32_t start_comb_bits = 648;
+		uint32_t end_comb_bits = 200;
+
+		//uint32_t end_padding_tight = COUNTS_PER_BIT*(start_comb_bits+message_bits+end_comb_bits);
+		//uint32_t first_sample_padding = 8*COUNTS_PER_BIT;
+
 		// if we've found a comb, but there aren't enough samples ahead of us to represent the entire message
 		if( (data[size-1] - prnCodeStart) < end_padding_tight )
 		{
 			uint32_t samp=0;
 
 			// find the edge right before the comb
-			for(i = 0; i < size; i++)
-			{
-				if( data[i] < (prnCodeStart - first_sample_padding) )
-				{
-					samp = i;
-				}
-			}
+//			for(i = 0; i < size; i++)
+//			{
+//				if( data[i] < (prnCodeStart - first_sample_padding) )
+//				{
+//					samp = i;
+//				}
+//			}
 
 			previous_run_offset = size - samp;
 			return;
 
 		}
 
-		printf("Score: %d\r\n", scorePrn);
+		printf("Score: %d (%g)\r\n", scorePrn, abs(scorePrn)/(double)comb[ARRAY_LEN(comb)-1]);
 		cout << "prnCodeStart: " << prnCodeStart << endl;
 
 
@@ -925,6 +942,17 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		if( prnEndCodeStartUnscaled == 0 )
 		{
+
+//			cout << endl;
+//			for(i = 0; i < size; i++)
+//			{
+//				cout << data[i] << ",";
+//			}
+//			cout << endl;
+
+			cout << "trying again because we couldn't find final comb" << endl;
+
+
 			previous_run_offset = size - final_sample_burn;
 			return;
 		}
@@ -1076,12 +1104,12 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		ota_packet_t rx_packet;
 
-		unsigned peek_length = 4; // how many bytes do we need to find the size?
-		unsigned peek_length_encoded = ota_length_encoded(peek_length);
+//		unsigned peek_length = 4; // how many bytes do we need to find the size?
+//		unsigned peek_length_encoded = ota_length_encoded(peek_length);
 
-		uint8_t data_rx[peek_length_encoded];
+//		uint8_t data_rx[peek_length_encoded];
 
-		int p = 0;
+//		int p = 0;
 		size_t n = 17600;
 		size_t k = 176;
 
@@ -1091,12 +1119,12 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		uint8_t data_ldpc[ldpc_ota_bytes];
 
-		int bpered = 2640;
-		bpered /= 3;
+//		int bpered = 2640;
+//		bpered /= 3;
 
 		uint32_t guess_start = prnCodeStart+combDenseLength;
 
-		cout << endl << "Guess start:  " << guess_start << endl;
+		cout << endl << "Guess ldpc data start:  " << guess_start << endl;
 //		guess_start = 2509215548;
 
 
