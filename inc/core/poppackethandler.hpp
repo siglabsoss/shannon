@@ -59,6 +59,10 @@ private:
 	mutable boost::mutex timer_mtx;
 	std::vector<boost::tuple<uint32_t, uint64_t, uint32_t, uint64_t>> artemis_timers;
 	LDPC *ldpc;
+	uint32_t start_comb_bits;
+	uint32_t end_comb_bits;
+	uint32_t rework_start;
+	int32_t rework_score;
 
 };
 

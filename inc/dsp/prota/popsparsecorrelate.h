@@ -73,7 +73,7 @@ double pop_get_slot_pit_float(uint64_t pit);
 // chosen so that if P(0) = 0.00001 and P(1) = 0.99999 the LLR will still have some headroom on an int16_t
 #define LLR_SCALE (3600)
 
-#define BAUD_RATE (18181.818181818181818181818181818)
+#define BAUD_RATE (8000.0)
 #define COUNTS_PER_BIT lround(((48e6/BAUD_RATE)))
 #define CALC_LLR_P0(xscore) (((xscore)+COUNTS_PER_BIT)/((double)COUNTS_PER_BIT*2))  // chance that bit is a 0
 
