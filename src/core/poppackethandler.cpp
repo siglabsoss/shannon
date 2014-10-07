@@ -24,7 +24,7 @@ namespace pop
 #define DATA_SAMPLE(x) data[x]
 
 // how good of a match is required to attempt demodulate
-#define COMB_COORELATION_FACTOR ((double)0.30)
+#define COMB_COORELATION_FACTOR ((double)0.17)
 
 
 uint32_t pop_correlate_spool(const uint32_t* data, const size_t dataSize, const uint32_t* comb, const uint32_t combSize, int32_t* scoreOut, uint32_t* finalSample, uint32_t endPadding)
@@ -897,16 +897,15 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 	if( prnCodeStart != 0 )
 	{
 
-		uint32_t end_padding_tight = 49000000;
-		uint32_t first_sample_padding = 8*2640;
+		uint32_t end_padding_tight, first_sample_padding;
 
 
 		uint32_t message_bits = 176 * 100;
 		uint32_t start_comb_bits = 648;
 		uint32_t end_comb_bits = 200;
 
-		//uint32_t end_padding_tight = COUNTS_PER_BIT*(start_comb_bits+message_bits+end_comb_bits);
-		//uint32_t first_sample_padding = 8*COUNTS_PER_BIT;
+		end_padding_tight = COUNTS_PER_BIT*(start_comb_bits+message_bits+end_comb_bits);
+		first_sample_padding = 8*COUNTS_PER_BIT;
 
 		// if we've found a comb, but there aren't enough samples ahead of us to represent the entire message
 		if( (data[size-1] - prnCodeStart) < end_padding_tight )
@@ -1001,6 +1000,12 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 
 		}
 
+		bool scale_factor_ok = 0;
+
+		if (fabs(scale_factor - 1.0) < 0.1)
+		{
+			scale_factor_ok = 1;
+		}
 
 
 
@@ -1166,8 +1171,16 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 //		cout << endl;
 
 
-
-		ldpc->run(llr_data, llr_data_size);
+		if( scale_factor_ok )
+		{
+			ldpc->run(llr_data, llr_data_size);
+		}
+		else
+		{
+			// we correlated against noise for the start comb, and the end comb correlated different place than expected
+			// meaning this isn't a valid packet
+			cout << "data scale factor looks too far off" << endl;
+		}
 
 
 
@@ -1307,11 +1320,6 @@ void PopPacketHandler::process(const uint32_t* data, size_t size, const PopTimes
 		os << "{\"method\":\"packet_rx\",\"params\":[" << "\"" << pop_get_hostname() << "\"" << "," << artimes_pps_full_sec << "," << rx_frac_int << "]}";
 
 		rpc->fabric->send("noc", os.str());
-
-
-
-		;
-
 
 
 		// if we've found a comb, but there aren't enough samples ahead of us to represent the entire message
