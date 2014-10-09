@@ -47,8 +47,8 @@ public:
      * @param sizeBuf The default length of the output buffer in samples. If
      * set to zero then no output buffer is allocated.
      */
-    PopSource(const char* name = "PopSource") :
-        PopObject(name), m_buf(name), m_timestamp_buf(name), debug_free_buffers(0), m_fp(0), mp_thread(0)
+    PopSource(const char* name = "PopSource", uint32_t buffers = POPSOURCE_NUM_BUFFERS) :
+        PopObject(name), m_buf(name, buffers), m_timestamp_buf(name, buffers), m_popsource_buffers(buffers), debug_free_buffers(0), m_fp(0), mp_thread(0)
     {
     }
 
@@ -145,7 +145,7 @@ public:
 
         // make sure that timestamp buffer is always allocated
         // this is because there is too much math below which assumes that m_sizeBuf is non 0
-        if( m_timestamp_buf.m_sizeBuf < (1 * POPSOURCE_NUM_BUFFERS) )
+        if( m_timestamp_buf.m_sizeBuf < m_popsource_buffers )
         	m_timestamp_buf.resize_buffer(1);
 
         // If the data is from an external array then copy data into buffer.
@@ -209,16 +209,16 @@ public:
             // if this debug option is set, this prints how many free buffers are avaliable
             static int iii = 0;
             using namespace std;
-            int free_buffers = POPSOURCE_NUM_BUFFERS - (*it)->queue_size();
+            int free_buffers = m_popsource_buffers - (*it)->queue_size();
             if( debug_free_buffers )
             {
             	// only report every N times to reduce spam
-            	if( iii++ % 15 == 0 )
+            	if( iii++ % 150 == 0 )
             		cout << get_name() << " free buffers: " << free_buffers << endl;
             }
 
             // check for overflow
-            if( (*it)->queue_size() >= POPSOURCE_NUM_BUFFERS )
+            if( (*it)->queue_size() >= m_popsource_buffers )
                 throw PopException(msg_object_overflow, get_name(),
                     (*it)->get_name());
         }
@@ -281,7 +281,7 @@ public:
     void connect(PopSink<OUT_TYPE> &sink)
     {
         // automatically grow buffer if needed
-        if( sink.sink_size() * POPSOURCE_NUM_BUFFERS >m_buf.m_sizeBuf )
+        if( sink.sink_size() * m_popsource_buffers > m_buf.m_sizeBuf )
         {
         	m_buf.resize_buffer(sink.sink_size());
         	m_timestamp_buf.resize_buffer(sink.sink_size());
@@ -323,7 +323,7 @@ public:
     {
     public:
 
-    	PopSourceBuffer(const char* name) : PopObject(name), m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_lastReqSize(0) {}
+    	PopSourceBuffer(const char* name, uint32_t buffer) : PopObject(name), m_bufIdx(0), m_bufPtr(0), m_sizeBuf(0), m_bytesAllocated(0), m_lastReqSize(0), m_popsource_buffers_(buffer) {}
 
     	/**
     	 * This code used to be inside process(), extracted here for DRY
@@ -335,7 +335,7 @@ public:
     		if( data != (m_bufPtr + m_bufIdx) )
     		{
     			// Automatically grow the buffer if there is not enough space.
-    			if( num_new_pts * POPSOURCE_NUM_BUFFERS > m_sizeBuf )
+    			if( num_new_pts * m_popsource_buffers_ > m_sizeBuf )
     				resize_buffer(num_new_pts);
 
     			// Copy data into buffer
@@ -445,7 +445,7 @@ public:
 
     		free_circular_buffer(m_bytesAllocated);
 
-    		m_bytesAllocated = sizeBuf * sizeof(BUFFER_TYPE) * POPSOURCE_NUM_BUFFERS;
+    		m_bytesAllocated = sizeBuf * sizeof(BUFFER_TYPE) * m_popsource_buffers_;
 
     		m_bufPtr = (BUFFER_TYPE*)create_circular_buffer( m_bytesAllocated, sizeof(BUFFER_TYPE) );
 
@@ -467,6 +467,9 @@ public:
     	/// Last requested buffer size
     	size_t m_lastReqSize;
 
+    	private:
+    	uint32_t m_popsource_buffers_;
+
     }; //PopSourceBuffer
 
 private:
@@ -482,7 +485,7 @@ private:
         if( 0 == sizeBuf ) sizeBuf = 1;
 
     	// automatically grow buffer if needed
-    	if( sizeBuf * POPSOURCE_NUM_BUFFERS > buf.m_sizeBuf )
+    	if( sizeBuf * m_popsource_buffers > buf.m_sizeBuf )
     		buf.resize_buffer(sizeBuf);
 
     	// only called if no size requested and no sinks are connected
@@ -518,6 +521,8 @@ private:
 
     // buffer for timestamp data
     PopSourceBuffer<PopTimestamp> m_timestamp_buf;
+
+    uint32_t m_popsource_buffers;
 public:
     bool debug_free_buffers;
 private:
