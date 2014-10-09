@@ -28,7 +28,7 @@ public:
 
 	void execute_rpc(const struct json_token *methodTok, const struct json_token *paramsTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);
 	void execute_result(const struct json_token *resultTok, const struct json_token *idTok, struct json_token arr[POP_JSON_RPC_SUPPORTED_TOKENS], std::string str);
-	void execute_raw(char c);
+	void execute_raw(char c, bool reset);
 	void packet_tx(char* data, uint32_t size, uint32_t txTime, uint64_t pitTxTime);
 	void send_reset();
 	void send_ping();

@@ -213,7 +213,7 @@ public:
             if( debug_free_buffers )
             {
             	// only report every N times to reduce spam
-            	if( iii++ % 150 == 0 )
+            	if( iii++ % 9000 == 0 )
             		cout << get_name() << " free buffers: " << free_buffers << endl;
             }
 

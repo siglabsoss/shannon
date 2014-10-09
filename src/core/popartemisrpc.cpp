@@ -433,13 +433,24 @@ int PopArtemisRPC::received_basestation_boot()
 
 // this function accepts raw characters.  every 4 characters are assembled into a uitn32_t sample.  every time a sample is constructed, the previous sample is passed to process.
 // This allows for the detection of an inband signal which will switch back to json mode
-void PopArtemisRPC::execute_raw(char c)
+void PopArtemisRPC::execute_raw(char c, bool reset)
 {
+	static uint32_t prev_sample = 0;
+	static bool started = 0;
+
+	if( reset )
+	{
+		started = 0;
+		stream.erase(stream.begin(),stream.end());
+	}
+
+
 	stream.push_back(c);
 
 	uint32_t sample;
-	static uint32_t prev_sample = 0;
-	static bool started = 0;
+
+
+
 
 	unsigned clen = stream.size();
 	if( clen >= 4 )
@@ -468,7 +479,7 @@ void PopArtemisRPC::execute_raw(char c)
 	if( !handler )
 		return;
 
-	if( prev_sample == 0x10101010 && sample == 0x00000000 )
+	if( prev_sample == 0x21212121 && sample == 0x12121212 )
 	{
 		// switchout out of raw mode
 		rawMode = 0;

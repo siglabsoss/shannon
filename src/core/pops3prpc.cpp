@@ -201,7 +201,7 @@ void PopS3pRPC::greet_s3p(void)
 	send_rpc(message.c_str(), message.length());
 }
 
-void PopS3pRPC::execute_raw(char c)
+void PopS3pRPC::execute_raw(char c, bool reset)
 {
 	// do nothing
 }

@@ -61,6 +61,8 @@ void PopJsonRPC::process(const char* data, size_t size, const PopTimestamp* time
 	dump->process(data, size, timestamp_data, timestamp_size);
 #endif
 
+	static bool rawModeP = true;
+
 	char c = data[0];
 
 	//cout << c;
@@ -79,6 +81,7 @@ void PopJsonRPC::process(const char* data, size_t size, const PopTimestamp* time
 		{
 			if( c == 0 )
 			{
+				rawModeP = rawMode;
 				parse();
 
 				command.erase(command.begin(),command.end());
@@ -90,7 +93,17 @@ void PopJsonRPC::process(const char* data, size_t size, const PopTimestamp* time
 		}
 		else
 		{
-			execute_raw(c);
+			if( rawModeP != rawMode )
+			{
+				// sending our first raw character since json
+				execute_raw(c, true);
+			}
+			else
+			{
+				execute_raw(c, false);
+			}
+
+			rawModeP = rawMode;
 		}
 	}
 }
