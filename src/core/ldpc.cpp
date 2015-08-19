@@ -651,7 +651,7 @@ void LDPC::get_message()
 
 	int degreek = h_cols - h_rows;
 
-	for( unsigned j = 0; j < degreek; ++j )
+	for( unsigned j = 0; j <= degreek; ++j )
 	{
 		LDPC_N *ni = &(n[j]);
 
@@ -670,6 +670,21 @@ void LDPC::get_message()
 	}
 
 }
+
+void LDPC::print_cw()
+{
+	cout << "Code word at this stage: " << endl;
+	unsigned i;
+	for(i = 0; i < 24; i++)
+	{
+		char c;
+		c = n[i].llr < 0 ? '1' : '0';
+		cout << c << endl;
+	}
+
+	cout << endl;
+}
+
 
 // this example is was pulled from Dropbox\popwi-general\docs\resources\ldpc\LDPC Soft Message Passing Decoder - Module1 Flash Memory Summit 2014.pdf
 
@@ -725,6 +740,7 @@ void LDPC::run()
 	n[22].llr = -9328 * -1;
 	n[23].llr = -3154 * -1;
 
+	print_cw();
 
 	// Do check
 	calc_syndrome();
@@ -754,8 +770,10 @@ void LDPC::run()
 	calc_syndrome();
 	get_syndrome();
 
+	print_cw();
 
 	get_message();
+
 
 }
 

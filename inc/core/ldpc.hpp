@@ -73,6 +73,7 @@ public:
 	void calc_syndrome(void);
 	void run();
 	void get_message();
+	void print_cw();
 private:
 
 	void prep_once();
