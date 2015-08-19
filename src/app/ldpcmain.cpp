@@ -9,21 +9,11 @@
 
 
 #include <iostream>
-#include <zmq.hpp>
 #include <string>
 #include <iostream>
 #include <unistd.h>
-#include "core/config.hpp"
-#include "core/popserial.hpp"
-#include "core/popgpsdevice.hpp"
-#include "core/popartemisrpc.hpp"
-#include "core/pops3prpc.hpp"
-#include "core/popparsegps.hpp"
-#include "core/poppackethandler.hpp"
-#include "core/popchannelmap.hpp"
-#include "core/popfabric.hpp"
+#include <math.h>
 #include "core/ldpc.hpp"
-#include "core/popfabricbridge.hpp"
 #include "core/utilities.hpp"
 
 
@@ -37,7 +27,7 @@ int main(int argc, char *argv[])
 
 
 
-	Config::loadFromDisk();
+	//Config::loadFromDisk();
 
 	short array = 0;
 	unsigned rows = 3;

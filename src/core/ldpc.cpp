@@ -9,22 +9,18 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <cstring>
 
 #include <vector>
 
-#include <boost/thread/mutex.hpp>
+#include <cmath>
 
 #include "core/ldpc.hpp"
-#include "frozen/frozen.h"
-#include "core/utilities.hpp"
-#include "core/poppackethandler.hpp"
 
-using boost::mutex;
 using std::make_pair;
 using std::pair;
 using std::string;
 using std::vector;
-using namespace zmq;
 using namespace std;
 
 
@@ -547,7 +543,7 @@ void LDPC::iteration()
 		LDPC_N *ni_next = &(n[mi->node_index[1]]);
 
 		// cook first two iterations of loop below
-		if( abs(ni->llr) < abs(ni_next->llr) )
+		if( std::abs(ni->llr) < abs(ni_next->llr) )
 		{
 			mi->min[0]       = ni->llr;
 			mi->min_index[0] = mi->node_index[0];

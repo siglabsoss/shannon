@@ -40,61 +40,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 find_package(Boost COMPONENTS date_time thread filesystem program_options prg_exec_monitor regex system unit_test_framework)
 
-find_library(UHD_LIBRARY uhd)
-
-set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-5.5)
-
-find_package(CUDA)
-
-if(NOT CUDA_FOUND)
-    message(WARNING "CUDA Library not found, skipping")
-
-    # Set all these cuda variables to empty string so that targets down the line don't freak out
-    set(CUDA_INCLUDE_DIRS "")
-    set(CUDA_LIBRARY_DIRS "")
-    set(CUDA_CUDART_LIBRARY "")
-    set(CUDA_cufft_LIBRARY "")
-    
-endif()
-
-
-
-# --- 0MQ ---   https://www.mail-archive.com/zeromq-dev@lists.zeromq.org/msg17331.html http://pastebin.com/fLsm9SYf http://pastebin.com/sSJJVw6u
-
-SET ( ZEROMQ_FIND_REQUIRED TRUE )
- 
-### ZeroMQ ###
- 
-FIND_PATH ( ZEROMQ_INCLUDE_DIR NAMES zmq.h PATHS /usr/include/ /usr/local/include/ )
-FIND_LIBRARY ( ZEROMQ_LIBRARY NAMES zmq PATHS /usr/lib /usr/local/lib )
- 
-IF ( ZEROMQ_INCLUDE_DIR AND ZEROMQ_LIBRARY )
-    SET ( ZEROMQ_FOUND TRUE )
-ENDIF ( ZEROMQ_INCLUDE_DIR AND ZEROMQ_LIBRARY )
- 
- 
-IF ( ZEROMQ_FOUND )
-    IF ( NOT ZEROMQ_FIND_QUIETLY )
-        MESSAGE ( STATUS "Found ZeroMQ:" )
-        MESSAGE ( STATUS "  (Headers)       ${ZEROMQ_INCLUDE_DIR}" )
-        MESSAGE ( STATUS "  (Library)       ${ZEROMQ_LIBRARY}" )
-    ENDIF ( NOT ZEROMQ_FIND_QUIETLY )
-ELSE ( ZEROMQ_FOUND )
-    IF ( ZEROMQ_FIND_REQUIRED )
-        MESSAGE ( FATAL_ERROR "Could not find ZeroMQ" )
-    ENDIF ( ZEROMQ_FIND_REQUIRED )
-ENDIF ( ZEROMQ_FOUND )
-
-
-# --- End 0MQ ---
-
-
-
-set(CUDA_64_BIT_DEVICE_CODE ON)
-set(BUILD_SHARED_LIBS OFF)
-# set(CUDA_VERBOSE_BUILD ON)
-set(CUDA_SEPARABLE_COMPILATION ON)
-list(APPEND CUDA_NVCC_FLAGS -G -g -arch=sm_20)
 
 set(LIB_NAME "gpuacceleration")
 
@@ -102,7 +47,6 @@ set(LIB_NAME "gpuacceleration")
 #  RELEASE -DNDEBUG
 #  DEBUG -g -DDEBUG
 
-find_package(Doxygen)
 
 configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_SOURCE_DIR}/Doxyfile @ONLY)
 

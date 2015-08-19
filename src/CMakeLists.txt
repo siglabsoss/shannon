@@ -7,10 +7,6 @@
 #
 ###############################################################################
 
-if(NOT CUDA_FOUND)
-    # Set all these cuda variables to empty string so that targets down the line don't freak out
-    set(CUDA_CUDART_LIBRARY "")
-endif()
 
 
 set(gpuacc_SRCS
@@ -18,22 +14,9 @@ set(gpuacc_SRCS
 
 # The subset of source files that all apps share
 set(shared_SOURCES
-	mdl/popradio.cpp
-	mdl/poptimestamp.cpp
-	core/popassert.c
-	core/popsource.cpp
-	core/objectstash.cpp
-	core/config.cpp
-	core/utilities.cpp
-	net/popnetwork.cpp
-	../3rd/frozen/frozen.c
-	../3rd/b64/b64.c
-	core/popjsonrpc.cpp
-	core/popchannelmap.cpp
-	core/popfabric.cpp
+	
 	core/ldpc.cpp
-	../3rd/boost_serial/AsyncSerial.cpp
-	core/geohelper.cpp
+	
 )
 
 # S3P and Shannon sources
@@ -58,14 +41,8 @@ set(all_SOURCES
 # Gravatinio only sources
 set(gravatino_SOURCES
    ${shared_SOURCES}
-	core/popparsegps.cpp
-	core/popgpsdevice.cpp
-	core/popartemisrpc.cpp
-	core/pops3prpc.cpp
-	core/poppackethandler.cpp
-	core/popserial.cpp
-	core/popfabricbridge.cpp
-	dsp/prota/popsparsecorrelate.c
+	
+	
 )
 
 set(dsp_SOURCES
@@ -127,7 +104,7 @@ target_link_libraries(gravitino ${Boost_LIBRARIES} ${ZEROMQ_LIBRARY})
 
 # For target ldpc
 add_executable(ldpc ${gravatino_SOURCES} app/ldpcmain.cpp)
-target_link_libraries(ldpc ${Boost_LIBRARIES} ${ZEROMQ_LIBRARY})
+target_link_libraries(ldpc ${Boost_LIBRARIES})
 	
 
 
